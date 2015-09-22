@@ -2,6 +2,9 @@ package jreframeworker.ui;
 
 import java.io.File;
 
+import jreframeworker.common.RuntimeUtils;
+import jreframeworker.log.Log;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
@@ -72,6 +75,12 @@ public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 		Label runtimeLabel = new Label(row3, SWT.NONE);
 		runtimeLabel.setText("Runtime:");
 		
+		try {
+			runtimePath = RuntimeUtils.getDefaultRuntime().getCanonicalPath();
+		} catch (Exception ex){
+			Log.error("Could not located default runtime path.", ex);
+		}
+		
 		final Text runtimeText = new Text(row3, SWT.SINGLE | SWT.BORDER);
 		runtimeText.setEnabled(false);
 		runtimeText.setText(runtimePath);
@@ -115,9 +124,14 @@ public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				if(useDefaultRuntimeButton.getSelection()){
-					runtimePath = "";
-					runtimeBrowseButton.setEnabled(false);
-					runtimeText.setEnabled(false);
+					try {
+						runtimePath = RuntimeUtils.getDefaultRuntime().getCanonicalPath();
+						runtimeText.setText(runtimePath);
+						runtimeBrowseButton.setEnabled(false);
+						runtimeText.setEnabled(false);
+					} catch (Exception ex){
+						Log.error("Could not located default runtime path.", ex);
+					}
 				} else {
 					runtimeBrowseButton.setEnabled(true);
 					runtimeText.setEnabled(true);
