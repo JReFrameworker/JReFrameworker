@@ -1,13 +1,15 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Jreframeworker
+Bundle-Name: JReFrameworker
 Bundle-SymbolicName: jreframeworker;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: jreframeworker.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.ui.ide,
  org.eclipse.core.runtime,
- org.eclipse.core.resources
+ org.eclipse.core.resources,
+ ca.mcgill.sable.soot;bundle-version="2.5.2",
+ ca.mcgill.sable.soot.lib;bundle-version="2.5.2"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Export-Package: jreframeworker.builder,
