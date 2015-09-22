@@ -47,57 +47,34 @@ public class JReFrameworker {
 		try {
 			monitor.beginTask("Create JReFrameworker Runtime Project", 3);
 			
+			// create the empty eclipse project
+			monitor.setTaskName("Creating Eclipse project...");
 			project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 			File projectDirectory = new File(projectPath.toFile().getCanonicalPath() + File.separatorChar + projectName).getCanonicalFile();
-			File libDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + "lib");
-			libDirectory.mkdirs();
-			
-			IProjectDescription projectDescription = project.getWorkspace().newProjectDescription(project.getName());
-			URI location = getProjectLocation(projectName, projectPath);
-			projectDescription.setLocationURI(location);
-			projectDescription.setNatureIds(new String[] { JavaCore.NATURE_ID, JReFrameworkerNature.NATURE_ID });
-			
-			
-			BuildCommand javaBuildCommand = new BuildCommand();
-			javaBuildCommand.setBuilderName(JavaCore.BUILDER_ID);
-			projectDescription.setBuildSpec(new ICommand[]{ javaBuildCommand });
-			
+			File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + "runtimes");
+			runtimesDirectory.mkdirs();
+			IJavaProject jProject = createProject(projectName, projectPath, monitor, project);
 			monitor.worked(1);
 			if (monitor.isCanceled()){
 				return Status.CANCEL_STATUS;
 			}
-			monitor.setTaskName("Creating Eclipse project...");
 			
-			// create and open the Eclipse project
-			project.create(projectDescription, null);
-			IJavaProject jProject = JavaCore.create(project);
-			project.open(new NullProgressMonitor());
-			
-			monitor.worked(1);
-			if (monitor.isCanceled()){
-				return Status.CANCEL_STATUS;
-			}
+			// copy runtimes and configure project classpath
 			monitor.setTaskName("Configuring project classpath...");
-
-			// create bin folder
-			IFolder binFolder = project.getFolder("bin");
-			binFolder.create(false, true, null);
-			jProject.setOutputLocation(binFolder.getFullPath(), null);
-			
-			cloneDefaultRuntimeLibraries(jProject, projectDirectory, libDirectory);
-			
-			// create source folder
-			IFolder sourceFolder = project.getFolder("src");
-			sourceFolder.create(false, true, null);
-			
-			// add source folder to project class entries
-			addClasspathEntry(jProject, sourceFolder);
-			
+			configureProjectClasspath(project, projectDirectory, runtimesDirectory, jProject);
 			monitor.worked(1);
 			if (monitor.isCanceled()){
 				return Status.CANCEL_STATUS;
 			}
-			Log.info("Successfully created JReFrameworker project [" + projectName + "]");
+
+			// generate jimple for runtimes
+			monitor.setTaskName("Disassembling runtimes...");
+			// TODO: implement
+			monitor.worked(1);
+			if (monitor.isCanceled()){
+				return Status.CANCEL_STATUS;
+			}
+			
 			return Status.OK_STATUS;
 		} finally {
 			if (project != null && project.exists()){
@@ -105,6 +82,41 @@ public class JReFrameworker {
 			}
 			monitor.done();
 		}
+	}
+
+	private static void configureProjectClasspath(IProject project, File projectDirectory, File runtimesDirectory, IJavaProject jProject) throws CoreException, JavaModelException, IOException {
+		// create bin folder
+		IFolder binFolder = project.getFolder("bin");
+		binFolder.create(false, true, null);
+		jProject.setOutputLocation(binFolder.getFullPath(), null);
+		
+		cloneDefaultRuntimeLibraries(jProject, projectDirectory, runtimesDirectory);
+		
+		// create source folder
+		IFolder sourceFolder = project.getFolder("src");
+		sourceFolder.create(false, true, null);
+		
+		// add source folder to project class entries
+		addClasspathEntry(jProject, sourceFolder);
+		
+		Log.info("Successfully created JReFrameworker project [" + project.getName() + "]");
+	}
+
+	private static IJavaProject createProject(String projectName, IPath projectPath, IProgressMonitor monitor, IProject project) throws CoreException {
+		IProjectDescription projectDescription = project.getWorkspace().newProjectDescription(project.getName());
+		URI location = getProjectLocation(projectName, projectPath);
+		projectDescription.setLocationURI(location);
+		projectDescription.setNatureIds(new String[] { JavaCore.NATURE_ID, JReFrameworkerNature.NATURE_ID });
+
+		BuildCommand javaBuildCommand = new BuildCommand();
+		javaBuildCommand.setBuilderName(JavaCore.BUILDER_ID);
+		projectDescription.setBuildSpec(new ICommand[]{ javaBuildCommand });
+
+		// create and open the Eclipse project
+		project.create(projectDescription, null);
+		IJavaProject jProject = JavaCore.create(project);
+		project.open(new NullProgressMonitor());
+		return jProject;
 	}
 
 	private static void addClasspathEntry(IJavaProject jProject, IFolder sourceFolder) throws JavaModelException {
