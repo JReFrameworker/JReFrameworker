@@ -39,8 +39,8 @@ public class JReFrameworker {
 
 	// references: 
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
+	// https://eclipse.org/articles/Article-Builders/builders.html
 	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
-	
 	public static IStatus createProjectWithDefaultRuntime(String projectName, IPath projectPath, IProgressMonitor monitor) throws CoreException, IOException {
 		IProject project = null;
 		
