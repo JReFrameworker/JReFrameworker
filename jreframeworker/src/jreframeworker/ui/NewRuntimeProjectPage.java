@@ -23,6 +23,7 @@ import org.eclipse.wb.swt.SWTResourceManager;
 
 public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 	private String runtimePath;
+	private boolean defaultRuntime;
 	
 	public NewRuntimeProjectPage(String pageName, String startRuntimePath) {
 		super(pageName);
@@ -38,6 +39,10 @@ public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 	
 	public String getRuntimePath() {
 		return runtimePath;
+	}
+	
+	public boolean isDefaultRuntime(){
+		return defaultRuntime;
 	}
 	
 	@Override
@@ -76,6 +81,7 @@ public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 		runtimeLabel.setText("Runtime:");
 		
 		try {
+			defaultRuntime = true;
 			runtimePath = RuntimeUtils.getDefaultRuntime().getCanonicalPath();
 		} catch (Exception ex){
 			Log.error("Could not located default runtime path.", ex);
@@ -136,6 +142,7 @@ public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 					runtimeBrowseButton.setEnabled(true);
 					runtimeText.setEnabled(true);
 				}
+				defaultRuntime = !defaultRuntime;
 				if(validatePage()){
 					setPageComplete(true);
 				}

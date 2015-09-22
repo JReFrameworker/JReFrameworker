@@ -2,6 +2,7 @@ package jreframeworker.common;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.LinkedList;
 
 import jreframeworker.log.Log;
@@ -66,6 +67,11 @@ public class RuntimeUtils {
 			}
 		}
 		return new File(commonPath);
+	}
+	
+	// helper method to copy a file from source to destination
+	public static void copyFile(File from, File to) throws IOException {
+		Files.copy(from.toPath(), to.toPath());
 	}
 
 }

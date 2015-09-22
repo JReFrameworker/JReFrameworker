@@ -64,14 +64,18 @@ public class ImportRuntimeWizard extends Wizard implements IImportWizard {
 	public boolean performFinish() {
 		final String projectName = page.getProjectName();
 		final IPath projectLocation = page.getLocationPath();
-		final File runtimeDirectory = new File(page.getRuntimePath());
+		final File runtimeDirectory = new File(page.getRuntimePath());  // TODO: use this in project creation
 
 		IRunnableWithProgress j = new IRunnableWithProgress() {
 			@Override
 			public void run(IProgressMonitor monitor) {
 				IStatus result = null;
 				try {
-					result = JReFrameworker.createJReFrameworkerProject(projectName, projectLocation, runtimeDirectory, monitor);
+					if(page.isDefaultRuntime()){
+						result = JReFrameworker.createProjectWithDefaultRuntime(projectName, projectLocation, monitor);
+					} else {
+						// TODO: implement
+					}
 				} catch (Throwable t) {
 					String message = "Could not create JReFrameworker runtime project. " + t.getMessage();
 					UIJob uiJob = new ImportWizardErrorDialog("Error importing runtime...", message, projectName);
