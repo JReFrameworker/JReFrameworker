@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         id="JReFrameworkerBuilder"
+         name="JReFrameworker Project Builder"
+         point="org.eclipse.core.resources.builders">
+      <builder
+            hasNature="true">
+         <run
+               class="jreframeworker.builder.JReFrameworkerBuilder">
+         </run>
+      </builder>
+   </extension>
+   <extension
+         id="JReFrameworkerNature"
+         name="JReFrameworker Project Nature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="jreframeworker.builder.JReFrameworkerNature">
+         </run>
+      </runtime>
+      <builder
+            id="jreframeworker.JReFrameworkerBuilder">
+      </builder>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            name="JReFrameworker Project Nature commands"
+            id="jreframeworker.JReFrameworkerNature.category">
+      </category>
+      <command
+            name="Add/RemoveJReFrameworker Project Nature"
+            defaultHandler="jreframeworker.builder.AddRemoveJReFrameworkerNatureHandler"
+            categoryId="jreframeworker.JReFrameworkerNature.category"
+            id="jreframeworker.addRemoveJReFrameworkerNature">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
+         <command
+               commandId="jreframeworker.addRemoveJReFrameworkerNature"
+               label="Disable Sample builder"
+               style="push">
+            <visibleWhen
+                  checkEnabled="false">
+               <with
+                     variable="selection">
+                  <count
+                        value="1">
+                  </count>
+                  <iterate>
+                     <adapt
+                           type="org.eclipse.core.resources.IProject">
+                        <test
+                              value="jreframeworker.JReFrameworkerNature"
+                              property="org.eclipse.core.resources.projectNature">
+                        </test>
+                     </adapt>
+                  </iterate>
+               </with>
+            </visibleWhen>
+         </command>
+         <command
+               commandId="jreframeworker.addRemoveJReFrameworkerNature"
+               label="Enable Sample builder"
+               style="push">
+            <visibleWhen
+                  checkEnabled="false">
+               <with
+                     variable="selection">
+                  <count
+                        value="1">
+                  </count>
+                  <iterate>
+                     <adapt
+                           type="org.eclipse.core.resources.IProject">
+                        <not>
+                           <test
+                                 value="jreframeworker.JReFrameworkerNature"
+                                 property="org.eclipse.core.resources.projectNature">
+                           </test>
+                        </not>
+                     </adapt>
+                  </iterate>
+               </with>
+            </visibleWhen>
+         </command>
+      </menuContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.importWizards">
+      <category
+            id="jreframeworker.ui.category"
+            name="JReFrameworker">
+      </category>
+      <wizard
+            category="jreframeworker.ui.category"
+            class="jreframeworker.ui.ImportRuntimeWizard"
+            icon="icons/JReFrameworker.gif"
+            id="jreframeworker.ui.ImportRuntimeWizard"
+            name="JReFrameworker Runtime Project">
+         <description>
+            Import a JReFrameworker runtime project into the workspace.
+         </description>
+      </wizard>
+   </extension>
+
+</plugin>
