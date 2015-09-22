@@ -7,9 +7,12 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import jreframeworker.builder.JReFrameworkerNature;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.filesystem.URIUtil;
+import org.eclipse.core.internal.events.BuildCommand;
+import org.eclipse.core.resources.ICommand;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -31,9 +34,12 @@ import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
 
+@SuppressWarnings("restriction")
 public class JReFrameworker {
 
-	// reference: https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
+	// references: 
+	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
+	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
 	
 	public static IStatus createProjectWithDefaultRuntime(String projectName, IPath projectPath, IProgressMonitor monitor) throws CoreException, IOException {
 		IProject project = null;
@@ -49,7 +55,12 @@ public class JReFrameworker {
 			IProjectDescription projectDescription = project.getWorkspace().newProjectDescription(project.getName());
 			URI location = getProjectLocation(projectName, projectPath);
 			projectDescription.setLocationURI(location);
-			projectDescription.setNatureIds(new String[] { JavaCore.NATURE_ID });
+			projectDescription.setNatureIds(new String[] { JavaCore.NATURE_ID, JReFrameworkerNature.NATURE_ID });
+			
+			
+			BuildCommand javaBuildCommand = new BuildCommand();
+			javaBuildCommand.setBuilderName(JavaCore.BUILDER_ID);
+			projectDescription.setBuildSpec(new ICommand[]{ javaBuildCommand });
 			
 			monitor.worked(1);
 			if (monitor.isCanceled()){
@@ -80,12 +91,7 @@ public class JReFrameworker {
 			sourceFolder.create(false, true, null);
 			
 			// add source folder to project class entries
-			IPackageFragmentRoot root = jProject.getPackageFragmentRoot(sourceFolder);
-			IClasspathEntry[] oldEntries = jProject.getRawClasspath();
-			IClasspathEntry[] newEntries = new IClasspathEntry[oldEntries.length + 1];
-			System.arraycopy(oldEntries, 0, newEntries, 0, oldEntries.length);
-			newEntries[oldEntries.length] = JavaCore.newSourceEntry(root.getPath());
-			jProject.setRawClasspath(newEntries, null);
+			addClasspathEntry(jProject, sourceFolder);
 			
 			monitor.worked(1);
 			if (monitor.isCanceled()){
@@ -94,11 +100,20 @@ public class JReFrameworker {
 			Log.info("Successfully created JReFrameworker project [" + projectName + "]");
 			return Status.OK_STATUS;
 		} finally {
-			monitor.done();
 			if (project != null && project.exists()){
 				project.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 			}
+			monitor.done();
 		}
+	}
+
+	private static void addClasspathEntry(IJavaProject jProject, IFolder sourceFolder) throws JavaModelException {
+		IPackageFragmentRoot root = jProject.getPackageFragmentRoot(sourceFolder);
+		IClasspathEntry[] oldEntries = jProject.getRawClasspath();
+		IClasspathEntry[] newEntries = new IClasspathEntry[oldEntries.length + 1];
+		System.arraycopy(oldEntries, 0, newEntries, 0, oldEntries.length);
+		newEntries[oldEntries.length] = JavaCore.newSourceEntry(root.getPath());
+		jProject.setRawClasspath(newEntries, null);
 	}
 	
 	private static void cloneDefaultRuntimeLibraries(IJavaProject jProject, File projectDirectory, File libDirectory) throws IOException, JavaModelException {
