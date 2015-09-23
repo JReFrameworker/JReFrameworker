@@ -110,5 +110,13 @@
          </description>
       </wizard>
    </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="jreframeworker.ui.PreferencePage"
+            id="jreframeworker.preferences"
+            name="JReFrameworker">
+      </page>
+   </extension>
 
 </plugin>

@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import jreframeworker.builder.JReFrameworkerNature;
+import jreframeworker.common.JimpleUtils.SootConversionException;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.filesystem.URIUtil;
@@ -69,7 +70,11 @@ public class JReFrameworker {
 
 			// generate jimple for runtimes
 			monitor.setTaskName("Disassembling runtimes...");
-			// TODO: implement
+			try {
+				JimpleUtils.disassemble(jProject, project.getFile(runtimesDirectory.getName() + File.separatorChar + "rt.jar"));
+			} catch (SootConversionException e) {
+				e.printStackTrace();
+			}
 			monitor.worked(1);
 			if (monitor.isCanceled()){
 				return Status.CANCEL_STATUS;

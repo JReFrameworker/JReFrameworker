@@ -15,7 +15,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.dialogs.WizardNewProjectCreationPage;
@@ -50,7 +50,8 @@ public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 		super.createControl(parent);
 		Composite composite = (Composite) this.getControl();
 		
-		final DirectoryDialog directoryChooser = new DirectoryDialog(composite.getShell(), SWT.OPEN);
+		final FileDialog fileChooser = new FileDialog(composite.getShell(), SWT.OPEN);
+		fileChooser.setFilterExtensions(new String[] { "*.jar" });
 		
 		Composite row1 = new Composite(composite, SWT.NONE);
 		GridLayout row1Layout = new GridLayout();
@@ -111,7 +112,7 @@ public class NewRuntimeProjectPage extends WizardNewProjectCreationPage {
 		runtimeBrowseButton.addSelectionListener(new SelectionListener() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				String path = directoryChooser.open();
+				String path = fileChooser.open();
 				if (path != null){
 					runtimePath = path;
 				}
