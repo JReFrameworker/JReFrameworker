@@ -50,7 +50,7 @@ public class JReFrameworker {
 			// create the empty eclipse project
 			monitor.setTaskName("Creating Eclipse project...");
 			project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
-			File projectDirectory = new File(projectPath.toFile().getCanonicalPath() + File.separatorChar + projectName).getCanonicalFile();
+			File projectDirectory = new File(projectPath.toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
 			File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + "runtimes");
 			runtimesDirectory.mkdirs();
 			IJavaProject jProject = createProject(projectName, projectPath, monitor, project);
