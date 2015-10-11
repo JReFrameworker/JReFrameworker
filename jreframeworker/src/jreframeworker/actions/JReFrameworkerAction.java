@@ -50,7 +50,7 @@ public class JReFrameworkerAction implements IWorkbenchWindowActionDelegate {
 		} else {
 			for(IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()){
 				try {
-					if(project.hasNature(JReFrameworkerNature.NATURE_ID)){
+					if(project.isOpen() && project.hasNature(JReFrameworkerNature.NATURE_ID)){
 						File projectDirectory = new File(project.getLocation().toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
 						File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + "runtimes");
 						IJavaProject jProject = JavaCore.create(project);

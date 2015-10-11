@@ -84,7 +84,7 @@ public class JimpleUtils {
 		
 		StringBuilder classpath = new StringBuilder();
 		for(IClasspathEntry entry: project.getRawClasspath()){
-			// add all libraries to the classpath except the runtime that was dissassembled
+			// add all libraries to the classpath except the runtime that was disassembled
 			if(!entry.getPath().toFile().getName().equals(output.getLocation().toFile().getName())){
 				classpath.append(entry.getPath().toFile().getCanonicalPath());
 				classpath.append(File.pathSeparator);
@@ -97,7 +97,9 @@ public class JimpleUtils {
 //		argList.add("--xml-attributes");
 		argList.add("-f"); argList.add("class");
 		argList.add("-cp"); argList.add(classpath.toString());
-//		argList.add("-allow-phantom-refs");
+		if(Activator.getDefault().getPreferenceStore().getBoolean(PreferencesPage.ALLOW_PHANTOM_REFERENCES_BOOLEAN)){
+			argList.add("-allow-phantom-refs");
+		}
 		argList.add("-output-dir"); argList.add(output.getLocation().toFile().getCanonicalPath()); argList.add("-output-jar");
 		argList.add("-process-dir"); argList.add(jimpleDirectory.getLocation().toFile().getCanonicalPath());
 		argList.add("-include-all");
