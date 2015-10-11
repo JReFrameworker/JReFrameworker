@@ -146,8 +146,9 @@ public class JReFrameworker {
 		}
 		
 		// add the jreframeworker operations jar to project and the classpath
-		String operationsJarFilename = "JREF_Operations.jar";
-		String operationsJarPath = "operations/" + operationsJarFilename;
+		final String operationsJarFilename = "JREF_Operations.jar";
+		final String operationsDirectory = "operations";
+		String operationsJarPath = operationsDirectory + "/" + operationsJarFilename;
 		// see http://stackoverflow.com/q/23825933/475329 for logic of getting bundle resource
 		URL fileURL = Activator.getContext().getBundle().getEntry(operationsJarPath);
 		URL resolvedFileURL = FileLocator.toFileURL(fileURL);
@@ -157,7 +158,7 @@ public class JReFrameworker {
 		if(is == null){
 			throw new RuntimeException("Could not locate: " + operationsJarPath);
 		}
-		File operationsLibDirectory = new File(libDirectory.getParentFile().getCanonicalPath() + File.separatorChar + "operations");
+		File operationsLibDirectory = new File(libDirectory.getParentFile().getCanonicalPath() + File.separatorChar + operationsDirectory);
 		operationsLibDirectory.mkdirs();
 		File operationsJar = new File(operationsLibDirectory.getCanonicalPath() + File.separatorChar + operationsJarFilename);
 		Files.copy(is, operationsJar.toPath());
