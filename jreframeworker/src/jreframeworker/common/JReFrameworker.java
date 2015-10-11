@@ -2,11 +2,16 @@ package jreframeworker.common;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import jreframeworker.Activator;
 import jreframeworker.builder.JReFrameworkerNature;
 import jreframeworker.log.Log;
 
@@ -19,6 +24,7 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -41,7 +47,7 @@ public class JReFrameworker {
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
 	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
-	public static IStatus createProjectWithDefaultRuntime(String projectName, IPath projectPath, IProgressMonitor monitor) throws CoreException, IOException {
+	public static IStatus createProjectWithDefaultRuntime(String projectName, IPath projectPath, IProgressMonitor monitor) throws CoreException, IOException, URISyntaxException {
 		IProject project = null;
 		
 		try {
@@ -69,7 +75,7 @@ public class JReFrameworker {
 
 			// generate jimple for runtimes
 			monitor.setTaskName("Disassembling runtimes...");
-			JimpleUtils.disassemble(jProject, project.getFile(runtimesDirectory.getName() + File.separatorChar + "rt.jar"));
+			//JimpleUtils.disassemble(jProject, project.getFile(runtimesDirectory.getName() + File.separatorChar + "rt.jar"));
 			monitor.worked(1);
 			if (monitor.isCanceled()){
 				return Status.CANCEL_STATUS;
@@ -84,7 +90,7 @@ public class JReFrameworker {
 		}
 	}
 
-	private static void configureProjectClasspath(IProject project, File projectDirectory, File runtimesDirectory, IJavaProject jProject) throws CoreException, JavaModelException, IOException {
+	private static void configureProjectClasspath(IProject project, File projectDirectory, File runtimesDirectory, IJavaProject jProject) throws CoreException, JavaModelException, IOException, URISyntaxException {
 		// create bin folder
 		IFolder binFolder = project.getFolder("bin");
 		binFolder.create(false, true, null);
@@ -119,8 +125,8 @@ public class JReFrameworker {
 		return jProject;
 	}
 
-	private static void addClasspathEntry(IJavaProject jProject, IFolder sourceFolder) throws JavaModelException {
-		IPackageFragmentRoot root = jProject.getPackageFragmentRoot(sourceFolder);
+	private static void addClasspathEntry(IJavaProject jProject, IResource resource) throws JavaModelException {
+		IPackageFragmentRoot root = jProject.getPackageFragmentRoot(resource);
 		IClasspathEntry[] oldEntries = jProject.getRawClasspath();
 		IClasspathEntry[] newEntries = new IClasspathEntry[oldEntries.length + 1];
 		System.arraycopy(oldEntries, 0, newEntries, 0, oldEntries.length);
@@ -128,7 +134,7 @@ public class JReFrameworker {
 		jProject.setRawClasspath(newEntries, null);
 	}
 	
-	private static void cloneDefaultRuntimeLibraries(IJavaProject jProject, File projectDirectory, File libDirectory) throws IOException, JavaModelException {
+	private static void cloneDefaultRuntimeLibraries(IJavaProject jProject, File projectDirectory, File libDirectory) throws IOException, JavaModelException, URISyntaxException {
 		// add the default JVM classpath (assuming translator uses the same jvm libraries)
 		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
 		LinkedList<File> libraries = new LinkedList<File>();
@@ -139,7 +145,25 @@ public class JReFrameworker {
 			libraries.add(libraryCopy);
 		}
 		
-		// add the project libraries in the WEB-INF folder to the project classpath
+		// add the jreframeworker operations jar to project and the classpath
+		String operationsJarFilename = "JREF_Operations.jar";
+		String operationsJarPath = "operations/" + operationsJarFilename;
+		// see http://stackoverflow.com/q/23825933/475329 for logic of getting bundle resource
+		URL fileURL = Activator.getContext().getBundle().getEntry(operationsJarPath);
+		URL resolvedFileURL = FileLocator.toFileURL(fileURL);
+		// need to use the 3-arg constructor of URI in order to properly escape file system chars
+		URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);
+		InputStream is = resolvedURI.toURL().openConnection().getInputStream();
+		if(is == null){
+			throw new RuntimeException("Could not locate: " + operationsJarPath);
+		}
+		File operationsLibDirectory = new File(libDirectory.getParentFile().getCanonicalPath() + File.separatorChar + "operations");
+		operationsLibDirectory.mkdirs();
+		File operationsJar = new File(operationsLibDirectory.getCanonicalPath() + File.separatorChar + operationsJarFilename);
+		Files.copy(is, operationsJar.toPath());
+		libraries.add(operationsJar);
+		
+		// add the project libraries to the project classpath
 		List<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
 		for(File projectJar : libraries){
 			String projectJarCanonicalPath = projectJar.getCanonicalPath();
