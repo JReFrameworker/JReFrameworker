@@ -1,4 +1,4 @@
-package jreframeworker.operations;
+package jreframeworker.operations.interfaces;
 
 /**
  * Replaces an existing class with the entirety of the current class

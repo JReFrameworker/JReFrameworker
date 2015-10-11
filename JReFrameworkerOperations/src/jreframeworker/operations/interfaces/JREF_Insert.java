@@ -1,4 +1,4 @@
-package jreframeworker.operations;
+package jreframeworker.operations.interfaces;
 
 /**
  * Inserts a class into runtime.

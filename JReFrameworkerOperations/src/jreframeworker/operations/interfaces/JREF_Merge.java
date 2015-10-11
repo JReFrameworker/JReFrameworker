@@ -1,4 +1,4 @@
-package jreframeworker.operations;
+package jreframeworker.operations.interfaces;
 
 /**
  * Merges a class into another existing class
