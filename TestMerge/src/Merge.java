@@ -1,6 +1,7 @@
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.LinkedList;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -9,6 +10,7 @@ import org.objectweb.asm.tree.ClassNode;
 
 public class Merge {
 
+	@SuppressWarnings("unchecked")
 	public static void main(String[] args) throws IOException {
 
 		// get input stream handles to each bytecode file
@@ -22,7 +24,19 @@ public class Merge {
 		// read the classToMerge into a ClassNode object
 		ClassNode classToMergeClassNode = new ClassNode();
 		classToMergeReader.accept(classToMergeClassNode, ClassReader.EXPAND_FRAMES);
+		
+		// strip the jref interfaces from classToMergeClassNode
+		LinkedList<String> interfacesToRemove = new LinkedList<String>();
+		for(Object o : classToMergeClassNode.interfaces){
+			if(o.toString().startsWith("jreframeworker")){ // example: jreframeworker/operations/interfaces/JREF_Merge
+				interfacesToRemove.add(o.toString());
+			}
+		}
+		classToMergeClassNode.interfaces.removeAll(interfacesToRemove);
 
+		// TODO: get a list of toMerge methods that will overwrite target methods
+		// TODO: should preprocess original class in a ClassNode or something to rename overwritten methods
+		
 		// adapt a class writer with the merge adapter
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         MergeAdapter mergeAdapter = new MergeAdapter(classWriter,classToMergeClassNode);
