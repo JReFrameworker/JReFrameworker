@@ -11,7 +11,8 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
 /**
- * This code was adapted from example at http://www.jroller.com/eu/entry/merging_class_methods_with_asm
+ * This code was adapted from example at
+ * http://www.jroller.com/eu/entry/merging_class_methods_with_asm
  * 
  * @author Ben Holland
  */
@@ -19,9 +20,11 @@ public class MergeAdapter extends ClassAdapter {
 	private ClassNode classNode;
 	private String className;
 
-	// since ASM is very SAX parser like, we use some global variables to keep track of state
-	private boolean merge = false; // holds state of true if the next element should be merged
-	
+	// since ASM is very SAX parser like, we use some global variables to keep
+	// track of state
+	private boolean merge = false; // holds state of true if the next element
+									// should be merged
+
 	public MergeAdapter(ClassVisitor classVisitor, ClassNode classNode) {
 		super(classVisitor);
 		this.classNode = classNode;
@@ -34,8 +37,8 @@ public class MergeAdapter extends ClassAdapter {
 
 	@Override
 	public AnnotationVisitor visitAnnotation(String name, boolean visible) {
-//		System.out.println("Annotation: " + name);
-		if (name.equals("Ljreframeworker/operations/annotations/jref_overwrite;")){
+		// System.out.println("Annotation: " + name);
+		if (name.equals("Ljreframeworker/operations/annotations/jref_overwrite;")) {
 			merge = true;
 		}
 		return null;
@@ -45,29 +48,31 @@ public class MergeAdapter extends ClassAdapter {
 	public void visitEnd() {
 
 		// copy each field of the class to merge to the original class
-		for(Object o : classNode.fields){
+		for (Object o : classNode.fields) {
 			FieldNode fieldNode = (FieldNode) o;
 			fieldNode.accept(this);
 		}
-		
-		// copy each method of the class to merge that is annotated with a jref annotation
+
+		// copy each method of the class to merge that is annotated with a jref
+		// annotation
 		// to the original class
-		for(Object o : classNode.methods){
+		for (Object o : classNode.methods) {
 			MethodNode methodNode = (MethodNode) o;
-			
+
 			// check if method is annotated with jref_overwrite annotation
 			merge = false;
 			LinkedList<AnnotationNode> annotationsToRemove = new LinkedList<AnnotationNode>();
-			if(methodNode.invisibleAnnotations != null){
-				for(Object annotationObject : methodNode.invisibleAnnotations){
+			if (methodNode.invisibleAnnotations != null) {
+				for (Object annotationObject : methodNode.invisibleAnnotations) {
 					AnnotationNode annotation = (AnnotationNode) annotationObject;
 					visitAnnotation(annotation.desc, false);
-					if(merge){
-						annotationsToRemove.add(annotation); // remove the jref annotation
+					if (merge) {
+						annotationsToRemove.add(annotation); // remove the jref
+																// annotation
 					}
 				}
 			}
-			if(merge){
+			if (merge) {
 				// add the method to the original class
 				methodNode.invisibleAnnotations.removeAll(annotationsToRemove);
 				String[] exceptions = new String[methodNode.exceptions.size()];
@@ -79,7 +84,7 @@ public class MergeAdapter extends ClassAdapter {
 			}
 
 		}
-		
+
 		super.visitEnd();
 	}
 }
