@@ -9,8 +9,11 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.swing.plaf.basic.BasicInternalFrameTitlePane.SystemMenuBar;
+
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InsnList;
@@ -74,18 +77,26 @@ public class Merge {
 			Iterator<AbstractInsnNode> instructionIterator = instructions.iterator();
         	while(instructionIterator.hasNext()){
         		AbstractInsnNode instruction = instructionIterator.next();
-        		System.out.println("Opcode: " + instruction.getOpcode());
-        		System.out.println("Type: " + instruction.getType());
-        		System.out.println("ToString: " + instruction.toString());
         		
         		if(instruction instanceof MethodInsnNode){
         			MethodInsnNode methodInstruction = (MethodInsnNode) instruction;
-        			System.out.println("Name: " + methodInstruction.name);
-        			System.out.println("Description: " + methodInstruction.desc);
-        			System.out.println("Owner: " + methodInstruction.owner);
+        			// change the owner of the method to the base class
+        			methodInstruction.owner = baseClassNode.name;
+        			// check if the method call needs to be changed to a renamed method name
+//        			System.out.println("Name: " + methodInstruction.name + ", Opcode: " + methodInstruction.getOpcode() 
+//        					+ ", Type: " + methodInstruction.getType() + ", " + methodInstruction.toString());
+        			for(MethodNode method : methodsToMerge){
+        				if(methodInstruction.name.equals(method.name)){
+        					// this method has been renamed, we need to rename the call as well
+        					methodInstruction.name = METHOD_RENAME_PREFIX + methodInstruction.name;
+        					// if we renamed it, this call used super.x, so make it a virtual 
+        					// invocation instead of special invocation
+        					if(methodInstruction.getOpcode()==Opcodes.INVOKESPECIAL){
+        						methodInstruction.setOpcode(Opcodes.INVOKEVIRTUAL);
+        					}
+        				}
+        			}
         		}
-        		
-        		System.out.println();
         	}
         }
 		
