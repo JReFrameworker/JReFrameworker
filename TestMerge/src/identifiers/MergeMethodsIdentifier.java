@@ -7,11 +7,11 @@ import org.objectweb.asm.tree.MethodNode;
 
 import checkers.JREFAnnotationChecker;
 
-public class MergeMethodIdentifier {
+public class MergeMethodsIdentifier {
 
 	private LinkedList<MethodNode> mergeMethods = new LinkedList<MethodNode>();
 
-	public MergeMethodIdentifier(ClassNode classNode) {
+	public MergeMethodsIdentifier(ClassNode classNode) {
     	for (Object o : classNode.methods) {
 			MethodNode methodNode = (MethodNode) o;
 			if (methodNode.invisibleAnnotations != null) {
