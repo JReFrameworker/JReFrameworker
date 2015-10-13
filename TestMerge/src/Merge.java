@@ -1,3 +1,5 @@
+import identifiers.MergeMethodIdentifier;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -6,9 +8,12 @@ import java.util.LinkedList;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
 
 public class Merge {
 
+	private static final String METHOD_RENAME_PREFIX = "jref_";
+	
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args) throws IOException {
 
@@ -20,11 +25,25 @@ public class Merge {
 		ClassReader classToMergeReader = new ClassReader(classToMerge);
 		ClassReader originalClassReader = new ClassReader(originalClass);
 
-		// read the classToMerge into a ClassNode object
+		// read the class to merge into a ClassNode object
 		ClassNode classToMergeClassNode = new ClassNode();
 		classToMergeReader.accept(classToMergeClassNode, ClassReader.EXPAND_FRAMES);
 
-		// strip the jref interfaces from classToMergeClassNode
+		// identify methods to merge
+		MergeMethodIdentifier identifier = new MergeMethodIdentifier(classToMergeClassNode);
+		LinkedList<MethodNode> methodsToMerge = identifier.getMergeMethods();
+		
+		// TODO: get a list of original methods conflicting with methods to merge
+		
+		// TODO: create a key for renaming base methods that will be replaced with conflicting methods to merge
+		
+		// TODO: rename conflicting base methods using renaming key
+		
+		// TODO: remove any annotations from renamed base methods and join them with the to merge methods
+		
+		// TODO: replace calls to super.x methods with prefix+x calls
+		
+		// strip the jref interfaces from the class to merge
 		LinkedList<String> interfacesToRemove = new LinkedList<String>();
 		for (Object o : classToMergeClassNode.interfaces) {
 			// example: jreframeworker/operations/interfaces/JREF_Merge
@@ -33,11 +52,6 @@ public class Merge {
 			}
 		}
 		classToMergeClassNode.interfaces.removeAll(interfacesToRemove);
-
-		// TODO: 1) get a list of toMerge methods that will overwrite target methods
-		
-		// TODO: 2) preprocess original class in a ClassNode or something to
-		// rename overwritten methods
 
 		// adapt a class writer with the merge adapter
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
