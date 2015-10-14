@@ -146,8 +146,8 @@ public class JReFrameworker {
 		}
 		
 		// add the jreframeworker operations jar to project and the classpath
-		final String operationsJarFilename = "JREF_Operations.jar";
-		final String operationsDirectory = "operations";
+		final String operationsJarFilename = "JReFrameworkerAnnotations.jar";
+		final String operationsDirectory = "annotations";
 		String operationsJarPath = operationsDirectory + "/" + operationsJarFilename;
 		// see http://stackoverflow.com/q/23825933/475329 for logic of getting bundle resource
 		URL fileURL = Activator.getContext().getBundle().getEntry(operationsJarPath);

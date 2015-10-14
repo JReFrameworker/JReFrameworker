@@ -64,7 +64,7 @@ public class ImportRuntimeWizard extends Wizard implements IImportWizard {
 	public boolean performFinish() {
 		final String projectName = page.getProjectName();
 		final IPath projectLocation = page.getLocationPath();
-		final File runtimeDirectory = new File(page.getRuntimePath());  // TODO: use this in project creation
+//		final File runtimeDirectory = new File(page.getRuntimePath());  // TODO: use this in project creation
 
 		IRunnableWithProgress j = new IRunnableWithProgress() {
 			@Override
