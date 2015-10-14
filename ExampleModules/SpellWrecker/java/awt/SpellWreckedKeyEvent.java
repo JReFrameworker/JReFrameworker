@@ -4,7 +4,9 @@ import java.awt.event.KeyEvent;
 
 import jreframeworker.annotations.fields.DefineField;
 import jreframeworker.annotations.methods.MergeMethod;
+import jreframeworker.annotations.types.MergeType;
 
+@MergeType
 public class SpellWreckedKeyEvent extends KeyEvent {
 
 	private static final long serialVersionUID = 1L;
