@@ -15,7 +15,7 @@ import checkers.JREFAnnotationChecker;
 
 /**
  * This class is responsible for merging two class files based on 
- * the merging strategies in the JReFrameworker framework
+ * the merging strategies in the JReFrameworker framework.
  * 
  * References: http://www.jroller.com/eu/entry/merging_class_methods_with_asm
  * 
@@ -42,7 +42,18 @@ public class MergeAdapter extends ClassVisitor {
 		// copy each field of the class to merge in to the original class
 		for (Object o : classToMerge.fields) {
 			FieldNode fieldNode = (FieldNode) o;
-			fieldNode.accept(this);
+			// only insert the field if it is annotated
+			if(fieldNode.invisibleAnnotations != null){
+				for(Object o2 : fieldNode.invisibleAnnotations){
+					AnnotationNode annotationNode = (AnnotationNode) o2;
+					JREFAnnotationChecker checker = new JREFAnnotationChecker();
+					checker.visitAnnotation(annotationNode.desc, false);
+					if(checker.isDefineFieldAnnotation()){
+						// insert the field
+						fieldNode.accept(this);
+					}
+				}
+			}
 		}
 
 		// copy each method of the class to merge that is annotated
