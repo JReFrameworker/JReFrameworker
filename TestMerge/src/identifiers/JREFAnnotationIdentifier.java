@@ -1,9 +1,9 @@
-package checkers;
+package identifiers;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class JREFAnnotationChecker extends ClassVisitor {
+public class JREFAnnotationIdentifier extends ClassVisitor {
 
 	private static final String DEFINE_TYPE_ANNOTATION = "Ljreframeworker/annotations/types/DefineType;";
 	private static final String DEFINE_FIELD_ANNOTATION = "Ljreframeworker/annotations/fields/DefineField;";
@@ -17,7 +17,7 @@ public class JREFAnnotationChecker extends ClassVisitor {
 	private boolean isMergeTypeAnnotation = false;
 	private boolean isMergeMethodAnnotation = false;
 
-	public JREFAnnotationChecker() {
+	public JREFAnnotationIdentifier() {
 		super(Opcodes.ASM5);
 	}
 	

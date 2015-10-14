@@ -5,8 +5,6 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import checkers.JREFAnnotationChecker;
-
 public class MergeMethodsIdentifier {
 
 	private LinkedList<MethodNode> mergeMethods = new LinkedList<MethodNode>();
@@ -17,7 +15,7 @@ public class MergeMethodsIdentifier {
 			if (methodNode.invisibleAnnotations != null) {
 				for (Object annotationObject : methodNode.invisibleAnnotations) {
 					AnnotationNode annotation = (AnnotationNode) annotationObject;
-					JREFAnnotationChecker checker = new JREFAnnotationChecker();
+					JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 					checker.visitAnnotation(annotation.desc, false);
 					if(checker.isMergeMethodAnnotation()){
 						mergeMethods.add(methodNode);

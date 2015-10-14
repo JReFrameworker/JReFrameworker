@@ -1,3 +1,5 @@
+import identifiers.JREFAnnotationIdentifier;
+
 import java.util.LinkedList;
 
 import org.objectweb.asm.ClassVisitor;
@@ -9,9 +11,6 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
-
-import checkers.IncompatibleMergeAnnotationChecker;
-import checkers.JREFAnnotationChecker;
 
 /**
  * This class is responsible for merging two class files based on 
@@ -38,7 +37,6 @@ public class MergeAdapter extends ClassVisitor {
 
 	@SuppressWarnings("unchecked")
 	public void visitEnd() {
-
 		// copy each field of the class to merge in to the original class
 		for (Object o : classToMerge.fields) {
 			FieldNode fieldNode = (FieldNode) o;
@@ -46,7 +44,7 @@ public class MergeAdapter extends ClassVisitor {
 			if(fieldNode.invisibleAnnotations != null){
 				for(Object o2 : fieldNode.invisibleAnnotations){
 					AnnotationNode annotationNode = (AnnotationNode) o2;
-					JREFAnnotationChecker checker = new JREFAnnotationChecker();
+					JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 					checker.visitAnnotation(annotationNode.desc, false);
 					if(checker.isDefineFieldAnnotation()){
 						// insert the field
@@ -60,44 +58,48 @@ public class MergeAdapter extends ClassVisitor {
 		// with a jref annotation to the original class
 		for (Object o : classToMerge.methods) {
 			MethodNode methodNode = (MethodNode) o;
+			boolean define = false;
 			boolean merge = false;
 			
-			// check if method is annotated with jref_overwrite annotation
+			// check if method is annotated with a jref annotation
 			LinkedList<AnnotationNode> jrefAnnotations = new LinkedList<AnnotationNode>();
-			LinkedList<AnnotationNode> incompatibleMergeAnnotations = new LinkedList<AnnotationNode>();
 			if (methodNode.invisibleAnnotations != null) {
 				for (Object annotationObject : methodNode.invisibleAnnotations) {
 					AnnotationNode annotation = (AnnotationNode) annotationObject;
 					// check if the annotation is a jref annotation
-					JREFAnnotationChecker jrefChecker = new JREFAnnotationChecker();
+					JREFAnnotationIdentifier jrefChecker = new JREFAnnotationIdentifier();
 					jrefChecker.visitAnnotation(annotation.desc, false);
 					if(jrefChecker.isJREFAnnotation()){
 						jrefAnnotations.add(annotation);
-						merge = true;
-					}
-					// check if the annotation is incompatible with a merge operation
-					IncompatibleMergeAnnotationChecker compatibilityChecker = new IncompatibleMergeAnnotationChecker();
-					compatibilityChecker.visitAnnotation(annotation.desc, false);
-					if(compatibilityChecker.isIncompatible()){
-						incompatibleMergeAnnotations.add(annotation);
+						if(jrefChecker.isDefineMethodAnnotation()){
+							define = true;
+						}
+						if(jrefChecker.isMergeMethodAnnotation()){
+							merge = true;
+						}
 					}
 				}
 			}
-			// if the method has a jref annotation, then merge the method
-			if (merge) {
-				// strip the jref annotations and merge the method
+			
+			// if the method is annotated with @DefineMethod or @MergeMethod, add the method
+			if(define || merge){
+				// in any case, strip the jref annotations from the method
 				methodNode.invisibleAnnotations.removeAll(jrefAnnotations);
-				// strip any incompatible annotations (ie @Override)
-				methodNode.invisibleAnnotations.removeAll(incompatibleMergeAnnotations);
-				String[] exceptions = new String[methodNode.exceptions.size()];
-				methodNode.exceptions.toArray(exceptions);
-				MethodVisitor mv = cv.visitMethod(methodNode.access, methodNode.name, methodNode.desc, methodNode.signature, exceptions);
-				methodNode.instructions.resetLabels();
-				methodNode.accept(new RemappingMethodAdapter(methodNode.access, methodNode.desc, mv, new SimpleRemapper(baseClassName, classToMerge.name)));
+				// then add the method, the renaming or deletion of any existing methods 
+				// is done earlier so its safe to just add it now
+				addMethod(methodNode);
 			}
-
 		}
 
 		super.visitEnd();
+	}
+
+	@SuppressWarnings("unchecked")
+	private void addMethod(MethodNode methodNode) {
+		String[] exceptions = new String[methodNode.exceptions.size()];
+		methodNode.exceptions.toArray(exceptions);
+		MethodVisitor mv = cv.visitMethod(methodNode.access, methodNode.name, methodNode.desc, methodNode.signature, exceptions);
+		methodNode.instructions.resetLabels();
+		methodNode.accept(new RemappingMethodAdapter(methodNode.access, methodNode.desc, mv, new SimpleRemapper(baseClassName, classToMerge.name)));
 	}
 }
