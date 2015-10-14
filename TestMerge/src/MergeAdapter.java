@@ -14,8 +14,10 @@ import checkers.IncompatibleMergeAnnotationChecker;
 import checkers.JREFAnnotationChecker;
 
 /**
- * This code was adapted from example at
- * http://www.jroller.com/eu/entry/merging_class_methods_with_asm
+ * This class is responsible for merging two class files based on 
+ * the merging strategies in the JReFrameworker framework
+ * 
+ * References: http://www.jroller.com/eu/entry/merging_class_methods_with_asm
  * 
  * @author Ben Holland
  */

@@ -18,8 +18,6 @@ import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import verifier.ClassVerifier;
-
 public class Merge {
 
 	private static final String METHOD_RENAME_PREFIX = "jref_";
