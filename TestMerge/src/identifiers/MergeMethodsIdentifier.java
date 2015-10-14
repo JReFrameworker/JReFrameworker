@@ -19,7 +19,7 @@ public class MergeMethodsIdentifier {
 					AnnotationNode annotation = (AnnotationNode) annotationObject;
 					JREFAnnotationChecker checker = new JREFAnnotationChecker();
 					checker.visitAnnotation(annotation.desc, false);
-					if(checker.isOverwrite()){
+					if(checker.isMergeMethodAnnotation()){
 						mergeMethods.add(methodNode);
 					}
 				}

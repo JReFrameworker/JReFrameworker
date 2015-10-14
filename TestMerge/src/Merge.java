@@ -26,13 +26,15 @@ public class Merge {
 	public static void main(String[] args) throws IOException {
 
 		// get input stream handles to each bytecode file
-		File baseClass = new File("/Users/benjholla/Desktop/HiddenFile/rt/java/io/File.class");
-		File classToMerge = new File("/Users/benjholla/Desktop/HiddenFile/java/io/HiddenFile.class");
+		File baseClass = new File("/Users/benjholla/Desktop/Evil/runtimes/rt/java/io/File.class");
+		File classToMerge = new File("/Users/benjholla/Desktop/Evil/bin/java/io/HiddenFile.class");
 		
 		// read the classes into ClassNode objects
 		ClassNode baseClassNode = getClassNode(baseClass);
 		ClassNode classToMergeClassNode = getClassNode(classToMerge);
 
+		// TODO: check that the type is annotated with @MergeType
+		
 		// identify methods to merge
 		MergeMethodsIdentifier mergeMethodsIdentifier = new MergeMethodsIdentifier(classToMergeClassNode);
 		LinkedList<MethodNode> methodsToMerge = mergeMethodsIdentifier.getMergeMethods();
@@ -62,6 +64,9 @@ public class Merge {
 			// rename the method
 			String renamedMethodName = METHOD_RENAME_PREFIX + methodToRename.name;
 			methodToRename.name = renamedMethodName;
+			
+			// make the method private to hide it from the end user
+			methodToRename.access = Opcodes.ACC_PRIVATE;
 		}
 
 		// write out the modified base class to a temporary class file
@@ -69,7 +74,7 @@ public class Merge {
 		File modifiedBaseClassFile = File.createTempFile(baseClassName, ".class");
         writeClass(baseClassNode, modifiedBaseClassFile);
 		
-		// TODO: replace calls to super.x methods with prefix+x calls in the class to merge
+		// replace calls to super.x methods with prefix+x calls in the class to merge
         for(MethodNode methodToMerge : methodsToMerge){
         	InsnList instructions = methodToMerge.instructions;
 			Iterator<AbstractInsnNode> instructionIterator = instructions.iterator();
