@@ -2,6 +2,8 @@ package jreframeworker.builder;
 
 import java.util.Map;
 
+import jreframeworker.log.Log;
+
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
@@ -34,13 +36,16 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 
 	protected void clean(IProgressMonitor monitor) throws CoreException {
 		// TODO: implement
+		Log.info("Cleaning...");
 	}
 
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
 		// TODO: implement
+		Log.info("Full Building...");
 	}
 
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
 		// TODO: implement
+		Log.info("Incremental Building...");
 	}
 }
