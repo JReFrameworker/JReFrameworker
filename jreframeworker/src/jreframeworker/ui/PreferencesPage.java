@@ -4,6 +4,7 @@ import jreframeworker.Activator;
 
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
@@ -12,6 +13,31 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	// allow phantom refs option name and label
 	public static final String ALLOW_PHANTOM_REFERENCES_BOOLEAN = "ALLOW_PHANTOM_REFERENCES";
 	public static final String ALLOW_PHANTOM_REFERENCES_DESCRIPTION = "Allow Phantom References";
+	
+	/**
+	 * Returns the users preference for allowing phantom references in soot operations
+	 * @return
+	 */
+	public static boolean getAllowPhantomReferencesPreference(){
+		return Activator.getDefault().getPreferenceStore().getBoolean(ALLOW_PHANTOM_REFERENCES_BOOLEAN);
+	}
+	
+	// allow phantom refs option name and label
+	public static final String MERGE_RENAMING_PREFIX_STRING = "MERGE_RENAMING_PREFIX";
+	public static final String MERGE_RENAME_PREFIX_DESCRIPTION = "Merge Renaming Prefix";
+	public static final String MERGE_RENAME_PREFIX_DEFAULT_VALUE = "jref_";
+	
+	/**
+	 * Returns the user preference for the merge renaming prefix
+	 * @return
+	 */
+	public static String getMergeRenamingPrefix(){
+		String mergeRenamingPrefix = Activator.getDefault().getPreferenceStore().getString(MERGE_RENAMING_PREFIX_STRING);
+		if(mergeRenamingPrefix == null){
+			mergeRenamingPrefix = MERGE_RENAME_PREFIX_DEFAULT_VALUE;
+		}
+		return mergeRenamingPrefix;
+	}
 	
 	public PreferencesPage() {
 		super(GRID);
@@ -26,6 +52,10 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	@Override
 	protected void createFieldEditors() {
 		addField(new BooleanFieldEditor(ALLOW_PHANTOM_REFERENCES_BOOLEAN, "&" + ALLOW_PHANTOM_REFERENCES_DESCRIPTION, getFieldEditorParent()));
+		StringFieldEditor mergeRenamingPrefixStringField = new StringFieldEditor(MERGE_RENAMING_PREFIX_STRING, "&" + MERGE_RENAME_PREFIX_DESCRIPTION, getFieldEditorParent());
+		mergeRenamingPrefixStringField.setEmptyStringAllowed(false);
+		mergeRenamingPrefixStringField.setStringValue(MERGE_RENAME_PREFIX_DEFAULT_VALUE);
+		addField(mergeRenamingPrefixStringField);
 	}
 
 }

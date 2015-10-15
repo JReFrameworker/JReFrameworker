@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.TreeSet;
 
-import jreframeworker.Activator;
 import jreframeworker.log.Log;
 import jreframeworker.ui.PreferencesPage;
 
@@ -43,7 +42,7 @@ public class JimpleUtils {
 		argList.add("--xml-attributes");
 		argList.add("-f"); argList.add("jimple");
 		argList.add("-cp"); argList.add(classpath.toString());
-		if(Activator.getDefault().getPreferenceStore().getBoolean(PreferencesPage.ALLOW_PHANTOM_REFERENCES_BOOLEAN)){
+		if(PreferencesPage.getAllowPhantomReferencesPreference()){
 			argList.add("-allow-phantom-refs");
 		}
 		argList.add("-output-dir"); argList.add(jimpleDirectory.getLocation().toFile().getAbsolutePath());
@@ -97,7 +96,7 @@ public class JimpleUtils {
 //		argList.add("--xml-attributes");
 		argList.add("-f"); argList.add("class");
 		argList.add("-cp"); argList.add(classpath.toString());
-		if(Activator.getDefault().getPreferenceStore().getBoolean(PreferencesPage.ALLOW_PHANTOM_REFERENCES_BOOLEAN)){
+		if(PreferencesPage.getAllowPhantomReferencesPreference()){
 			argList.add("-allow-phantom-refs");
 		}
 		argList.add("-output-dir"); argList.add(output.getLocation().toFile().getCanonicalPath()); argList.add("-output-jar");

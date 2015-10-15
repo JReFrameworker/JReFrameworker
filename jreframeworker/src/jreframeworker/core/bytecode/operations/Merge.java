@@ -12,6 +12,7 @@ import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.core.bytecode.identifiers.MergeMethodsIdentifier;
 import jreframeworker.core.bytecode.utils.AnnotationUtils;
 import jreframeworker.core.bytecode.utils.BytecodeUtils;
+import jreframeworker.ui.PreferencesPage;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -29,15 +30,10 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 public class Merge {
-
-	private static final String METHOD_RENAME_PREFIX = "jref_";
 	
-	@SuppressWarnings("unchecked")
-	public static void main(String[] args) throws IOException {
-
-		// get input stream handles to each bytecode file
-		File baseClass = new File("/Users/benjholla/Desktop/Evil/runtimes/rt/java/io/File.class");
-		File classToMerge = new File("/Users/benjholla/Desktop/Evil/bin/java/io/HiddenFile.class");
+	public static void mergeClasses(File baseClass, File classToMerge) throws IOException {
+		
+		final String MERGE_RENAME_PREFIX = PreferencesPage.getMergeRenamingPrefix();
 		
 		// read the classes into ClassNode objects
 		ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
@@ -72,7 +68,7 @@ public class Merge {
 			AnnotationUtils.clearMethodAnnotations(methodToRename);
 			
 			// rename the method
-			String renamedMethodName = METHOD_RENAME_PREFIX + methodToRename.name;
+			String renamedMethodName = MERGE_RENAME_PREFIX + methodToRename.name;
 			methodToRename.name = renamedMethodName;
 			
 			// make the method private to hide it from the end user
@@ -101,7 +97,7 @@ public class Merge {
         			for(MethodNode method : methodsToMerge){
         				if(methodInstruction.name.equals(method.name)){
         					// this method has been renamed, we need to rename the call as well
-        					methodInstruction.name = METHOD_RENAME_PREFIX + methodInstruction.name;
+        					methodInstruction.name = MERGE_RENAME_PREFIX + methodInstruction.name;
         					// if we renamed it, this call used super.x, so make it a virtual 
         					// invocation instead of special invocation
         					if(methodInstruction.getOpcode()==Opcodes.INVOKESPECIAL){
@@ -160,7 +156,6 @@ public class Merge {
 			baseClassName = name;
 		}
 
-		@SuppressWarnings("unchecked")
 		public void visitEnd() {
 			// copy each field of the class to merge in to the original class
 			for (Object o : classToMerge.fields) {
@@ -219,7 +214,6 @@ public class Merge {
 			super.visitEnd();
 		}
 
-		@SuppressWarnings("unchecked")
 		private void addMethod(MethodNode methodNode) {
 			String[] exceptions = new String[methodNode.exceptions.size()];
 			methodNode.exceptions.toArray(exceptions);
