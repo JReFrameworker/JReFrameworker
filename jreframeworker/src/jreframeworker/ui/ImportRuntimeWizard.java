@@ -4,7 +4,7 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 
 import jreframeworker.Activator;
-import jreframeworker.common.JReFrameworker;
+import jreframeworker.core.JReFrameworker;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.resources.IProject;

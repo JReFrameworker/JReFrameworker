@@ -1,4 +1,4 @@
-package jreframeworker.common;
+package jreframeworker.core;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +13,7 @@ import java.util.List;
 
 import jreframeworker.Activator;
 import jreframeworker.builder.JReFrameworkerNature;
+import jreframeworker.common.RuntimeUtils;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.filesystem.URIUtil;
