@@ -9,7 +9,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
-public class IOUtils {
+public class BytecodeUtils {
 
 	public static void writeClass(ClassNode classNode, File classFile) throws IOException {
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);

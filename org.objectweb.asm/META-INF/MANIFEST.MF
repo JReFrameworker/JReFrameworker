@@ -1,0 +1,18 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: ASM
+Bundle-SymbolicName: org.objectweb.asm
+Bundle-Version: 5.0.4
+Bundle-Activator: org.objectweb.asm.plugin.Activator
+Bundle-Vendor: OW2 Consortium
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-ActivationPolicy: lazy
+Export-Package: org.objectweb.asm,
+ org.objectweb.asm.commons,
+ org.objectweb.asm.signature,
+ org.objectweb.asm.tree,
+ org.objectweb.asm.tree.analysis,
+ org.objectweb.asm.util,
+ org.objectweb.asm.xml

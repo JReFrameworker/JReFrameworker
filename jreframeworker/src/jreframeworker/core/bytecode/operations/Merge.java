@@ -11,7 +11,7 @@ import jreframeworker.core.bytecode.identifiers.BaseMethodsIdentifier;
 import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.core.bytecode.identifiers.MergeMethodsIdentifier;
 import jreframeworker.core.bytecode.utils.AnnotationUtils;
-import jreframeworker.core.bytecode.utils.IOUtils;
+import jreframeworker.core.bytecode.utils.BytecodeUtils;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -40,8 +40,8 @@ public class Merge {
 		File classToMerge = new File("/Users/benjholla/Desktop/Evil/bin/java/io/HiddenFile.class");
 		
 		// read the classes into ClassNode objects
-		ClassNode baseClassNode = IOUtils.getClassNode(baseClass);
-		ClassNode classToMergeClassNode = IOUtils.getClassNode(classToMerge);
+		ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+		ClassNode classToMergeClassNode = BytecodeUtils.getClassNode(classToMerge);
 
 		// TODO: check that the type is annotated with @MergeType
 		
@@ -82,7 +82,7 @@ public class Merge {
 		// write out the modified base class to a temporary class file
 		String baseClassName = baseClassNode.name.replace('/', '.').replace('\\', '.');
 		File modifiedBaseClassFile = File.createTempFile(baseClassName, ".class");
-		IOUtils.writeClass(baseClassNode, modifiedBaseClassFile);
+		BytecodeUtils.writeClass(baseClassNode, modifiedBaseClassFile);
 		
 		// replace calls to super.x methods with prefix+x calls in the class to merge
         for(MethodNode methodToMerge : methodsToMerge){
