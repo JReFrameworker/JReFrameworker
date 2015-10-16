@@ -12,6 +12,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import jreframeworker.Activator;
+import jreframeworker.builder.JReFrameworkerBuilder;
 import jreframeworker.builder.JReFrameworkerNature;
 import jreframeworker.common.RuntimeUtils;
 import jreframeworker.log.Log;
@@ -44,6 +45,13 @@ import org.eclipse.jdt.launching.LibraryLocation;
 @SuppressWarnings("restriction")
 public class JReFrameworker {
 
+	public static final String RUNTIMES_DIRECTORY = "runtimes";
+	public static final String ORIGINAL_RUNTIMES_DIRECTORY = ".original-runtimes";
+	public static final String ANNOTATIONS_DIRECTORY = "annotations";
+	public static final String SOURCE_DIRECTORY = "src";
+	public static final String BINARY_DIRECTORY = "bin";
+	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "JReFrameworkerAnnotations.jar";
+	
 	// references: 
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
@@ -52,14 +60,16 @@ public class JReFrameworker {
 		IProject project = null;
 		
 		try {
-			monitor.beginTask("Create JReFrameworker Runtime Project", 3);
+			monitor.beginTask("Create JReFrameworker Runtime Project", 2);
 			
 			// create the empty eclipse project
 			monitor.setTaskName("Creating Eclipse project...");
 			project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 			File projectDirectory = new File(projectPath.toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
-			File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + "runtimes");
+			File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + RUNTIMES_DIRECTORY);
 			runtimesDirectory.mkdirs();
+			File originalRuntimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + ORIGINAL_RUNTIMES_DIRECTORY);
+			originalRuntimesDirectory.mkdirs();
 			IJavaProject jProject = createProject(projectName, projectPath, monitor, project);
 			monitor.worked(1);
 			if (monitor.isCanceled()){
@@ -68,15 +78,7 @@ public class JReFrameworker {
 			
 			// copy runtimes and configure project classpath
 			monitor.setTaskName("Configuring project classpath...");
-			configureProjectClasspath(project, projectDirectory, runtimesDirectory, jProject);
-			monitor.worked(1);
-			if (monitor.isCanceled()){
-				return Status.CANCEL_STATUS;
-			}
-
-			// generate jimple for runtimes
-			monitor.setTaskName("Disassembling runtimes...");
-			//JimpleUtils.disassemble(jProject, project.getFile(runtimesDirectory.getName() + File.separatorChar + "rt.jar"));
+			configureProjectClasspath(jProject);
 			monitor.worked(1);
 			if (monitor.isCanceled()){
 				return Status.CANCEL_STATUS;
@@ -91,33 +93,39 @@ public class JReFrameworker {
 		}
 	}
 
-	private static void configureProjectClasspath(IProject project, File projectDirectory, File runtimesDirectory, IJavaProject jProject) throws CoreException, JavaModelException, IOException, URISyntaxException {
+	private static void configureProjectClasspath(IJavaProject jProject) throws CoreException, JavaModelException, IOException, URISyntaxException {
 		// create bin folder
-		IFolder binFolder = project.getFolder("bin");
+		IFolder binFolder = jProject.getProject().getFolder(BINARY_DIRECTORY);
 		binFolder.create(false, true, null);
 		jProject.setOutputLocation(binFolder.getFullPath(), null);
 		
-		cloneDefaultRuntimeLibraries(jProject, projectDirectory, runtimesDirectory);
+		// add the runtime libraries
+		cloneDefaultRuntimeLibraries(jProject);
 		
 		// create source folder
-		IFolder sourceFolder = project.getFolder("src");
+		IFolder sourceFolder = jProject.getProject().getFolder(SOURCE_DIRECTORY);
 		sourceFolder.create(false, true, null);
 		
 		// add source folder to project class entries
 		addClasspathEntry(jProject, sourceFolder);
 		
-		Log.info("Successfully created JReFrameworker project [" + project.getName() + "]");
+		Log.info("Successfully created JReFrameworker project [" + jProject.getProject().getName() + "]");
 	}
 
 	private static IJavaProject createProject(String projectName, IPath projectPath, IProgressMonitor monitor, IProject project) throws CoreException {
 		IProjectDescription projectDescription = project.getWorkspace().newProjectDescription(project.getName());
 		URI location = getProjectLocation(projectName, projectPath);
 		projectDescription.setLocationURI(location);
+		
+		// make this a JReFrameworker project
 		projectDescription.setNatureIds(new String[] { JavaCore.NATURE_ID, JReFrameworkerNature.NATURE_ID });
 
+		// build first with Java compiler then JReFramewoker bytecode operations
 		BuildCommand javaBuildCommand = new BuildCommand();
 		javaBuildCommand.setBuilderName(JavaCore.BUILDER_ID);
-		projectDescription.setBuildSpec(new ICommand[]{ javaBuildCommand });
+		BuildCommand jrefBuildCommand = new BuildCommand();
+		jrefBuildCommand.setBuilderName(JReFrameworkerBuilder.BUILDER_ID);
+		projectDescription.setBuildSpec(new ICommand[]{ javaBuildCommand, jrefBuildCommand});
 
 		// create and open the Eclipse project
 		project.create(projectDescription, null);
@@ -135,41 +143,46 @@ public class JReFrameworker {
 		jProject.setRawClasspath(newEntries, null);
 	}
 	
-	private static void cloneDefaultRuntimeLibraries(IJavaProject jProject, File projectDirectory, File libDirectory) throws IOException, JavaModelException, URISyntaxException {
+	private static void cloneDefaultRuntimeLibraries(IJavaProject jProject) throws IOException, JavaModelException, URISyntaxException {
+		
+		File runtimesDirectory = jProject.getProject().getFolder(RUNTIMES_DIRECTORY).getLocation().toFile();
+		File originalRuntimesDirectory = jProject.getProject().getFolder(ORIGINAL_RUNTIMES_DIRECTORY).getLocation().toFile();
+		
 		// add the default JVM classpath (assuming translator uses the same jvm libraries)
 		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
 		LinkedList<File> libraries = new LinkedList<File>();
 		for (LibraryLocation element : JavaRuntime.getLibraryLocations(vmInstall)) {
 			File library = JavaCore.newLibraryEntry(element.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
-			File libraryCopy = new File(libDirectory.getCanonicalPath() + File.separatorChar + library.getName());
-			RuntimeUtils.copyFile(library, libraryCopy);
-			libraries.add(libraryCopy);
+			File runtimesCopy = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + library.getName());
+			RuntimeUtils.copyFile(library, runtimesCopy);
+			File originalRuntimesCopy = new File(originalRuntimesDirectory.getCanonicalPath() + File.separatorChar + library.getName());
+			RuntimeUtils.copyFile(library, originalRuntimesCopy);
+			libraries.add(runtimesCopy);
 		}
 		
 		// add the jreframeworker operations jar to project and the classpath
-		final String operationsJarFilename = "JReFrameworkerAnnotations.jar";
-		final String operationsDirectory = "annotations";
-		String operationsJarPath = operationsDirectory + "/" + operationsJarFilename;
+		final String annotationsJarFilename = JRE_FRAMEWORKER_ANNOTATIONS_JAR;
+		String annotationsJarPath = ANNOTATIONS_DIRECTORY + "/" + annotationsJarFilename;
 		// see http://stackoverflow.com/q/23825933/475329 for logic of getting bundle resource
-		URL fileURL = Activator.getContext().getBundle().getEntry(operationsJarPath);
+		URL fileURL = Activator.getContext().getBundle().getEntry(annotationsJarPath);
 		URL resolvedFileURL = FileLocator.toFileURL(fileURL);
 		// need to use the 3-arg constructor of URI in order to properly escape file system chars
 		URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);
-		InputStream is = resolvedURI.toURL().openConnection().getInputStream();
-		if(is == null){
-			throw new RuntimeException("Could not locate: " + operationsJarPath);
+		InputStream annotationsJarInputStream = resolvedURI.toURL().openConnection().getInputStream();
+		if(annotationsJarInputStream == null){
+			throw new RuntimeException("Could not locate: " + annotationsJarPath);
 		}
-		File operationsLibDirectory = new File(libDirectory.getParentFile().getCanonicalPath() + File.separatorChar + operationsDirectory);
-		operationsLibDirectory.mkdirs();
-		File operationsJar = new File(operationsLibDirectory.getCanonicalPath() + File.separatorChar + operationsJarFilename);
-		Files.copy(is, operationsJar.toPath());
-		libraries.add(operationsJar);
+		File annotationsLibDirectory = new File(jProject.getProject().getLocation().toFile().getCanonicalPath() + File.separatorChar + ANNOTATIONS_DIRECTORY);
+		annotationsLibDirectory.mkdirs();
+		File annotationsJar = new File(annotationsLibDirectory.getCanonicalPath() + File.separatorChar + JRE_FRAMEWORKER_ANNOTATIONS_JAR);
+		Files.copy(annotationsJarInputStream, annotationsJar.toPath());
+		libraries.add(annotationsJar);
 		
 		// add the project libraries to the project classpath
 		List<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
 		for(File projectJar : libraries){
 			String projectJarCanonicalPath = projectJar.getCanonicalPath();
-			String projectCanonicalPath = projectDirectory.getCanonicalPath();
+			String projectCanonicalPath = jProject.getProject().getLocation().toFile().getCanonicalPath();
 			String projectJarBasePath = projectJarCanonicalPath.substring(projectJarCanonicalPath.indexOf(projectCanonicalPath));
 			String projectJarParentCanonicalPath = projectJar.getCanonicalPath();
 			String projectJarParentBasePath = projectJarParentCanonicalPath.substring(projectJarParentCanonicalPath.indexOf(projectCanonicalPath));

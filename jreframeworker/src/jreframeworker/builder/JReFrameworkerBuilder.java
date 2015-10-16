@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
+import jreframeworker.core.JReFrameworker;
 import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.core.bytecode.utils.BytecodeUtils;
 import jreframeworker.log.Log;
@@ -71,7 +72,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			monitor.beginTask("Building JReFrameworker project: " + jProject.getProject().getName(), 1);
 			Log.info("Building JReFrameworker project: " + jProject.getProject().getName());
 
-			File binDirectory = jProject.getProject().getFolder("bin").getLocation().toFile();
+			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			try {
 				buildProject(binDirectory, jProject);
 			} catch (IOException e) {
