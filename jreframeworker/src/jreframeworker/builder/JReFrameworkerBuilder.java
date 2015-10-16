@@ -52,7 +52,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			monitor.beginTask("Cleaning JReFrameworker project: " + jProject.getProject().getName(), 1);
 			Log.info("Cleaning JReFrameworker project: " + jProject.getProject().getName());
 			try {
-				cleanProject(jProject);
+				resetProjectRuntimes(jProject);
 			} catch (IOException e) {
 				Log.error("Error cleaning " + jProject.getProject().getName(), e);
 			}
@@ -66,7 +66,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void cleanProject(IJavaProject jProject) throws IOException {
+	private void resetProjectRuntimes(IJavaProject jProject) throws IOException {
 		// delete all the runtimes
 		for(File runtime : jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
 			if(runtime.isFile() && runtime.getName().endsWith(".jar")){
@@ -92,7 +92,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 //			// TODO: cleaning in the build is causing infinite rebuilds...need to add some state to prevent this
 //			// first clean out the modified runtimes
 //			try {
-//				cleanProject(jProject);
+//				resetProjectRuntimes(jProject);
 //			} catch (IOException e) {
 //				Log.error("Error building " + jProject.getProject().getName() + " could not purge runtimes", e);
 //				return;
