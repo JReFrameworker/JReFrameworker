@@ -90,6 +90,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		if(jProject != null){
 			
 //			// TODO: cleaning in the build is causing infinite rebuilds...need to add some state to prevent this
+			// potentially use http://www.cs.utep.edu/cheon/download/jml4c/javadocs/org/eclipse/core/resources/IncrementalProjectBuilder.html#forgetLastBuiltState()
 //			// first clean out the modified runtimes
 //			try {
 //				resetProjectRuntimes(jProject);

@@ -53,6 +53,8 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	protected void createFieldEditors() {
 		addField(new BooleanFieldEditor(ALLOW_PHANTOM_REFERENCES_BOOLEAN, "&" + ALLOW_PHANTOM_REFERENCES_DESCRIPTION, getFieldEditorParent()));
 		StringFieldEditor mergeRenamingPrefixStringField = new StringFieldEditor(MERGE_RENAMING_PREFIX_STRING, "&" + MERGE_RENAME_PREFIX_DESCRIPTION, getFieldEditorParent());
+		// class files do not have a defined max length, see http://stackoverflow.com/a/695959/475329
+		// but if long prefixes becomes a problem use the setTextLimit(int) method to limit input length
 		mergeRenamingPrefixStringField.setEmptyStringAllowed(false);
 		mergeRenamingPrefixStringField.setStringValue(MERGE_RENAME_PREFIX_DEFAULT_VALUE);
 		addField(mergeRenamingPrefixStringField);
