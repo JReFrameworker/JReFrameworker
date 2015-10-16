@@ -13,6 +13,16 @@ import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
+/**
+ * Some common utilities for dealing with JAR files.
+ * 
+ * TODO: Need to add some helpers for efficiently dealing with delta
+ * modifications to JAR files without unzipping or zipping everything.
+ * 
+ * Reference: http://www.javaworld.com/article/2076136/core-java/modify-archives--part-1.html
+ * 
+ * @author Ben Holland
+ */
 public class JarUtils {
 
 	public static final String META_INF = "META-INF";
