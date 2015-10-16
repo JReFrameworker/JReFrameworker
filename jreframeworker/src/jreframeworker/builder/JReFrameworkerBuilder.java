@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
+import jreframeworker.common.RuntimeUtils;
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.core.bytecode.utils.BytecodeUtils;
@@ -57,17 +58,46 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			}
 			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 			monitor.worked(1);
+			
+			Log.info("Finished cleaning JReFrameworker project: " + jProject.getProject().getName());
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
 	}
 
+	// TODO: adding a progress monitor subtask here would be a nice feature
+	private void cleanProject(IJavaProject jProject) throws IOException {
+		// delete all the runtimes
+		for(File runtime : jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
+			if(runtime.isFile() && runtime.getName().endsWith(".jar")){
+				runtime.delete();
+			}
+		}
+		// restore the original runtimes
+		for(File originalRuntime : jProject.getProject().getFolder(JReFrameworker.ORIGINAL_RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
+			if(originalRuntime.isFile() && originalRuntime.getName().endsWith(".jar")){
+				File runtime = new File(jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().getCanonicalPath() 
+						+ File.separatorChar + originalRuntime.getName());
+				RuntimeUtils.copyFile(originalRuntime, runtime);
+			}
+		}
+	}
+	
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
-		// clean jref workspace projects
-		clean(monitor);
 		
 		IJavaProject jProject = getJReFrameworkerProject();
+
 		if(jProject != null){
+			
+//			// TODO: cleaning in the build is causing infinite rebuilds...need to add some state to prevent this
+//			// first clean out the modified runtimes
+//			try {
+//				cleanProject(jProject);
+//			} catch (IOException e) {
+//				Log.error("Error building " + jProject.getProject().getName() + " could not purge runtimes", e);
+//				return;
+//			}
+			
 			// build each jref project fresh
 			monitor.beginTask("Building JReFrameworker project: " + jProject.getProject().getName(), 1);
 			Log.info("Building JReFrameworker project: " + jProject.getProject().getName());
@@ -77,6 +107,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				buildProject(binDirectory, jProject);
 			} catch (IOException e) {
 				Log.error("Error building " + jProject.getProject().getName(), e);
+				return;
 			}
 			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 			monitor.worked(1);
@@ -85,34 +116,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
-	}
-
-	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
-		// TODO: implement, how do we get just the changed files? file timestamps maybe?
-//		Log.info("Incremental Building...");
-		fullBuild(monitor); // for now we are lazy..and just rebuild every time
-	}
-	
-	/**
-	 * Returns the JReFrameworker project to build or clean, if the project is invalid returns null
-	 * @return
-	 */
-	private IJavaProject getJReFrameworkerProject(){
-		IProject project = getProject();
-		try {
-			if(project.isOpen() && project.hasNature(JavaCore.NATURE_ID) && project.hasNature(JReFrameworkerNature.NATURE_ID)){
-				IJavaProject jProject = JavaCore.create(project);
-				if(jProject.exists()){
-					return jProject;
-				}
-			}
-		} catch (CoreException e) {}
-		return null;
-	}
-	
-	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void cleanProject(IJavaProject jProject) throws IOException {
-		Log.info("TODO: Clean project " + jProject.getProject().getName());
 	}
 	
 	// TODO: adding a progress monitor subtask here would be a nice feature
@@ -141,12 +144,34 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							}
 						}
 					}
-					
 				}
 			} else if(file.isDirectory()){
 				buildProject(file, jProject);
 			}
 		}
+	}
+
+	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
+		// TODO: implement, how do we get just the changed files? file timestamps maybe?
+//		Log.info("Incremental Building...");
+		fullBuild(monitor); // for now we are lazy..and just rebuild every time
+	}
+	
+	/**
+	 * Returns the JReFrameworker project to build or clean, if the project is invalid returns null
+	 * @return
+	 */
+	private IJavaProject getJReFrameworkerProject(){
+		IProject project = getProject();
+		try {
+			if(project.isOpen() && project.hasNature(JavaCore.NATURE_ID) && project.hasNature(JReFrameworkerNature.NATURE_ID)){
+				IJavaProject jProject = JavaCore.create(project);
+				if(jProject.exists()){
+					return jProject;
+				}
+			}
+		} catch (CoreException e) {}
+		return null;
 	}
 	
 }
