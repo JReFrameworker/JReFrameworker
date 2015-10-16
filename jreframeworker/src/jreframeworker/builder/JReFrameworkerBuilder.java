@@ -1,14 +1,24 @@
 package jreframeworker.builder;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 
+import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
+import jreframeworker.core.bytecode.utils.BytecodeUtils;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
+import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.ClassNode;
 
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 
@@ -35,17 +45,107 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	protected void clean(IProgressMonitor monitor) throws CoreException {
-		// TODO: implement
-		Log.info("Cleaning...");
+		IJavaProject jProject = getJReFrameworkerProject();
+		if(jProject != null){
+			monitor.beginTask("Cleaning JReFrameworker project: " + jProject.getProject().getName(), 1);
+			Log.info("Cleaning JReFrameworker project: " + jProject.getProject().getName());
+			try {
+				cleanProject(jProject);
+			} catch (IOException e) {
+				Log.error("Error cleaning " + jProject.getProject().getName(), e);
+			}
+			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+			monitor.worked(1);
+		} else {
+			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
+		}
 	}
 
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
-		// TODO: implement
-		Log.info("Full Building...");
+		// clean jref workspace projects
+		clean(monitor);
+		
+		IJavaProject jProject = getJReFrameworkerProject();
+		if(jProject != null){
+			// build each jref project fresh
+			monitor.beginTask("Building JReFrameworker project: " + jProject.getProject().getName(), 1);
+			Log.info("Building JReFrameworker project: " + jProject.getProject().getName());
+
+			File binDirectory = jProject.getProject().getFolder("bin").getLocation().toFile();
+			try {
+				buildProject(binDirectory, jProject);
+			} catch (IOException e) {
+				Log.error("Error building " + jProject.getProject().getName(), e);
+			}
+			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+			monitor.worked(1);
+			
+			Log.info("Finished building JReFrameworker project: " + jProject.getProject().getName());
+		} else {
+			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
+		}
 	}
 
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
-		// TODO: implement
-		Log.info("Incremental Building...");
+		// TODO: implement, how do we get just the changed files? file timestamps maybe?
+//		Log.info("Incremental Building...");
+		fullBuild(monitor); // for now we are lazy..and just rebuild every time
 	}
+	
+	/**
+	 * Returns the JReFrameworker project to build or clean, if the project is invalid returns null
+	 * @return
+	 */
+	private IJavaProject getJReFrameworkerProject(){
+		IProject project = getProject();
+		try {
+			if(project.isOpen() && project.hasNature(JavaCore.NATURE_ID) && project.hasNature(JReFrameworkerNature.NATURE_ID)){
+				IJavaProject jProject = JavaCore.create(project);
+				if(jProject.exists()){
+					return jProject;
+				}
+			}
+		} catch (CoreException e) {}
+		return null;
+	}
+	
+	// TODO: adding a progress monitor subtask here would be a nice feature
+	private void cleanProject(IJavaProject jProject) throws IOException {
+		Log.info("TODO: Clean project " + jProject.getProject().getName());
+	}
+	
+	// TODO: adding a progress monitor subtask here would be a nice feature
+	private void buildProject(File root, IJavaProject jProject) throws IOException {
+		File[] files = root.listFiles();
+		for(File file : files){
+			if(file.isFile()){
+				if(file.getName().endsWith(".class")){
+					// check to see if the class is annotated with 
+					ClassNode classNode = BytecodeUtils.getClassNode(file);
+					// TODO: address innerclasses, classNode.innerClasses
+					if(classNode.invisibleAnnotations != null){
+						for(Object o : classNode.invisibleAnnotations){
+							AnnotationNode annotationNode = (AnnotationNode) o;
+							JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
+							checker.visitAnnotation(annotationNode.desc, false);
+							if(checker.isJREFAnnotation()){
+								if(checker.isDefineTypeAnnotation()){
+									// TODO: determine if its an insert or a replace
+									Log.info("INSERT or REPLACE " + classNode.name + " in project " + jProject.getProject().getName());
+								} else if(checker.isMergeTypeAnnotation()){
+									// TODO: execute merge
+//									Merge.mergeClasses(baseClass, classToMerge, outputClass);
+									Log.info("MERGE " + classNode.name + " in project " + jProject.getProject().getName());
+								}
+							}
+						}
+					}
+					
+				}
+			} else if(file.isDirectory()){
+				buildProject(file, jProject);
+			}
+		}
+	}
+	
 }
