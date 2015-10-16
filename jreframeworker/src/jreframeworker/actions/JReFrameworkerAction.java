@@ -4,7 +4,8 @@ import java.io.File;
 import java.io.IOException;
 
 import jreframeworker.builder.JReFrameworkerNature;
-import jreframeworker.common.JimpleUtils;
+import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
+import jreframeworker.core.bytecode.utils.BytecodeUtils;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.resources.IProject;
@@ -19,6 +20,8 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkbenchWindowActionDelegate;
+import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.ClassNode;
 
 /**
  * Our sample action implements workbench action delegate.
@@ -51,10 +54,15 @@ public class JReFrameworkerAction implements IWorkbenchWindowActionDelegate {
 			for(IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()){
 				try {
 					if(project.isOpen() && project.hasNature(JReFrameworkerNature.NATURE_ID)){
-						File projectDirectory = new File(project.getLocation().toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
-						File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + "runtimes");
 						IJavaProject jProject = JavaCore.create(project);
-						JimpleUtils.assemble(jProject,  project.getFile(runtimesDirectory.getName() + File.separatorChar + "rt.jar"));
+						File binDirectory = project.getFolder("bin").getLocation().toFile();
+						processDirectory(binDirectory, jProject);
+						
+//						File projectDirectory = new File(project.getLocation().toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
+//						File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + "runtimes");
+//						File runtimeJar = project.getFile(runtimesDirectory.getName() + File.separatorChar + "rt.jar").getLocation().toFile();
+//						JimpleUtils.assemble(jProject,  project.getFile(runtimesDirectory.getName() + File.separatorChar + "rt.jar"));
+						
 						project.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 						MessageDialog.openInformation(window.getShell(),
 								"JReFrameworker",
@@ -66,6 +74,40 @@ public class JReFrameworkerAction implements IWorkbenchWindowActionDelegate {
 							"JReFrameworker",
 							"Could not build runtime.");
 				}
+			}
+		}
+	}
+	
+	private void processDirectory(File root, IJavaProject jProject) throws IOException {
+		File[] files = root.listFiles();
+		for(File file : files){
+			if(file.isFile()){
+				if(file.getName().endsWith(".class")){
+					// check to see if the class is annotated with 
+					ClassNode classNode = BytecodeUtils.getClassNode(file);
+					// TODO: address innerclasses
+//					classNode.innerClasses
+					if(classNode.invisibleAnnotations != null){
+						for(Object o : classNode.invisibleAnnotations){
+							AnnotationNode annotationNode = (AnnotationNode) o;
+							JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
+							checker.visitAnnotation(annotationNode.desc, false);
+							if(checker.isJREFAnnotation()){
+								if(checker.isDefineTypeAnnotation()){
+									// TODO: determine if its an insert or a replace
+									Log.info("INSERT or REPLACE " + classNode.name);
+								} else if(checker.isMergeTypeAnnotation()){
+									// TODO: execute merge
+//									Merge.mergeClasses(baseClass, classToMerge, outputClass);
+									Log.info("MERGE " + classNode.name);
+								}
+							}
+						}
+					}
+					
+				}
+			} else if(file.isDirectory()){
+				processDirectory(file, jProject);
 			}
 		}
 	}

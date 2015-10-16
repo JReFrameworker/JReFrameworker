@@ -45,7 +45,7 @@
             locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
          <command
                commandId="jreframeworker.addRemoveJReFrameworkerNature"
-               label="Disable Sample builder"
+               label="Disable JReFrameworker Builder"
                style="push">
             <visibleWhen
                   checkEnabled="false">
@@ -68,7 +68,7 @@
          </command>
          <command
                commandId="jreframeworker.addRemoveJReFrameworkerNature"
-               label="Enable Sample builder"
+               label="Enable JReFrameworker Builder"
                style="push">
             <visibleWhen
                   checkEnabled="false">
