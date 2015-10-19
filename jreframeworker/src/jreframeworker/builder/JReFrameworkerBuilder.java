@@ -127,7 +127,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				if(file.getName().endsWith(".class")){
 					// check to see if the class is annotated with 
 					ClassNode classNode = BytecodeUtils.getClassNode(file);
-					// TODO: address innerclasses, classNode.innerClasses
+					// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
 					if(classNode.invisibleAnnotations != null){
 						for(Object o : classNode.invisibleAnnotations){
 							AnnotationNode annotationNode = (AnnotationNode) o;
