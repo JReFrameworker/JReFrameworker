@@ -62,7 +62,6 @@ public class JarModifier {
 			jarEntries.put(currentEntry.getName(), resetEntry);
 		}
 		
-		
 		String manifestPath = META_INF + SEPERATOR + "MANIFEST.MF";
 		JarEntry jarEntry = jar.getJarEntry(manifestPath);
 		if (jarEntry != null) {
