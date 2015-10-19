@@ -63,7 +63,7 @@ public class JarModifier {
 		}
 		
 		
-		String manifestPath = META_INF + "/MANIFEST.MF";
+		String manifestPath = META_INF + SEPERATOR + "MANIFEST.MF";
 		JarEntry jarEntry = jar.getJarEntry(manifestPath);
 		if (jarEntry != null) {
 			Enumeration<JarEntry> entries = jar.entries();
