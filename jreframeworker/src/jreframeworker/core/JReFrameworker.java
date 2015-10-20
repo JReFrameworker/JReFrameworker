@@ -46,7 +46,7 @@ import org.eclipse.jdt.launching.LibraryLocation;
 public class JReFrameworker {
 
 	public static final String RUNTIMES_DIRECTORY = "runtimes";
-	public static final String ORIGINAL_RUNTIMES_DIRECTORY = ".original-runtimes";
+	public static final String ORIGINAL_RUNTIMES_DIRECTORY = ".original-runtimes"; // hidden directory
 	public static final String ANNOTATIONS_DIRECTORY = "annotations";
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";

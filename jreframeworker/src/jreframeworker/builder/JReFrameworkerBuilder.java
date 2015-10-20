@@ -71,6 +71,9 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		for(File runtime : jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
 			if(runtime.isFile() && runtime.getName().endsWith(".jar")){
 				runtime.delete();
+				if(runtime.exists()){
+					throw new IOException("Could not delete: " + runtime.getAbsolutePath());
+				}
 			}
 		}
 		// restore the original runtimes
@@ -88,16 +91,15 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		IJavaProject jProject = getJReFrameworkerProject();
 
 		if(jProject != null){
-			
-//			// TODO: cleaning in the build is causing infinite rebuilds...need to add some state to prevent this
-			// potentially use http://www.cs.utep.edu/cheon/download/jml4c/javadocs/org/eclipse/core/resources/IncrementalProjectBuilder.html#forgetLastBuiltState()
-//			// first clean out the modified runtimes
-//			try {
-//				resetProjectRuntimes(jProject);
-//			} catch (IOException e) {
-//				Log.error("Error building " + jProject.getProject().getName() + " could not purge runtimes", e);
-//				return;
-//			}
+			// first clean out the modified runtimes
+			try {
+				resetProjectRuntimes(jProject);
+				// cleaning the build could causing infinite rebuilds if we don't reset the build state
+				this.forgetLastBuiltState(); 
+			} catch (IOException e) {
+				Log.error("Error building " + jProject.getProject().getName() + ", could not purge runtimes.  Project may be in an invalid state.", e);
+				return;
+			}
 			
 			// build each jref project fresh
 			monitor.beginTask("Building JReFrameworker project: " + jProject.getProject().getName(), 1);
