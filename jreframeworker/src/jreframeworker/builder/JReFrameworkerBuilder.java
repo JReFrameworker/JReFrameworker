@@ -2,17 +2,23 @@ package jreframeworker.builder;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 
+import jreframeworker.common.JarModifier;
 import jreframeworker.common.RuntimeUtils;
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.core.bytecode.utils.BytecodeUtils;
 import jreframeworker.log.Log;
 
+import org.apache.commons.io.FileDeleteStrategy;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceDelta;
+import org.eclipse.core.resources.IResourceDeltaVisitor;
+import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -23,7 +29,10 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
-
+	
+	private static int buildNumber = 1;
+	private static HashMap<String,Long> bytecodeTimestamps = new HashMap<String,Long>();
+	
 	public static final String BUILDER_ID = "jreframeworker.JReFrameworkerBuilder";
 
 	/*
@@ -52,7 +61,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			monitor.beginTask("Cleaning JReFrameworker project: " + jProject.getProject().getName(), 1);
 			Log.info("Cleaning JReFrameworker project: " + jProject.getProject().getName());
 			try {
-				resetProjectRuntimes(jProject);
+				resetProjectRuntimes(jProject, true);
+				this.forgetLastBuiltState(); 
 			} catch (IOException e) {
 				Log.error("Error cleaning " + jProject.getProject().getName(), e);
 			}
@@ -66,36 +76,57 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void resetProjectRuntimes(IJavaProject jProject) throws IOException {
-		// delete all the runtimes
-		for(File runtime : jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
-			if(runtime.isFile() && runtime.getName().endsWith(".jar")){
-				runtime.delete();
-				if(runtime.exists()){
-					throw new IOException("Could not delete: " + runtime.getAbsolutePath());
-				}
-			}
+	private void resetProjectRuntimes(IJavaProject jProject, boolean restoreOriginalRuntimes) throws IOException, CoreException {
+		
+		// TODO: allow modifcations to all jars not just rt.jar
+		
+		// save and clear the classpath
+//		IClasspathEntry[] classpath = jProject.getRawClasspath();
+//		jProject.setRawClasspath(new IClasspathEntry[] {}, null);
+		
+//		// delete all the runtimes
+//		for(File runtime : jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
+//			if(runtime.isFile() && runtime.getName().endsWith(".jar")){
+////				runtime.setWritable(true);
+////				runtime.delete();
+//				FileDeleteStrategy.FORCE.delete(runtime);
+//				// cleaning the build could causing infinite rebuilds if we don't reset the build state
+//			}
+//		}
+		
+		File runtime = jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getFile("rt.jar").getLocation().toFile();
+		FileDeleteStrategy.FORCE.delete(runtime);
+		
+		// if requested restore the original runtimes
+		if(restoreOriginalRuntimes){
+			
+			File originalRuntime = jProject.getProject().getFolder(JReFrameworker.ORIGINAL_RUNTIMES_DIRECTORY).getFile("rt.jar").getLocation().toFile();
+			RuntimeUtils.copyFile(originalRuntime, runtime);
+			
+//			// restore each runtime
+//			for(File originalRuntime : jProject.getProject().getFolder(JReFrameworker.ORIGINAL_RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
+//				if(originalRuntime.isFile() && originalRuntime.getName().endsWith(".jar")){
+//					File runtime = new File(jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().getCanonicalPath() 
+//							+ File.separatorChar + originalRuntime.getName());
+//					RuntimeUtils.copyFile(originalRuntime, runtime);
+//					// cleaning the build could causing infinite rebuilds if we don't reset the build state
+//				}
+//			}
 		}
-		// restore the original runtimes
-		for(File originalRuntime : jProject.getProject().getFolder(JReFrameworker.ORIGINAL_RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
-			if(originalRuntime.isFile() && originalRuntime.getName().endsWith(".jar")){
-				File runtime = new File(jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile().getCanonicalPath() 
-						+ File.separatorChar + originalRuntime.getName());
-				RuntimeUtils.copyFile(originalRuntime, runtime);
-			}
-		}
+		
+		// restore the classpath
+//		jProject.setRawClasspath(classpath, null);
 	}
 	
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
 		
+		Log.info("Build Number: " + buildNumber++);
+		
 		IJavaProject jProject = getJReFrameworkerProject();
-
 		if(jProject != null){
 			// first clean out the modified runtimes
 			try {
-				resetProjectRuntimes(jProject);
-				// cleaning the build could causing infinite rebuilds if we don't reset the build state
-				this.forgetLastBuiltState(); 
+				resetProjectRuntimes(jProject, false);
 			} catch (IOException e) {
 				Log.error("Error building " + jProject.getProject().getName() + ", could not purge runtimes.  Project may be in an invalid state.", e);
 				return;
@@ -107,7 +138,13 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			try {
-				buildProject(binDirectory, jProject);
+				// for each runtime, make modifications that are found in the compiled bytecode
+				for(File originalRuntime : getOriginalRuntimes(jProject)){
+					JarModifier runtimeModifications = new JarModifier(originalRuntime);
+					buildProject(binDirectory, jProject, runtimeModifications);
+					File modifiedRuntime = getCorrespondingModifiedRuntime(jProject, originalRuntime);
+					runtimeModifications.save(modifiedRuntime);
+				}
 			} catch (IOException e) {
 				Log.error("Error building " + jProject.getProject().getName(), e);
 				return;
@@ -120,10 +157,11 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
 	}
-	
+
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void buildProject(File root, IJavaProject jProject) throws IOException {
-		File[] files = root.listFiles();
+	private void buildProject(File binDirectory, IJavaProject jProject, JarModifier runtimeModifications) throws IOException {
+		// make changes for each annotated class file in current directory
+		File[] files = binDirectory.listFiles();
 		for(File file : files){
 			if(file.isFile()){
 				if(file.getName().endsWith(".class")){
@@ -136,28 +174,104 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 							checker.visitAnnotation(annotationNode.desc, false);
 							if(checker.isJREFAnnotation()){
+								String qualifiedClassName = classNode.name + ".class";
 								if(checker.isDefineTypeAnnotation()){
-									// TODO: determine if its an insert or a replace
-									Log.info("INSERT or REPLACE " + classNode.name + " in project " + jProject.getProject().getName());
+									if(runtimeModifications.getJarEntrySet().contains(qualifiedClassName)){
+										Log.info("REPLACE " + qualifiedClassName);
+										runtimeModifications.add(qualifiedClassName, file, true);
+									} else {
+										Log.info("INSERT " + qualifiedClassName);
+										runtimeModifications.add(qualifiedClassName, file, false);
+									}
 								} else if(checker.isMergeTypeAnnotation()){
 									// TODO: execute merge
 //									Merge.mergeClasses(baseClass, classToMerge, outputClass);
-									Log.info("MERGE " + classNode.name + " in project " + jProject.getProject().getName());
+									Log.info("MERGE " + qualifiedClassName);
 								}
 							}
 						}
 					}
 				}
 			} else if(file.isDirectory()){
-				buildProject(file, jProject);
+				buildProject(file, jProject, runtimeModifications);
 			}
 		}
 	}
 
+	// TODO: see http://help.eclipse.org/mars/index.jsp?topic=%2Forg.eclipse.platform.doc.isv%2Fguide%2FresAdv_builders.htm
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
-		// TODO: implement, how do we get just the changed files? file timestamps maybe?
-//		Log.info("Incremental Building...");
-		fullBuild(monitor); // for now we are lazy..and just rebuild every time
+
+		// for now just doing nothing, incremental build is fighting with full build and can't delete rt.jar for some reason
+		
+//		Log.info("Incremental Build");
+		
+		// TODO: implement an incremental build
+//		delta.accept(new BuildDeltaVisitor());
+		
+//		// triggers a full rebuild
+//		this.forgetLastBuiltState();
+//		this.needRebuild();
+		
+		// directly triggers a full rebuild
+//		fullBuild(monitor);
+	}
+	
+	private static class BuildVisitor implements IResourceVisitor {
+		@Override
+		public boolean visit(IResource resource) {
+			System.out.println(resource.getLocation().toFile().getAbsolutePath());
+			return true;
+		}
+	}
+	
+	private static class BuildDeltaVisitor implements IResourceDeltaVisitor {
+		@Override
+		public boolean visit(IResourceDelta delta) throws CoreException {
+			switch (delta.getKind()) {
+			case IResourceDelta.ADDED:
+				System.out.print("Added: ");
+				break;
+			case IResourceDelta.REMOVED:
+				System.out.print("Removed: ");
+				break;
+			case IResourceDelta.CHANGED:
+				System.out.print("Changed: ");
+				break;
+			}
+			System.out.println(delta.getFullPath().toOSString());
+			return true;
+		}
+	}
+	
+	/**
+	 * Helper method for getting a list of the original runtimes
+	 * @param jProject
+	 * @return
+	 * @throws IOException
+	 */
+	private LinkedList<File> getOriginalRuntimes(IJavaProject jProject) throws IOException {
+		LinkedList<File> runtimes = new LinkedList<File>();
+		for(File runtime : jProject.getProject().getFolder(JReFrameworker.ORIGINAL_RUNTIMES_DIRECTORY).getLocation().toFile().listFiles()){
+			if(runtime.isFile() && runtime.getName().endsWith(".jar")){
+				
+				if(runtime.getName().equals("rt.jar")) // TODO: remove this conditional to consider all jars, not just rt.jar
+					runtimes.add(runtime.getCanonicalFile());
+			}
+		}
+		return runtimes;
+	}
+	
+	/**
+	 * Helper method for getting a File object that points to the corresponding modified runtime location
+	 * Note: The file target may not exist yet
+	 * @param jProject
+	 * @param originalRuntime
+	 * @return
+	 * @throws IOException
+	 */
+	private File getCorrespondingModifiedRuntime(IJavaProject jProject, File originalRuntime) throws IOException {
+		File runtimesDirectory = jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile();
+		return new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + originalRuntime.getName());
 	}
 	
 	/**

@@ -9,10 +9,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
+import java.util.jar.JarException;
 import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
@@ -50,7 +52,7 @@ public class JarModifier {
 	 * @throws ZipException
 	 * @throws IOException
 	 */
-	public JarModifier(File jarFile) throws ZipException, IOException {
+	public JarModifier(File jarFile) throws JarException, IOException {
 		this.jarFile = jarFile;
 		JarFile jar = new JarFile(jarFile);
 		// get references to all the archive file entries
@@ -58,7 +60,8 @@ public class JarModifier {
 		while(enumerator.hasMoreElements()){
 			JarEntry currentEntry = (JarEntry) enumerator.nextElement();
 			// need to create a new entry to reset properties that will need to be recomputed automatically
-			JarEntry resetEntry = resetEntry(currentEntry);
+//			JarEntry resetEntry = resetEntry(currentEntry); // TODO: Fix
+			JarEntry resetEntry = new JarEntry(currentEntry.getName());
 			jarEntries.put(currentEntry.getName(), resetEntry);
 		}
 		
@@ -86,6 +89,12 @@ public class JarModifier {
 	
 	public Manifest getManifest(){
 		return manifest;
+	}
+	
+	public HashSet<String> getJarEntrySet(){
+		HashSet<String> entryList = new HashSet<String>();
+		entryList.addAll(jarEntries.keySet());
+		return entryList;
 	}
 	
 	/**
@@ -164,7 +173,8 @@ public class JarModifier {
 	 *             the specified entry
 	 */
 	public void add(JarEntry entry, File file, boolean overwrite) throws IOException {
-		JarEntry newEntry = resetEntry(entry);
+//		JarEntry newEntry = resetEntry(entry); // TODO: fix
+		JarEntry newEntry = new JarEntry(entry.getName());
 		newEntry.setSize(file.length());
 		if(jarEntries.containsKey(entry.getName()) && !overwrite){
 			throw new IOException("Archive already contains entry: " + entry);
@@ -259,25 +269,11 @@ public class JarModifier {
 		    zout = new JarOutputStream(new FileOutputStream(outputArchiveFile));
 	    	JarEntry entry = zin.getNextJarEntry();
 		    while (entry != null) {
-		    	// use the zip entry settings stored in the entries set
-		        zout.putNextEntry(jarEntries.get(entry.getName()));
 		        // write the file to the zip depending on where it is located
-		        if(jarEntriesToAdd.containsKey(entry.getName())){
-		        	// transfer the bytes from the saved file to the output archive
-		        	InputStream fin = null;
-		        	try {
-		        		fin = new FileInputStream(jarEntriesToAdd.get(entry.getName()));
-		        		int len;
-		                while ((len = fin.read(buf)) > 0) {
-		                    zout.write(buf, 0, len);
-		                }
-		                // complete the entry
-		                zout.closeEntry();
-		        	} finally {
-		        		fin.close();
-		        	}
-		        } else {
+		    	// entries from files will be added later so skip those now
+		        if(jarEntries.containsKey(entry.getName()) && !jarEntriesToAdd.containsKey(entry.getName())){
 		            // transfer the bytes from the old archive to the output archive
+		        	zout.putNextEntry(jarEntries.get(entry.getName()));
 		            int len;
 		            while ((len = zin.read(buf)) > 0) {
 		                zout.write(buf, 0, len);
@@ -287,6 +283,26 @@ public class JarModifier {
 		        }
 		        // get the next zip entry to examine
 		        entry = zin.getNextJarEntry();
+		    }
+		    // transfer the bytes from the saved files to the output archive
+		    for(Entry<String,File> jarEntryToAdd : jarEntriesToAdd.entrySet()){
+		    	String entryName = jarEntryToAdd.getKey();
+		    	File file = jarEntryToAdd.getValue();
+	        	InputStream fin = null;
+	        	try {
+	        		fin = new FileInputStream(file);
+	        		zout.putNextEntry(jarEntries.get(entryName));
+	        		int len;
+	                while ((len = fin.read(buf)) > 0) {
+	                    zout.write(buf, 0, len);
+	                }
+	                // complete the entry
+	                zout.closeEntry();
+	        	} finally {
+	        		if(fin != null){
+	        			fin.close();
+	        		}
+	        	}
 		    }
 	    } finally {
 	    	// close the streams        
@@ -321,22 +337,23 @@ public class JarModifier {
 		return result.toString();
 	}
 	
-	/**
-	 * Resets a zip entry. Copies over the time, comments, extras, and compression method.
-	 * 
-	 * File sizes and other properties are left to be recomputed automatically.
-	 * 
-	 * @param entry
-	 * @return
-	 */
-	private JarEntry resetEntry(JarEntry entry) {
-		JarEntry resetEntry = new JarEntry(entry.getName());
-		// copy over entry properties
-		resetEntry.setTime(entry.getTime());
-		resetEntry.setComment(entry.getComment());
-		resetEntry.setExtra(entry.getExtra());
-		resetEntry.setMethod(entry.getMethod());
-		return resetEntry;
-	}
+	// TODO: fix this...
+//	/**
+//	 * Resets a zip entry. Copies over the time, comments, extras, and compression method.
+//	 * 
+//	 * File sizes and other properties are left to be recomputed automatically.
+//	 * 
+//	 * @param entry
+//	 * @return
+//	 */
+//	private JarEntry resetEntry(JarEntry entry) {
+//		JarEntry resetEntry = new JarEntry(entry.getName());
+//		// copy over entry properties
+//		resetEntry.setTime(entry.getTime());
+//		resetEntry.setComment(entry.getComment());
+//		resetEntry.setExtra(entry.getExtra());
+//		resetEntry.setMethod(entry.getMethod());
+//		return resetEntry;
+//	}
 	
 }
