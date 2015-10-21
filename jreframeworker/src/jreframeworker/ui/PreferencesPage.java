@@ -33,7 +33,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	 */
 	public static String getMergeRenamingPrefix(){
 		String mergeRenamingPrefix = Activator.getDefault().getPreferenceStore().getString(MERGE_RENAMING_PREFIX_STRING);
-		if(mergeRenamingPrefix == null){
+		if(mergeRenamingPrefix == null || mergeRenamingPrefix.equals("")){
 			mergeRenamingPrefix = MERGE_RENAME_PREFIX_DEFAULT_VALUE;
 		}
 		return mergeRenamingPrefix;

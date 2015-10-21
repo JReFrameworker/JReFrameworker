@@ -2,7 +2,6 @@ package jreframeworker.builder;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -10,6 +9,7 @@ import jreframeworker.common.JarModifier;
 import jreframeworker.common.RuntimeUtils;
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
+import jreframeworker.core.bytecode.operations.Merge;
 import jreframeworker.core.bytecode.utils.BytecodeUtils;
 import jreframeworker.log.Log;
 
@@ -17,8 +17,6 @@ import org.apache.commons.io.FileDeleteStrategy;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceDelta;
-import org.eclipse.core.resources.IResourceDeltaVisitor;
-import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -31,7 +29,7 @@ import org.objectweb.asm.tree.ClassNode;
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
 	private static int buildNumber = 1;
-	private static HashMap<String,Long> bytecodeTimestamps = new HashMap<String,Long>();
+//	private static HashMap<String,Long> bytecodeTimestamps = new HashMap<String,Long>();
 	
 	public static final String BUILDER_ID = "jreframeworker.JReFrameworkerBuilder";
 
@@ -177,16 +175,25 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								String qualifiedClassName = classNode.name + ".class";
 								if(checker.isDefineTypeAnnotation()){
 									if(runtimeModifications.getJarEntrySet().contains(qualifiedClassName)){
-										Log.info("REPLACE " + qualifiedClassName);
 										runtimeModifications.add(qualifiedClassName, file, true);
+										Log.info("Replaced: " + qualifiedClassName + " in " + runtimeModifications.getJarFile().getName());
 									} else {
-										Log.info("INSERT " + qualifiedClassName);
 										runtimeModifications.add(qualifiedClassName, file, false);
+										Log.info("Inserted: " + qualifiedClassName + " into " + runtimeModifications.getJarFile().getName());
 									}
 								} else if(checker.isMergeTypeAnnotation()){
-									// TODO: execute merge
-//									Merge.mergeClasses(baseClass, classToMerge, outputClass);
-									Log.info("MERGE " + qualifiedClassName);
+									File outputClass = File.createTempFile(classNode.name, ".class");
+									File baseClass = File.createTempFile(classNode.name, ".class");
+									String qualifiedParentClassName = classNode.superName + ".class";
+									runtimeModifications.extractEntry(qualifiedParentClassName, baseClass);
+									Merge.mergeClasses(baseClass, file, outputClass);
+									baseClass.delete();
+									runtimeModifications.add(qualifiedParentClassName, outputClass, true);
+									// TODO: clean up outputClass somehow,
+									// probably need to make a local temp
+									// directory which gets deleted at the end
+									// of the build
+									Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
 								}
 							}
 						}
@@ -216,32 +223,32 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 //		fullBuild(monitor);
 	}
 	
-	private static class BuildVisitor implements IResourceVisitor {
-		@Override
-		public boolean visit(IResource resource) {
-			System.out.println(resource.getLocation().toFile().getAbsolutePath());
-			return true;
-		}
-	}
-	
-	private static class BuildDeltaVisitor implements IResourceDeltaVisitor {
-		@Override
-		public boolean visit(IResourceDelta delta) throws CoreException {
-			switch (delta.getKind()) {
-			case IResourceDelta.ADDED:
-				System.out.print("Added: ");
-				break;
-			case IResourceDelta.REMOVED:
-				System.out.print("Removed: ");
-				break;
-			case IResourceDelta.CHANGED:
-				System.out.print("Changed: ");
-				break;
-			}
-			System.out.println(delta.getFullPath().toOSString());
-			return true;
-		}
-	}
+//	private static class BuildVisitor implements IResourceVisitor {
+//		@Override
+//		public boolean visit(IResource resource) {
+//			System.out.println(resource.getLocation().toFile().getAbsolutePath());
+//			return true;
+//		}
+//	}
+//	
+//	private static class BuildDeltaVisitor implements IResourceDeltaVisitor {
+//		@Override
+//		public boolean visit(IResourceDelta delta) throws CoreException {
+//			switch (delta.getKind()) {
+//			case IResourceDelta.ADDED:
+//				System.out.print("Added: ");
+//				break;
+//			case IResourceDelta.REMOVED:
+//				System.out.print("Removed: ");
+//				break;
+//			case IResourceDelta.CHANGED:
+//				System.out.print("Changed: ");
+//				break;
+//			}
+//			System.out.println(delta.getFullPath().toOSString());
+//			return true;
+//		}
+//	}
 	
 	/**
 	 * Helper method for getting a list of the original runtimes

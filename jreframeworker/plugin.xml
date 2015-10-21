@@ -113,7 +113,7 @@
    <extension
          point="org.eclipse.ui.preferencePages">
       <page
-            class="jreframeworker.ui.PreferencePage"
+            class="jreframeworker.ui.PreferencesPage"
             id="jreframeworker.preferences"
             name="JReFrameworker">
       </page>

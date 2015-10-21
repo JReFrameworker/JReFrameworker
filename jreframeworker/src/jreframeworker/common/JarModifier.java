@@ -1,5 +1,6 @@
 package jreframeworker.common;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -19,7 +20,6 @@ import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.zip.ZipException;
 
 /**
  * A wrapper around the Java zip utilities to add, overwrite, or remove files
@@ -49,7 +49,7 @@ public class JarModifier {
 	 * 
 	 * @param jarFile The archive to be modified.
 	 * 
-	 * @throws ZipException
+	 * @throws JarException
 	 * @throws IOException
 	 */
 	public JarModifier(File jarFile) throws JarException, IOException {
@@ -85,6 +85,28 @@ public class JarModifier {
 		this.manifest = manifest;
 		
 		jar.close();
+	}
+	
+	public File getJarFile(){
+		return jarFile;
+	}
+	
+	public void extractEntry(String entry, File outputFile) throws IOException {
+		FileOutputStream fout = new FileOutputStream(outputFile);
+		JarInputStream zin = new JarInputStream(new BufferedInputStream(new FileInputStream(jarFile)));
+		JarEntry currentEntry = null;
+		while ((currentEntry = zin.getNextJarEntry()) != null) {
+			if (currentEntry.getName().equals(entry)) {
+				byte[] buffer = new byte[1024];
+				int len;
+				while ((len = zin.read(buffer)) != -1) {
+					fout.write(buffer, 0, len);
+				}
+				fout.close();
+				break;
+			}
+		}
+		zin.close();
 	}
 	
 	public Manifest getManifest(){
