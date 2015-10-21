@@ -275,6 +275,7 @@ public class Merge {
 					if (instruction.desc.contains(classToMerge.name)) {
 						instruction.desc = instruction.desc.replace(classToMerge.name, baseClassName);
 					}
+					
 					// check if the method call needs to be changed to a renamed method name
 					// replace calls to super.x methods with prefix+x calls in the class to merge
 					// TODO: should check more than just the name, need to check whole method signature
@@ -329,7 +330,8 @@ public class Merge {
 			System.out.println("Adding: " + methodNode.name + ", " + methodNode.desc + ", " + methodNode.signature);
 			
 			methodNode.instructions.resetLabels();
-			methodNode.accept(new RemappingMethodAdapter(methodNode.access, methodNode.desc, mv, new SimpleRemapper(baseClassName, classToMerge.name)));
+			// SimpleRemapper -> maps old name to new name
+			methodNode.accept(new RemappingMethodAdapter(methodNode.access, methodNode.desc, mv, new SimpleRemapper(classToMerge.name, baseClassName)));
 		}
 	}
 
