@@ -10,6 +10,7 @@ This is a just running list of useful references found during the development of
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
 - [ASM Transformations Whitepaper](http://asm.ow2.org/current/asm-transformations.pdf)
 - [Updated Version of ASM Bytecode Outline Plugin](http://andrei.gmxhome.de/bytecode/index.html)
+- [Konloch Bytecode Viewer](https://github.com/Konloch/bytecode-viewer)
 
 ## Intermediate Languages
 - [Soot](https://sable.github.io/soot/)
