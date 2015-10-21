@@ -24,13 +24,29 @@ import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.IincInsnNode;
 import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.LookupSwitchInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.MultiANewArrayInsnNode;
+import org.objectweb.asm.tree.TableSwitchInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
 public class Merge {
 	
+	@SuppressWarnings("unused")
 	public static void mergeClasses(File baseClass, File classToMerge, File outputClass) throws IOException {
 		
 		final String MERGE_RENAME_PREFIX = PreferencesPage.getMergeRenamingPrefix();
@@ -76,7 +92,7 @@ public class Merge {
 		}
 
 		// write out the modified base class to a temporary class file
-		String baseClassName = baseClassNode.name.replace('/', '.').replace('\\', '.');
+		String baseClassName = baseClassNode.name.replace('/', '.');
 		File modifiedBaseClassFile = File.createTempFile(baseClassName, ".class");
 		BytecodeUtils.writeClass(baseClassNode, modifiedBaseClassFile);
 		
@@ -85,25 +101,94 @@ public class Merge {
         	InsnList instructions = methodToMerge.instructions;
 			Iterator<AbstractInsnNode> instructionIterator = instructions.iterator();
         	while(instructionIterator.hasNext()){
-        		AbstractInsnNode instruction = instructionIterator.next();
-        		
-        		if(instruction instanceof MethodInsnNode){
-        			MethodInsnNode methodInstruction = (MethodInsnNode) instruction;
+        		AbstractInsnNode abstractInstruction = instructionIterator.next();
+        		// for each instruction type change the owner if there is one to the base class
+        		// and perform any other merge operations needed
+				if (abstractInstruction instanceof FieldInsnNode) {
+					FieldInsnNode instruction = (FieldInsnNode) abstractInstruction;
+					if(instruction.owner != null){
+						instruction.owner = baseClassNode.name;
+					}
+					if(instruction.desc != null){
+						if(instruction.desc.contains(classToMergeClassNode.name)){
+						instruction.desc = "L" + baseClassNode.name + ";";
+						} else {
+						 instruction.desc = null; // not sure how to deal with this just set it to null and hope for the best
+						}
+					}
+				} else if (abstractInstruction instanceof FrameNode) {
+					FrameNode instruction = (FrameNode) abstractInstruction;
+				} else if (abstractInstruction instanceof IincInsnNode) {
+					IincInsnNode instruction = (IincInsnNode) abstractInstruction;
+				} else if (abstractInstruction instanceof InsnNode) {
+					InsnNode instruction = (InsnNode) abstractInstruction;
+				} else if (abstractInstruction instanceof IntInsnNode) {
+					IntInsnNode instruction = (IntInsnNode) abstractInstruction;
+				} else if (abstractInstruction instanceof InvokeDynamicInsnNode) {
+					InvokeDynamicInsnNode instruction = (InvokeDynamicInsnNode) abstractInstruction;
+					if(instruction.desc != null){
+						if(instruction.desc.contains(classToMergeClassNode.name)){
+						instruction.desc = "L" + baseClassNode.name + ";";
+						} else {
+						 instruction.desc = null; // not sure how to deal with this just set it to null and hope for the best
+						}
+					}
+				} else if (abstractInstruction instanceof JumpInsnNode) {
+					JumpInsnNode instruction = (JumpInsnNode) abstractInstruction;
+				} else if (abstractInstruction instanceof LabelNode) {
+					LabelNode instruction = (LabelNode) abstractInstruction;
+				} else if (abstractInstruction instanceof LdcInsnNode) {
+					LdcInsnNode instruction = (LdcInsnNode) abstractInstruction;
+				} else if (abstractInstruction instanceof LineNumberNode) {
+					LineNumberNode instruction = (LineNumberNode) abstractInstruction;
+				} else if (abstractInstruction instanceof LookupSwitchInsnNode) {
+					LookupSwitchInsnNode instruction = (LookupSwitchInsnNode) abstractInstruction;
+				} else if (abstractInstruction instanceof MethodInsnNode) {
+					MethodInsnNode instruction = (MethodInsnNode) abstractInstruction;
         			// change the owner of the method to the base class
-        			methodInstruction.owner = baseClassNode.name;
+					if(instruction.owner != null){
+						instruction.owner = baseClassNode.name;
+					}
+					if(instruction.desc.contains(classToMergeClassNode.name)){
+						instruction.desc = "L" + baseClassNode.name + ";";
+						} else {
+						 instruction.desc = null; // not sure how to deal with this just set it to null and hope for the best
+						}
         			// check if the method call needs to be changed to a renamed method name
         			for(MethodNode method : methodsToMerge){
-        				if(methodInstruction.name.equals(method.name)){
+        				if(instruction.name.equals(method.name)){
         					// this method has been renamed, we need to rename the call as well
-        					methodInstruction.name = MERGE_RENAME_PREFIX + methodInstruction.name;
+        					instruction.name = MERGE_RENAME_PREFIX + instruction.name;
         					// if we renamed it, this call used super.x, so make it a virtual 
         					// invocation instead of special invocation
-        					if(methodInstruction.getOpcode()==Opcodes.INVOKESPECIAL){
-        						methodInstruction.setOpcode(Opcodes.INVOKEVIRTUAL);
+        					if(instruction.getOpcode()==Opcodes.INVOKESPECIAL){
+        						instruction.setOpcode(Opcodes.INVOKEVIRTUAL);
         					}
         				}
         			}
-        		}
+				} else if (abstractInstruction instanceof MultiANewArrayInsnNode) {
+					MultiANewArrayInsnNode instruction = (MultiANewArrayInsnNode) abstractInstruction;
+					if(instruction.desc != null){
+						if(instruction.desc.contains(classToMergeClassNode.name)){
+						instruction.desc = "L" + baseClassNode.name + ";";
+						} else {
+						 instruction.desc = null; // not sure how to deal with this just set it to null and hope for the best
+						}
+					}
+				} else if (abstractInstruction instanceof TableSwitchInsnNode) {
+					TableSwitchInsnNode instruction = (TableSwitchInsnNode) abstractInstruction;
+				} else if (abstractInstruction instanceof TypeInsnNode) {
+					TypeInsnNode instruction = (TypeInsnNode) abstractInstruction;
+					if(instruction.desc != null){
+						if(instruction.desc.contains(classToMergeClassNode.name)){
+						instruction.desc = "L" + baseClassNode.name + ";";
+						} else {
+						 instruction.desc = null; // not sure how to deal with this just set it to null and hope for the best
+						}
+					}
+				} else if (abstractInstruction instanceof VarInsnNode) {
+					VarInsnNode instruction = (VarInsnNode) abstractInstruction;
+				}
         	}
         }
 
