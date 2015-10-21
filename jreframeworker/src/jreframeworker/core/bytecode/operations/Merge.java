@@ -54,8 +54,6 @@ public class Merge {
 		ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
 		ClassNode classToMergeClassNode = BytecodeUtils.getClassNode(classToMerge);
 
-		// TODO: check that the type is annotated with @MergeType
-		
 		// identify methods to merge
 		MergeMethodsIdentifier mergeMethodsIdentifier = new MergeMethodsIdentifier(classToMergeClassNode);
 		LinkedList<MethodNode> methodsToMerge = mergeMethodsIdentifier.getMergeMethods();
@@ -79,7 +77,7 @@ public class Merge {
 		LinkedList<String> renamedMethods = new LinkedList<String>();
 		for(MethodNode methodToRename : methodsToRename){
 			// first remove any annotations from renamed base methods
-			// TODO: consider adding these annotations to the method to merge 
+			// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
 			// to maintain the cover of the original method annotations
 			AnnotationUtils.clearMethodAnnotations(methodToRename);
 			
@@ -213,6 +211,7 @@ public class Merge {
 
 			methodNode.instructions.resetLabels();
 			// SimpleRemapper -> maps old name to new name
+			// updates owners and descriptions appropriately
 			methodNode.accept(new RemappingMethodAdapter(methodNode.access, methodNode.desc, mv, new SimpleRemapper(classToMerge.name, baseClassName)));
 		}
 
@@ -223,31 +222,13 @@ public class Merge {
 		 */
 		@SuppressWarnings("unused")
 		private void mergeMethod(MethodNode methodNode, LinkedList<String> renamedMethods) {
-
-//			// clean up method attributes
-//			if (methodNode.attrs != null) {
-//				for (Attribute attribute : methodNode.attrs) {
-//					System.out.println("Method Attribute: " + attribute.type);
-//				}
-//			}
-			
 			// clean up method instructions
         	InsnList instructions = methodNode.instructions;
 			Iterator<AbstractInsnNode> instructionIterator = instructions.iterator();
 			while (instructionIterator.hasNext()) {
 				AbstractInsnNode abstractInstruction = instructionIterator.next();
-				// for each instruction type change the owner if there is one to
-				// the base class and perform any other merge operations needed
 				if (abstractInstruction instanceof FieldInsnNode) {
 					FieldInsnNode instruction = (FieldInsnNode) abstractInstruction;
-//					if (instruction.owner != null && instruction.owner.equals(classToMerge.name)) {
-//						instruction.owner = baseClassName;
-//					}
-//					if (instruction.desc != null) {
-//						if (instruction.desc.contains(classToMerge.name)) {
-//							instruction.desc = instruction.desc.replace(classToMerge.name, baseClassName);
-//						}
-//					}
 				} else if (abstractInstruction instanceof FrameNode) {
 					FrameNode instruction = (FrameNode) abstractInstruction;
 				} else if (abstractInstruction instanceof IincInsnNode) {
@@ -258,11 +239,6 @@ public class Merge {
 					IntInsnNode instruction = (IntInsnNode) abstractInstruction;
 				} else if (abstractInstruction instanceof InvokeDynamicInsnNode) {
 					InvokeDynamicInsnNode instruction = (InvokeDynamicInsnNode) abstractInstruction;
-//					if (instruction.desc != null) {
-//						if (instruction.desc.contains(classToMerge.name)) {
-//							instruction.desc = instruction.desc.replace(classToMerge.name, baseClassName);
-//						}
-//					}
 				} else if (abstractInstruction instanceof JumpInsnNode) {
 					JumpInsnNode instruction = (JumpInsnNode) abstractInstruction;
 				} else if (abstractInstruction instanceof LabelNode) {
@@ -275,13 +251,6 @@ public class Merge {
 					LookupSwitchInsnNode instruction = (LookupSwitchInsnNode) abstractInstruction;
 				} else if (abstractInstruction instanceof MethodInsnNode) {
 					MethodInsnNode instruction = (MethodInsnNode) abstractInstruction;
-//					// change the owner of the method to the base class
-//					if (instruction.owner != null && instruction.owner.equals(classToMerge.name)) {
-//						instruction.owner = baseClassName;
-//					}
-//					if (instruction.desc.contains(classToMerge.name)) {
-//						instruction.desc = instruction.desc.replace(classToMerge.name, baseClassName);
-//					}
 					// check if the method call needs to be changed to a renamed method name
 					// replace calls to super.x methods with prefix+x calls in the class to merge
 					// TODO: should check more than just the name, need to check whole method signature
@@ -298,20 +267,10 @@ public class Merge {
 					}
 				} else if (abstractInstruction instanceof MultiANewArrayInsnNode) {
 					MultiANewArrayInsnNode instruction = (MultiANewArrayInsnNode) abstractInstruction;
-//					if (instruction.desc != null) {
-//						if (instruction.desc.contains(classToMerge.name)) {
-//							instruction.desc = instruction.desc.replace(classToMerge.name, baseClassName);
-//						}
-//					}
 				} else if (abstractInstruction instanceof TableSwitchInsnNode) {
 					TableSwitchInsnNode instruction = (TableSwitchInsnNode) abstractInstruction;
 				} else if (abstractInstruction instanceof TypeInsnNode) {
 					TypeInsnNode instruction = (TypeInsnNode) abstractInstruction;
-//					if (instruction.desc != null) {
-//						if (instruction.desc.contains(classToMerge.name)) {
-//							instruction.desc = instruction.desc.replace(classToMerge.name, baseClassName);
-//						}
-//					}
 				} else if (abstractInstruction instanceof VarInsnNode) {
 					VarInsnNode instruction = (VarInsnNode) abstractInstruction;
 				}
