@@ -18,5 +18,5 @@ This is a just running list of useful references found during the development of
 - [Soot Command Line Options](https://ssebuild.cased.de/nightly/soot/doc/soot_options.htm)
 
 ## Eclipse Plugin Development
--[Project Builders and Natures](https://eclipse.org/articles/Article-Builders/builders.html)
--[Incremental Builders](http://help.eclipse.org/mars/index.jsp?topic=%2Forg.eclipse.platform.doc.isv%2Fguide%2FresAdv_builders.htm)
+- [Project Builders and Natures](https://eclipse.org/articles/Article-Builders/builders.html)
+- [Incremental Builders](http://help.eclipse.org/mars/index.jsp?topic=%2Forg.eclipse.platform.doc.isv%2Fguide%2FresAdv_builders.htm)
