@@ -11,4 +11,4 @@ Since ReFrameworker is no longer maintained, this project aims to extend previou
 
 JReFrameworker is an Eclipse plugin for creating and building projects that allow the user to write annotated Java source that is automatically merged or inserted into the runtime, which also allows the user to develop and debug attack modules. Working at the intended abstraction level of source code allows the attacker to "write once, exploit everywhere"".
 
-For more details visit: [https://jreframeworker.github.io](https://jreframeworker.github.io)
+For more details visit: [ben-holland.com/JReFrameworker/](https://ben-holland.com/JReFrameworker/)
