@@ -11,8 +11,6 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jdt.core,
  org.eclipse.jdt.launching,
  org.eclipse.core.filesystem,
- ca.mcgill.sable.soot;bundle-version="2.5.2",
- ca.mcgill.sable.soot.lib;bundle-version="2.5.2",
  org.objectweb.asm;bundle-version="5.0.4",
  org.apache.commons.io;bundle-version="2.0.1"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
