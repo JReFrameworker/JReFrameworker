@@ -2,24 +2,15 @@
 <?eclipse version="3.4"?>
 <plugin>
 
-   <extension
-         point="org.eclipse.ui.newWizards">
-      <category
-            name="JReFrameworker"
-            id="jreframeworker.ui.category">
-      </category>
-      <wizard
-            category="jreframeworker.ui.category"
-            class="jreframeworker.ui.NewProjectWizard"
-            icon="icons/JReFrameworker.gif"
-            id="jreframeworker.ui.NewProjectWizard"
-            name="JReFrameworker Runtime Project">
-         <description>
-            Creates a new JReFrameworker runtime project in the workspace.
-         </description>
+   <!-- New project wizard -->
+   <extension point="org.eclipse.ui.newWizards">
+      <category name="JReFrameworker" id="jreframeworker.ui.category" />
+      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewProjectWizard" name="JReFrameworker Runtime Project">
+         <description>Creates a new JReFrameworker runtime project in the workspace.</description>
       </wizard>
    </extension>
    
+   <!-- A project import wizard -->
    <!--
    <extension
          point="org.eclipse.ui.importWizards">
@@ -40,92 +31,50 @@
    </extension>
    -->
    
-   <extension
-         id="JReFrameworkerBuilder"
-         name="JReFrameworker Project Builder"
-         point="org.eclipse.core.resources.builders">
-      <builder
-            hasNature="true">
-         <run
-               class="jreframeworker.builder.JReFrameworkerBuilder">
-         </run>
+   <!-- Project builder -->
+   <extension id="JReFrameworkerBuilder" name="JReFrameworker Project Builder" point="org.eclipse.core.resources.builders">
+      <builder hasNature="true">
+         <run class="jreframeworker.builder.JReFrameworkerBuilder" />
       </builder>
    </extension>
    
-   <extension
-         id="JReFrameworkerNature"
-         name="JReFrameworker Project Nature"
-         point="org.eclipse.core.resources.natures">
+   <!-- Project build nature -->
+   <extension id="JReFrameworkerNature" name="JReFrameworker Project Nature" point="org.eclipse.core.resources.natures">
       <runtime>
-         <run
-               class="jreframeworker.builder.JReFrameworkerNature">
-         </run>
+         <run class="jreframeworker.builder.JReFrameworkerNature" />
       </runtime>
-      <builder
-            id="jreframeworker.JReFrameworkerBuilder">
-      </builder>
+      <builder id="jreframeworker.JReFrameworkerBuilder" />
    </extension>
    
-   <extension
-         point="org.eclipse.ui.commands">
-      <category
-            name="JReFrameworker Project Nature commands"
-            id="jreframeworker.JReFrameworkerNature.category">
-      </category>
-      <command
-            name="Add/RemoveJReFrameworker Project Nature"
-            defaultHandler="jreframeworker.builder.AddRemoveJReFrameworkerNatureHandler"
-            categoryId="jreframeworker.JReFrameworkerNature.category"
-            id="jreframeworker.addRemoveJReFrameworkerNature">
-      </command>
+   <!-- Project build command -->
+   <extension point="org.eclipse.ui.commands">
+      <category name="JReFrameworker Project Nature commands" id="jreframeworker.JReFrameworkerNature.category" />
+      <command name="Add/RemoveJReFrameworker Project Nature" defaultHandler="jreframeworker.builder.AddRemoveJReFrameworkerNatureHandler" categoryId="jreframeworker.JReFrameworkerNature.category" id="jreframeworker.addRemoveJReFrameworkerNature" />
    </extension>
    
-   <extension
-         point="org.eclipse.ui.menus">
-      <menuContribution
-            locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
-         <command
-               commandId="jreframeworker.addRemoveJReFrameworkerNature"
-               label="Disable JReFrameworker Builder"
-               style="push">
-            <visibleWhen
-                  checkEnabled="false">
-               <with
-                     variable="selection">
-                  <count
-                        value="1">
-                  </count>
+   <!-- Add/remove project build nature -->
+   <extension point="org.eclipse.ui.menus">
+      <menuContribution locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
+         <command commandId="jreframeworker.addRemoveJReFrameworkerNature" label="Disable JReFrameworker Builder" style="push">
+            <visibleWhen checkEnabled="false">
+               <with variable="selection">
+                  <count value="1" />
                   <iterate>
-                     <adapt
-                           type="org.eclipse.core.resources.IProject">
-                        <test
-                              value="jreframeworker.JReFrameworkerNature"
-                              property="org.eclipse.core.resources.projectNature">
-                        </test>
+                     <adapt type="org.eclipse.core.resources.IProject">
+                        <test value="jreframeworker.JReFrameworkerNature" property="org.eclipse.core.resources.projectNature" />
                      </adapt>
                   </iterate>
                </with>
             </visibleWhen>
          </command>
-         <command
-               commandId="jreframeworker.addRemoveJReFrameworkerNature"
-               label="Enable JReFrameworker Builder"
-               style="push">
-            <visibleWhen
-                  checkEnabled="false">
-               <with
-                     variable="selection">
-                  <count
-                        value="1">
-                  </count>
+         <command commandId="jreframeworker.addRemoveJReFrameworkerNature" label="Enable JReFrameworker Builder" style="push">
+            <visibleWhen checkEnabled="false">
+               <with variable="selection">
+                  <count value="1" />
                   <iterate>
-                     <adapt
-                           type="org.eclipse.core.resources.IProject">
+                     <adapt type="org.eclipse.core.resources.IProject">
                         <not>
-                           <test
-                                 value="jreframeworker.JReFrameworkerNature"
-                                 property="org.eclipse.core.resources.projectNature">
-                           </test>
+                           <test value="jreframeworker.JReFrameworkerNature" property="org.eclipse.core.resources.projectNature" />
                         </not>
                      </adapt>
                   </iterate>
@@ -134,38 +83,33 @@
          </command>
       </menuContribution>
    </extension>
-
-   <extension
-         point="org.eclipse.ui.preferencePages">
-      <page
-            class="jreframeworker.ui.PreferencesPage"
-            id="jreframeworker.preferences"
-            name="JReFrameworker">
-      </page>
+   
+   <!-- Preferences page -->
+   <extension point="org.eclipse.ui.preferencePages">
+      <page class="jreframeworker.ui.PreferencesPage" id="jreframeworker.preferences" name="JReFrameworker" />
    </extension>
-      <extension
-         point="org.eclipse.ui.actionSets">
-      <actionSet
-            label="JReFramework"
-            visible="true"
-            id="jreframework.actionSet">
-         <menu
-               label="JReFrameworker"
-               id="jreframeworker.menu">
-            <separator
-                  name="jreframeworker.menu">
-            </separator>
+   
+   <!-- A button that currently does nothing -->
+   <extension point="org.eclipse.ui.actionSets">
+      <actionSet label="JReFramework" visible="true" id="jreframework.actionSet">
+         <menu label="JReFrameworker" id="jreframeworker.menu">
+            <separator name="jreframeworker.menu" />
          </menu>
-         <action
-               label="JReFrameworker Build Action"
-               icon="icons/JReFrameworker-toolbar.gif"
-               class="jreframeworker.actions.JReFrameworkerAction"
-               tooltip="Build JReFrameworker Project"
-               menubarPath="jreframeworker.menu/jreframeworker.group"
-               toolbarPath="jreframeworker.group"
-               id="jreframeworker.actions.JReFrameworkerAction">
-         </action>
+         <action label="JReFrameworker Build Action" icon="icons/JReFrameworker-toolbar.gif" class="jreframeworker.actions.JReFrameworkerAction" tooltip="Build JReFrameworker Project" menubarPath="jreframeworker.menu/jreframeworker.group" toolbarPath="jreframeworker.group" id="jreframeworker.actions.JReFrameworkerAction" />
       </actionSet>
    </extension>
-
+   
+   <!-- Launch Profile -->
+   <extension point="org.eclipse.debug.core.launchConfigurationTypes">
+      <launchConfigurationType id="org.eclipse.jdt.launching.localJavaApplication" name="JReFrameworker" delegate="org.eclipse.jdt.internal.launching.JavaLocalApplicationLaunchConfigurationDelegate" modes="run, debug" sourceLocatorId="org.eclipse.jdt.launching.sourceLocator.JavaSourceLookupDirector" sourcePathComputerId="org.eclipse.jdt.launching.sourceLookup.javaSourcePathComputer" />
+   </extension>
+   
+   <extension point="org.eclipse.debug.core.launchModes">
+      <launchMode label="%run" mode="run" />
+      <launchMode label="%debug" mode="debug" />
+   </extension>
+   
+   <extension point="org.eclipse.debug.core.launchDelegates">
+      <launchDelegate id="jreframeworker.launchers.JavaLaunchProfileDelegate" delegate="jreframeworker.launchers.JavaLaunchProfileDelegate" type="org.eclipse.jdt.launching.localJavaApplication" modes="run, debug" />
+   </extension>
 </plugin>
