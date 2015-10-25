@@ -3,6 +3,44 @@
 <plugin>
 
    <extension
+         point="org.eclipse.ui.newWizards">
+      <category
+            name="JReFrameworker"
+            id="jreframeworker.ui.category">
+      </category>
+      <wizard
+            category="jreframeworker.ui.category"
+            class="jreframeworker.ui.NewProjectWizard"
+            icon="icons/JReFrameworker.gif"
+            id="jreframeworker.ui.NewProjectWizard"
+            name="JReFrameworker Runtime Project">
+         <description>
+            Creates a new JReFrameworker runtime project in the workspace.
+         </description>
+      </wizard>
+   </extension>
+   
+   <!--
+   <extension
+         point="org.eclipse.ui.importWizards">
+      <category
+            id="jreframeworker.ui.category"
+            name="JReFrameworker">
+      </category>
+      <wizard
+            category="jreframeworker.ui.category"
+            class="jreframeworker.ui.ImportRuntimeWizard"
+            icon="icons/JReFrameworker.gif"
+            id="jreframeworker.ui.ImportRuntimeWizard"
+            name="JReFrameworker Runtime Project">
+         <description>
+            Imports an existing JReFrameworker runtime project into the workspace.
+         </description>
+      </wizard>
+   </extension>
+   -->
+   
+   <extension
          id="JReFrameworkerBuilder"
          name="JReFrameworker Project Builder"
          point="org.eclipse.core.resources.builders">
@@ -13,6 +51,7 @@
          </run>
       </builder>
    </extension>
+   
    <extension
          id="JReFrameworkerNature"
          name="JReFrameworker Project Nature"
@@ -26,6 +65,7 @@
             id="jreframeworker.JReFrameworkerBuilder">
       </builder>
    </extension>
+   
    <extension
          point="org.eclipse.ui.commands">
       <category
@@ -39,6 +79,7 @@
             id="jreframeworker.addRemoveJReFrameworkerNature">
       </command>
    </extension>
+   
    <extension
          point="org.eclipse.ui.menus">
       <menuContribution
@@ -93,23 +134,7 @@
          </command>
       </menuContribution>
    </extension>
-   <extension
-         point="org.eclipse.ui.importWizards">
-      <category
-            id="jreframeworker.ui.category"
-            name="JReFrameworker">
-      </category>
-      <wizard
-            category="jreframeworker.ui.category"
-            class="jreframeworker.ui.ImportRuntimeWizard"
-            icon="icons/JReFrameworker.gif"
-            id="jreframeworker.ui.ImportRuntimeWizard"
-            name="JReFrameworker Runtime Project">
-         <description>
-            Import a JReFrameworker runtime project into the workspace.
-         </description>
-      </wizard>
-   </extension>
+
    <extension
          point="org.eclipse.ui.preferencePages">
       <page

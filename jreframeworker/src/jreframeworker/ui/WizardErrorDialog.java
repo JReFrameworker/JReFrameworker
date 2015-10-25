@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import jreframeworker.Activator;
+import jreframeworker.core.JReFrameworker;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.resources.IProject;
@@ -20,11 +21,11 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.UIJob;
 import org.osgi.framework.Bundle;
 
-public class ImportWizardErrorDialog extends UIJob {
+public class WizardErrorDialog extends UIJob {
 
 	private String message, projectName;
 	
-	public ImportWizardErrorDialog(String name, String errorMessage, String projectName) {
+	public WizardErrorDialog(String name, String errorMessage, String projectName) {
 		super(name);
 		this.message = errorMessage;
 		this.projectName = projectName;
@@ -52,7 +53,7 @@ public class ImportWizardErrorDialog extends UIJob {
 		IStatus status = Status.OK_STATUS;
 		if (response == 0) {
 			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
-			status = ImportRuntimeWizard.deleteProject(project);
+			status = JReFrameworker.deleteProject(project);
 		}
 		
 		if (icon != null){

@@ -49,6 +49,17 @@ public class JReFrameworker {
 	public static final String BINARY_DIRECTORY = "bin";
 	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "JReFrameworkerAnnotations.jar";
 	
+	public static IStatus deleteProject(IProject project) {
+		if (project != null && project.exists())
+			try {
+				project.delete(true, true, new NullProgressMonitor());
+			} catch (CoreException e) {
+				Log.error("Could not delete project", e);
+				return new Status(Status.ERROR, Activator.PLUGIN_ID, "Could not delete project", e);
+			}
+		return Status.OK_STATUS;
+	}
+	
 	// references: 
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
