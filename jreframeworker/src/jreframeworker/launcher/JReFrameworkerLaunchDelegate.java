@@ -1,8 +1,10 @@
 package jreframeworker.launcher;
 
 import java.io.File;
+import java.util.Arrays;
 
 import jreframeworker.core.JReFrameworker;
+import jreframeworker.log.Log;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -19,13 +21,26 @@ import org.eclipse.jdt.launching.JavaLaunchDelegate;
  * 2. http://alvinalexander.com/java/jwarehouse/eclipse/org.eclipse.jdt.launching/launching/org/eclipse/jdt/internal/launching/JavaAppletLaunchConfigurationDelegate.java.shtml
  * 3. https://eclipse.org/articles/Article-Java-launch/launching-java.html
  * 
+ * Note: You can see the command line used to initiate a launch by right-clicking the 
+ * resulting process in the Debug View and selecting Properties. This is useful for 
+ * debugging a delegate.
+ * 
  * @author Ben Holland
  */
-public class LaunchProfileDelegate extends JavaLaunchDelegate {
+public class JReFrameworkerLaunchDelegate extends JavaLaunchDelegate {
 
+	public static final String JREFRAMEWORKER_LAUNCH_CONFIGURATION_TYPE = "jreframeworker.launchConfigurationType";
+	
 	@Override
 	public synchronized void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor) throws CoreException {
 		super.launch(configuration, mode, launch, monitor);
+		String mainTypeName = verifyMainTypeName(configuration);
+		IJavaProject jProject = getJavaProject(configuration);
+		Log.info("Launching... [Project: " + jProject.getProject().getName() + ", Main Class: " + mainTypeName + "]"
+				+ "\nClasspath: " + Arrays.toString(this.getClasspath(configuration))
+				+ "\nBootpath: " + Arrays.toString(this.getBootpath(configuration))
+				+ "\nProgram Args: " + this.getProgramArguments(configuration) 
+				+ "\nVM Args: " + this.getVMArguments(configuration));
 	}
 
 	/**

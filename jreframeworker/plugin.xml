@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.4"?>
 <plugin>
-
+   
    <!-- New project wizard -->
+   
    <extension point="org.eclipse.ui.newWizards">
       <category name="JReFrameworker" id="jreframeworker.ui.category" />
       <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewProjectWizard" name="JReFrameworker Runtime Project">
@@ -11,6 +12,7 @@
    </extension>
    
    <!-- A project import wizard -->
+   
    <!--
    <extension
          point="org.eclipse.ui.importWizards">
@@ -32,6 +34,7 @@
    -->
    
    <!-- Project builder -->
+   
    <extension id="JReFrameworkerBuilder" name="JReFrameworker Project Builder" point="org.eclipse.core.resources.builders">
       <builder hasNature="true">
          <run class="jreframeworker.builder.JReFrameworkerBuilder" />
@@ -39,6 +42,7 @@
    </extension>
    
    <!-- Project build nature -->
+   
    <extension id="JReFrameworkerNature" name="JReFrameworker Project Nature" point="org.eclipse.core.resources.natures">
       <runtime>
          <run class="jreframeworker.builder.JReFrameworkerNature" />
@@ -47,12 +51,14 @@
    </extension>
    
    <!-- Project build command -->
+   
    <extension point="org.eclipse.ui.commands">
       <category name="JReFrameworker Project Nature commands" id="jreframeworker.JReFrameworkerNature.category" />
       <command name="Add/RemoveJReFrameworker Project Nature" defaultHandler="jreframeworker.builder.AddRemoveJReFrameworkerNatureHandler" categoryId="jreframeworker.JReFrameworkerNature.category" id="jreframeworker.addRemoveJReFrameworkerNature" />
    </extension>
    
    <!-- Add/remove project build nature -->
+   
    <extension point="org.eclipse.ui.menus">
       <menuContribution locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
          <command commandId="jreframeworker.addRemoveJReFrameworkerNature" label="Disable JReFrameworker Builder" style="push">
@@ -85,58 +91,48 @@
    </extension>
    
    <!-- Preferences page -->
+   
    <extension point="org.eclipse.ui.preferencePages">
       <page class="jreframeworker.ui.PreferencesPage" id="jreframeworker.preferences" name="JReFrameworker" />
    </extension>
    
    <!-- Launch Profile -->
+   
    <extension point="org.eclipse.debug.core.launchConfigurationTypes">
-      <launchConfigurationType 
-      	id="jreframeworker.launchConfigurationType" 
-      	name="JReFrameworker Java Application" 
-      	delegate="jreframeworker.launcher.LaunchProfileDelegate" 
-      	modes="run, debug" />
+      <launchConfigurationType id="jreframeworker.launchConfigurationType" name="JReFrameworker Java Application" delegate="jreframeworker.launcher.JReFrameworkerLaunchDelegate" modes="run, debug" />
    </extension>
-
+   
    <extension point="org.eclipse.debug.ui.launchConfigurationTypeImages">
-      <launchConfigurationTypeImage 
-      	icon="icons/JReFrameworker.gif"
-        configTypeID="jreframeworker.launchConfigurationType"
-        id="jreframeworker.launchConfigurationTypeImage" />
+      <launchConfigurationTypeImage icon="icons/JReFrameworker.gif" configTypeID="jreframeworker.launchConfigurationType" id="jreframeworker.launchConfigurationTypeImage" />
    </extension>
    
    <extension point="org.eclipse.debug.ui.launchConfigurationTabGroups">
-      <launchConfigurationTabGroup 
-      	type="jreframeworker.launchConfigurationType"
-      	class="jreframeworker.launcher.TabGroup"
-      	id="jreframeworker.launchConfigurationTabGroup" />
+      <launchConfigurationTabGroup type="jreframeworker.launchConfigurationType" class="jreframeworker.launcher.JReFrameworkerTabGroup" id="jreframeworker.launchConfigurationTabGroup" />
    </extension>
    
+   <extension point="org.eclipse.debug.ui.launchShortcuts">
+      <shortcut label="JReFrameworker Java Application" icon="icons/JReFrameworker-toolbar.gif" modes="run, debug" class="jreframeworker.launcher.JReFrameworkerLaunchShortcut" description="Launch Java application with the JReFrameworker modified runtime" id="jreframeworker.launcher.launchShortcut">
+         <description description="Runs the Java application with the JReFrameworker modified runtime" mode="run" />
+         <description description="Debugs a local Java application with the JReFrameworker modified runtime" mode="debug" />
+         <contextualLaunch>
+            <enablement>
+               <with variable="selection">
+                  <count value="1" />
+                  <iterate>
+                     <or>
+                        <test property="org.eclipse.jdt.launching.hasMain" />
+                        <and>
+                           <test property="org.eclipse.jdt.launching.isContainer" />
+                           <test property="org.eclipse.jdt.launching.hasProjectNature" args="org.eclipse.jdt.core.javanature" />
+                           <test property="org.eclipse.jdt.launching.hasProjectNature" args="jreframeworker.JReFrameworkerNature" />
+                        </and>
+                     </or>
+                  </iterate>
+               </with>
+            </enablement>
+         </contextualLaunch>
+         <configurationType id="jreframeworker.launchConfigurationType" />
+      </shortcut>
+   </extension>
    
-	<extension point="org.eclipse.debug.ui.launchShortcuts">
-	   <shortcut label="JReFrameworker Java Application" icon="icons/JReFrameworker-toolbar.gif" modes="run, debug" class="jreframeworker.launcher.LaunchShortcut" description="Launch Java application with the JReFrameworker modified runtime" id="jreframeworker.launcher.launchShortcut">
-	      <description description="Runs the Java application with the JReFrameworker modified runtime" mode="run" />
-	      <description description="Debugs a local Java application with the JReFrameworker modified runtime" mode="debug" />
-	      <contextualLaunch>
-	         <enablement>
-	            <with variable="selection">
-	               <count value="1" />
-	               <iterate>
-	                  <or>
-	                     <test property="org.eclipse.jdt.launching.hasMain" />
-	                     <and>
-	                        <test property="org.eclipse.jdt.launching.isContainer" />
-	                        <test property="org.eclipse.jdt.launching.hasProjectNature" args="org.eclipse.jdt.core.javanature" />
-	                        <test property="org.eclipse.jdt.launching.hasProjectNature" args="jreframeworker.JReFrameworkerNature" />
-	                     </and>
-	                  </or>
-	               </iterate>
-	            </with>
-	         </enablement>
-	      </contextualLaunch>
-	      <configurationType id="jreframeworker.launchConfigurationType" />
-	   </shortcut>
-	</extension>
-   
-  
 </plugin>
