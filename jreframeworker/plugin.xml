@@ -121,5 +121,32 @@
       	class="jreframeworker.launcher.TabGroup"
       	id="jreframeworker.launchConfigurationTabGroup" />
    </extension>
+   
+   
+	<extension point="org.eclipse.debug.ui.launchShortcuts">
+	   <shortcut label="JReFrameworker Java Application" icon="icons/JReFrameworker-toolbar.gif" modes="run, debug" class="jreframeworker.launcher.LaunchShortcut" description="Launch Java application with the JReFrameworker modified runtime" id="jreframeworker.launcher.launchShortcut">
+	      <description description="Runs the Java application with the JReFrameworker modified runtime" mode="run" />
+	      <description description="Debugs a local Java application with the JReFrameworker modified runtime" mode="debug" />
+	      <contextualLaunch>
+	         <enablement>
+	            <with variable="selection">
+	               <count value="1" />
+	               <iterate>
+	                  <or>
+	                     <test property="org.eclipse.jdt.launching.hasMain" />
+	                     <and>
+	                        <test property="org.eclipse.jdt.launching.isContainer" />
+	                        <test property="org.eclipse.jdt.launching.hasProjectNature" args="org.eclipse.jdt.core.javanature" />
+	                        <test property="org.eclipse.jdt.launching.hasProjectNature" args="jreframeworker.JReFrameworkerNature" />
+	                     </and>
+	                  </or>
+	               </iterate>
+	            </with>
+	         </enablement>
+	      </contextualLaunch>
+	      <configurationType id="jreframeworker.launchConfigurationType" />
+	   </shortcut>
+	</extension>
+   
   
 </plugin>

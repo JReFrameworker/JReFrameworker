@@ -14,6 +14,8 @@ public class TabGroup extends AbstractLaunchConfigurationTabGroup {
 	/**
 	 * Creates the tabs contained in this tab group for the specified launch
 	 * mode.
+	 * 
+	 * @author Ben Holland
 	 */
 	@Override
 	public void createTabs(ILaunchConfigurationDialog dialog, String mode) {
