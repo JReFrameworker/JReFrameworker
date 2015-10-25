@@ -101,15 +101,25 @@
    
    <!-- Launch Profile -->
    <extension point="org.eclipse.debug.core.launchConfigurationTypes">
-      <launchConfigurationType id="org.eclipse.jdt.launching.localJavaApplication" name="JReFrameworker" delegate="org.eclipse.jdt.internal.launching.JavaLocalApplicationLaunchConfigurationDelegate" modes="run, debug" sourceLocatorId="org.eclipse.jdt.launching.sourceLocator.JavaSourceLookupDirector" sourcePathComputerId="org.eclipse.jdt.launching.sourceLookup.javaSourcePathComputer" />
+      <launchConfigurationType 
+      	id="jreframeworker.launchConfigurationType" 
+      	name="JReFrameworker Application" 
+      	delegate="jreframeworker.launcher.LaunchProfileDelegate" 
+      	modes="run, debug" />
+   </extension>
+
+   <extension point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+      <launchConfigurationTypeImage 
+      	icon="icons/JReFrameworker.gif"
+        configTypeID="jreframeworker.launchConfigurationType"
+        id="jreframeworker.launchConfigurationTypeImage" />
    </extension>
    
-   <extension point="org.eclipse.debug.core.launchModes">
-      <launchMode label="%run" mode="run" />
-      <launchMode label="%debug" mode="debug" />
+   <extension point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+      <launchConfigurationTabGroup 
+      	type="jreframeworker.launchConfigurationType"
+      	class="jreframeworker.launcher.TabGroup"
+      	id="jreframeworker.launchConfigurationTabGroup" />
    </extension>
-   
-   <extension point="org.eclipse.debug.core.launchDelegates">
-      <launchDelegate id="jreframeworker.launchers.JavaLaunchProfileDelegate" delegate="jreframeworker.launchers.JavaLaunchProfileDelegate" type="org.eclipse.jdt.launching.localJavaApplication" modes="run, debug" />
-   </extension>
+  
 </plugin>
