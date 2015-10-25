@@ -8,13 +8,11 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import jreframeworker.Activator;
 import jreframeworker.builder.JReFrameworkerBuilder;
 import jreframeworker.builder.JReFrameworkerNature;
-import jreframeworker.common.RuntimeUtils;
 import jreframeworker.log.Log;
 
 import org.eclipse.core.filesystem.URIUtil;
@@ -46,7 +44,6 @@ import org.eclipse.jdt.launching.LibraryLocation;
 public class JReFrameworker {
 
 	public static final String RUNTIMES_DIRECTORY = "runtimes";
-	public static final String ORIGINAL_RUNTIMES_DIRECTORY = ".original-runtimes"; // hidden directory
 	public static final String ANNOTATIONS_DIRECTORY = "annotations";
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";
@@ -56,7 +53,7 @@ public class JReFrameworker {
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
 	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
-	public static IStatus createProjectWithDefaultRuntime(String projectName, IPath projectPath, IProgressMonitor monitor) throws CoreException, IOException, URISyntaxException {
+	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor) throws CoreException, IOException, URISyntaxException {
 		IProject project = null;
 		
 		try {
@@ -68,8 +65,6 @@ public class JReFrameworker {
 			File projectDirectory = new File(projectPath.toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
 			File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + RUNTIMES_DIRECTORY);
 			runtimesDirectory.mkdirs();
-			File originalRuntimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + ORIGINAL_RUNTIMES_DIRECTORY);
-			originalRuntimesDirectory.mkdirs();
 			IJavaProject jProject = createProject(projectName, projectPath, monitor, project);
 			monitor.worked(1);
 			if (monitor.isCanceled()){
@@ -145,19 +140,13 @@ public class JReFrameworker {
 	
 	private static void cloneDefaultRuntimeLibraries(IJavaProject jProject) throws IOException, JavaModelException, URISyntaxException {
 		
-		File runtimesDirectory = jProject.getProject().getFolder(RUNTIMES_DIRECTORY).getLocation().toFile();
-		File originalRuntimesDirectory = jProject.getProject().getFolder(ORIGINAL_RUNTIMES_DIRECTORY).getLocation().toFile();
+		List<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
 		
 		// add the default JVM classpath (assuming translator uses the same jvm libraries)
 		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
-		LinkedList<File> libraries = new LinkedList<File>();
-		for (LibraryLocation element : JavaRuntime.getLibraryLocations(vmInstall)) {
-			File library = JavaCore.newLibraryEntry(element.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
-			File runtimesCopy = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + library.getName());
-			RuntimeUtils.copyFile(library, runtimesCopy);
-			File originalRuntimesCopy = new File(originalRuntimesDirectory.getCanonicalPath() + File.separatorChar + library.getName());
-			RuntimeUtils.copyFile(library, originalRuntimesCopy);
-			libraries.add(runtimesCopy);
+		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
+		for (LibraryLocation library : locations) {
+			entries.add(JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null));
 		}
 		
 		// add the jreframeworker operations jar to project and the classpath
@@ -176,33 +165,18 @@ public class JReFrameworker {
 		annotationsLibDirectory.mkdirs();
 		File annotationsJar = new File(annotationsLibDirectory.getCanonicalPath() + File.separatorChar + JRE_FRAMEWORKER_ANNOTATIONS_JAR);
 		Files.copy(annotationsJarInputStream, annotationsJar.toPath());
-		libraries.add(annotationsJar);
 		
 		// add the project libraries to the project classpath
-		List<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
-		for(File projectJar : libraries){
-			String projectJarCanonicalPath = projectJar.getCanonicalPath();
-			String projectCanonicalPath = jProject.getProject().getLocation().toFile().getCanonicalPath();
-			String projectJarBasePath = projectJarCanonicalPath.substring(projectJarCanonicalPath.indexOf(projectCanonicalPath));
-			String projectJarParentCanonicalPath = projectJar.getCanonicalPath();
-			String projectJarParentBasePath = projectJarParentCanonicalPath.substring(projectJarParentCanonicalPath.indexOf(projectCanonicalPath));
-			entries.add(JavaCore.newLibraryEntry(new Path(projectJarBasePath), null, new Path(projectJarParentBasePath)));
-		}
+		String projectJarCanonicalPath = annotationsJar.getCanonicalPath();
+		String projectCanonicalPath = jProject.getProject().getLocation().toFile().getCanonicalPath();
+		String projectJarBasePath = projectJarCanonicalPath.substring(projectJarCanonicalPath.indexOf(projectCanonicalPath));
+		String projectJarParentCanonicalPath = annotationsJar.getCanonicalPath();
+		String projectJarParentBasePath = projectJarParentCanonicalPath.substring(projectJarParentCanonicalPath.indexOf(projectCanonicalPath));
+		entries.add(JavaCore.newLibraryEntry(new Path(projectJarBasePath), null, new Path(projectJarParentBasePath)));
 		
 		// set the class path
 		jProject.setRawClasspath(entries.toArray(new IClasspathEntry[entries.size()]), null);
 	}
-
-//	private static void linkDefaultRuntimeLibraries(IJavaProject jProject) throws JavaModelException {
-//		List<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
-//		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
-//		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
-//		for (LibraryLocation element : locations) {
-//		 entries.add(JavaCore.newLibraryEntry(element.getSystemLibraryPath(), null, null));
-//		}
-//		//add libs to project class path
-//		jProject.setRawClasspath(entries.toArray(new IClasspathEntry[entries.size()]), null);
-//	}
 
 	private static URI getProjectLocation(String projectName, IPath projectPath) {
 		URI location = null;
