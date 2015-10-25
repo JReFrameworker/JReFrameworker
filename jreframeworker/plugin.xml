@@ -89,21 +89,11 @@
       <page class="jreframeworker.ui.PreferencesPage" id="jreframeworker.preferences" name="JReFrameworker" />
    </extension>
    
-   <!-- A button that currently does nothing -->
-   <extension point="org.eclipse.ui.actionSets">
-      <actionSet label="JReFramework" visible="true" id="jreframework.actionSet">
-         <menu label="JReFrameworker" id="jreframeworker.menu">
-            <separator name="jreframeworker.menu" />
-         </menu>
-         <action label="JReFrameworker Build Action" icon="icons/JReFrameworker-toolbar.gif" class="jreframeworker.actions.JReFrameworkerAction" tooltip="Build JReFrameworker Project" menubarPath="jreframeworker.menu/jreframeworker.group" toolbarPath="jreframeworker.group" id="jreframeworker.actions.JReFrameworkerAction" />
-      </actionSet>
-   </extension>
-   
    <!-- Launch Profile -->
    <extension point="org.eclipse.debug.core.launchConfigurationTypes">
       <launchConfigurationType 
       	id="jreframeworker.launchConfigurationType" 
-      	name="JReFrameworker Application" 
+      	name="JReFrameworker Java Application" 
       	delegate="jreframeworker.launcher.LaunchProfileDelegate" 
       	modes="run, debug" />
    </extension>

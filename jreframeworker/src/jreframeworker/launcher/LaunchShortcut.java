@@ -1,7 +1,5 @@
 package jreframeworker.launcher;
 
-import jreframeworker.log.Log;
-
 import org.eclipse.debug.ui.ILaunchShortcut;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jface.viewers.ISelection;
