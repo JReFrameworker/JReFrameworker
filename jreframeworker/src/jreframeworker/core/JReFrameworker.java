@@ -178,12 +178,13 @@ public class JReFrameworker {
 		Files.copy(annotationsJarInputStream, annotationsJar.toPath());
 		
 		// add the project libraries to the project classpath
-		String projectJarCanonicalPath = annotationsJar.getCanonicalPath();
+		// TODO: investigate, is this relative path getting computed correctly? path appeared to be absolute in some tests
+		String annotationsJarCanonicalPath = annotationsJar.getCanonicalPath();
 		String projectCanonicalPath = jProject.getProject().getLocation().toFile().getCanonicalPath();
-		String projectJarBasePath = projectJarCanonicalPath.substring(projectJarCanonicalPath.indexOf(projectCanonicalPath));
-		String projectJarParentCanonicalPath = annotationsJar.getCanonicalPath();
-		String projectJarParentBasePath = projectJarParentCanonicalPath.substring(projectJarParentCanonicalPath.indexOf(projectCanonicalPath));
-		entries.add(JavaCore.newLibraryEntry(new Path(projectJarBasePath), null, new Path(projectJarParentBasePath)));
+		String annotationsJarBasePath = annotationsJarCanonicalPath.substring(annotationsJarCanonicalPath.indexOf(projectCanonicalPath));
+		String annotationsJarParentCanonicalPath = annotationsJar.getCanonicalPath();
+		String annotationsJarParentBasePath = annotationsJarParentCanonicalPath.substring(annotationsJarParentCanonicalPath.indexOf(projectCanonicalPath));
+		entries.add(JavaCore.newLibraryEntry(new Path(annotationsJarBasePath), null, new Path(annotationsJarParentBasePath)));
 		
 		// set the class path
 		jProject.setRawClasspath(entries.toArray(new IClasspathEntry[entries.size()]), null);

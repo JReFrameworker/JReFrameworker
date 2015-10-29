@@ -12,6 +12,7 @@ import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.core.bytecode.identifiers.MergeMethodsIdentifier;
 import jreframeworker.core.bytecode.utils.AnnotationUtils;
 import jreframeworker.core.bytecode.utils.BytecodeUtils;
+import jreframeworker.log.Log;
 import jreframeworker.ui.PreferencesPage;
 
 import org.objectweb.asm.ClassReader;
@@ -142,57 +143,70 @@ public class Merge {
 
 		public void visitEnd() {
 			// copy each field of the class to merge in to the original class
-			for (Object o : classToMerge.fields) {
-				FieldNode fieldNode = (FieldNode) o;
+			for (Object fieldObject : classToMerge.fields) {
+				FieldNode fieldNode = (FieldNode) fieldObject;
 				// only insert the field if it is annotated
 				if(fieldNode.invisibleAnnotations != null){
-					for(Object o2 : fieldNode.invisibleAnnotations){
-						AnnotationNode annotationNode = (AnnotationNode) o2;
+					boolean addField = false;
+					for(Object annotationObject : fieldNode.invisibleAnnotations){
+						AnnotationNode annotationNode = (AnnotationNode) annotationObject;
 						JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 						checker.visitAnnotation(annotationNode.desc, false);
 						if(checker.isDefineFieldAnnotation()){
-							// insert the field
-							fieldNode.accept(this);
+							addField = true;
+							break;
 						}
+					}
+					if(addField){
+						// clear field annotations and insert the field
+						AnnotationUtils.clearFieldAnnotations(fieldNode);
+						fieldNode.accept(this);
 					}
 				}
 			}
 
 			// copy each method of the class to merge that is annotated
 			// with a jref annotation to the original class
-			for (Object o : classToMerge.methods) {
-				MethodNode methodNode = (MethodNode) o;
-				boolean define = false;
-				boolean merge = false;
-				
-				// check if method is annotated with a jref annotation
-				LinkedList<AnnotationNode> jrefAnnotations = new LinkedList<AnnotationNode>();
-				if (methodNode.invisibleAnnotations != null) {
-					for (Object annotationObject : methodNode.invisibleAnnotations) {
-						AnnotationNode annotation = (AnnotationNode) annotationObject;
-						// check if the annotation is a jref annotation
-						JREFAnnotationIdentifier jrefChecker = new JREFAnnotationIdentifier();
-						jrefChecker.visitAnnotation(annotation.desc, false);
-						if(jrefChecker.isJREFAnnotation()){
-							jrefAnnotations.add(annotation);
-							if(jrefChecker.isDefineMethodAnnotation()){
-								define = true;
-							}
-							if(jrefChecker.isMergeMethodAnnotation()){
-								merge = true;
+			for (Object methodObject : classToMerge.methods) {
+				MethodNode methodNode = (MethodNode) methodObject;
+
+				// static initializers need to be handled specially
+				if(methodNode.name.equals("<clinit>")){
+					Log.info("TODO: merge static initializers");
+				} else if(methodNode.name.equals("<init>")){
+					Log.info("TODO: merge initializers");
+				} else {
+					boolean define = false;
+					boolean merge = false;
+					// check if method is annotated with a jref annotation
+					LinkedList<AnnotationNode> jrefAnnotations = new LinkedList<AnnotationNode>();
+					if (methodNode.invisibleAnnotations != null) {
+						for (Object annotationObject : methodNode.invisibleAnnotations) {
+							AnnotationNode annotation = (AnnotationNode) annotationObject;
+							// check if the annotation is a jref annotation
+							JREFAnnotationIdentifier jrefChecker = new JREFAnnotationIdentifier();
+							jrefChecker.visitAnnotation(annotation.desc, false);
+							if(jrefChecker.isJREFAnnotation()){
+								jrefAnnotations.add(annotation);
+								if(jrefChecker.isDefineMethodAnnotation()){
+									define = true;
+								}
+								if(jrefChecker.isMergeMethodAnnotation()){
+									merge = true;
+								}
 							}
 						}
 					}
-				}
-				
-				// if the method is annotated with @DefineMethod or @MergeMethod, add the method
-				if(define || merge){
-					// in any case, strip the jref annotations from the method
-					methodNode.invisibleAnnotations.removeAll(jrefAnnotations);
-					if(merge){
-						mergeMethod(methodNode, renamedMethods);
-					} else {
-						addMethod(methodNode);
+					
+					// if the method is annotated with @DefineMethod or @MergeMethod, add the method
+					if(define || merge){
+						// in any case, strip the jref annotations from the method
+						methodNode.invisibleAnnotations.removeAll(jrefAnnotations);
+						if(merge){
+							mergeMethod(methodNode, renamedMethods);
+						} else {
+							addMethod(methodNode);
+						}
 					}
 				}
 			}
