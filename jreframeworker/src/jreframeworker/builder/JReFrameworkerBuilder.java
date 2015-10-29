@@ -30,7 +30,6 @@ import org.objectweb.asm.tree.ClassNode;
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
 	private static int buildNumber = 1;
-//	private static HashMap<String,Long> bytecodeTimestamps = new HashMap<String,Long>();
 	
 	public static final String BUILDER_ID = "jreframeworker.JReFrameworkerBuilder";
 
@@ -83,11 +82,15 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
 		
-		Log.info("Build Number: " + buildNumber++);
+		Log.info("JReFrameworker Build Number: " + buildNumber++);
 		
 		IJavaProject jProject = getJReFrameworkerProject();	
 		if(jProject != null){
+			// make sure the runtimes directory exists
 			File runtimesDirectory = jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile();
+			if(!runtimesDirectory.exists()){
+				runtimesDirectory.mkdirs();
+			}
 			// first delete the modified runtime
 			try {
 				clearProjectRuntimes(jProject, runtimesDirectory);
@@ -166,10 +169,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									Merge.mergeClasses(baseClass, file, outputClass);
 									baseClass.delete();
 									runtimeModifications.add(qualifiedParentClassName, outputClass, true);
-									// TODO: clean up outputClass somehow,
-									// probably need to make a local temp
-									// directory which gets deleted at the end
-									// of the build
+									// TODO: clean up outputClass somehow, probably need to make a local temp
+									// directory which gets deleted at the end of the build
 									Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
 								}
 							}
