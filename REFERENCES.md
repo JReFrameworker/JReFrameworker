@@ -20,3 +20,8 @@ This is a just running list of useful references found during the development of
 ## Eclipse Plugin Development
 - [Project Builders and Natures](https://eclipse.org/articles/Article-Builders/builders.html)
 - [Incremental Builders](http://help.eclipse.org/mars/index.jsp?topic=%2Forg.eclipse.platform.doc.isv%2Fguide%2FresAdv_builders.htm)
+- [Eclipse Launch Frameworker](https://www.eclipse.org/articles/Article-Launch-Framework/launch.html)
+- [Eclipse Launchers](http://alvinalexander.com/java/jwarehouse/eclipse/org.eclipse.jdt.launching/launching/org/eclipse/jdt/internal/launching/JavaAppletLaunchConfigurationDelegate.java.shtml)
+- [Eclipse Java Launcher Example](https://eclipse.org/articles/Article-Java-launch/launching-java.html)
+- [Eclipse Launch Shortcuts](http://opensourcejavaphp.net/java/eclipse/org/eclipse/jdt/internal/debug/ui/launcher/JavaLaunchShortcut.java.html)
+- [Launch Shortcut Example](http://grepcode.com/file_/repository.grepcode.com/java/eclipse.org/3.5.2/org.eclipse.jdt.debug/ui/3.4.1/org/eclipse/jdt/debug/ui/launchConfigurations/JavaApplicationLaunchShortcut.java/?v=source)
