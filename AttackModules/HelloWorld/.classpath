@@ -14,7 +14,7 @@
 	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/sunpkcs11.jar"/>
 	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/zipfs.jar"/>
 	<classpathentry kind="lib" path="/System/Library/Java/Extensions/MRJToolkit.jar"/>
-	<classpathentry kind="lib" path="/Users/benjholla/Desktop/JReFrameworker/mars-workspace/HelloWorld/annotations/JReFrameworkerAnnotations.jar" rootpath="/Users/benjholla/Desktop/JReFrameworker/mars-workspace/HelloWorld/annotations/JReFrameworkerAnnotations.jar"/>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="annotations/JReFrameworkerAnnotations.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
