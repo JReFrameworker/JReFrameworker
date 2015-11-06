@@ -1,10 +1,12 @@
 # References
 This is a just running list of useful references found during the development of this project.
 
-## JVM Talks
+## Java/JVM Talks
 - [invokedynamic for Mere Mortals](https://www.youtube.com/watch?v=Q5mVy0BAxG0#t=6h15m30s)
 - [The Adventurous Developer’s Guide to JVM Languages](https://www.youtube.com/watch?v=Q5mVy0BAxG0#t=7h44m20s)
 - [Black Hat USA 2002 - Security Aspects in Java Bytecode Engineering](https://www.youtube.com/watch?v=DYY0FSnaQXE)
+- [Black Hat USA 2012 - Recent Java Exploitation Trends and Malware](https://www.youtube.com/watch?v=5JN65JZmHjM)
+- [Black Hat USA 2013 - Java Every-Days: Exploiting Software Running on 3 Billion Devices](https://www.youtube.com/watch?v=HO0CkhndCQQ)
 
 ## Runtime Patching
 - [Java Geeks Using the BootClasspath - Tweaking the Java Runtime API](http://www.tedneward.com/files/Papers/BootClasspath/BootClasspath.pdf)
