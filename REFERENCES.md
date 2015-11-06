@@ -14,6 +14,7 @@ This is a just running list of useful references found during the development of
 - [JRebel Explained](http://zeroturnaround.com/rebellabs/reloading-objects-classes-classloaders/)
 - [Stack Overflow Question on Editing rt.jar](https://stackoverflow.com/questions/8433047/overriding-single-classes-from-rt-jar)
 - [JEP 159: Enhanced Class Redefinition](http://openjdk.java.net/jeps/159)
+- [HotswapAgent](http://www.hotswapagent.org/quick-start) + [Hotswap Projects](https://github.com/HotswapProjects)
 
 ## Bytecode Manipulations
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
