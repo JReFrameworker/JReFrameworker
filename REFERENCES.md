@@ -4,6 +4,7 @@ This is a just running list of useful references found during the development of
 ## JVM Talks
 - [invokedynamic for Mere Mortals](https://www.youtube.com/watch?v=Q5mVy0BAxG0#t=6h15m30s)
 - [The Adventurous Developer’s Guide to JVM Languages](https://www.youtube.com/watch?v=Q5mVy0BAxG0#t=7h44m20s)
+- [Black Hat USA 2002 - Security Aspects in Java Bytecode Engineering](https://www.youtube.com/watch?v=DYY0FSnaQXE)
 
 ## Runtime Patching
 - [Java Geeks Using the BootClasspath - Tweaking the Java Runtime API](http://www.tedneward.com/files/Papers/BootClasspath/BootClasspath.pdf)
