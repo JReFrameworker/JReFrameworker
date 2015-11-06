@@ -38,4 +38,4 @@ This is a just running list of useful references found during the development of
 - [Launch Shortcut Example](http://grepcode.com/file_/repository.grepcode.com/java/eclipse.org/3.5.2/org.eclipse.jdt.debug/ui/3.4.1/org/eclipse/jdt/debug/ui/launchConfigurations/JavaApplicationLaunchShortcut.java/?v=source)
 
 ## Other
--[JVM Internals](http://blog.jamesdbloom.com/JVMInternals.html)
+- [JVM Internals](http://blog.jamesdbloom.com/JVMInternals.html)
