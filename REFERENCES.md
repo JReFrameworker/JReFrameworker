@@ -36,3 +36,6 @@ This is a just running list of useful references found during the development of
 - [Eclipse Java Launcher Example](https://eclipse.org/articles/Article-Java-launch/launching-java.html)
 - [Eclipse Launch Shortcuts](http://opensourcejavaphp.net/java/eclipse/org/eclipse/jdt/internal/debug/ui/launcher/JavaLaunchShortcut.java.html)
 - [Launch Shortcut Example](http://grepcode.com/file_/repository.grepcode.com/java/eclipse.org/3.5.2/org.eclipse.jdt.debug/ui/3.4.1/org/eclipse/jdt/debug/ui/launchConfigurations/JavaApplicationLaunchShortcut.java/?v=source)
+
+## Other
+-[JVM Internals](http://blog.jamesdbloom.com/JVMInternals.html)
