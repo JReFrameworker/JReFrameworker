@@ -17,6 +17,7 @@ This is a just running list of useful references found during the development of
 - [JEP 159: Enhanced Class Redefinition](http://openjdk.java.net/jeps/159)
 - [HotswapAgent](http://www.hotswapagent.org/quick-start) + [Hotswap Projects](https://github.com/HotswapProjects)
 - [Oracle FPUpdater Tool](http://www.oracle.com/technetwork/java/javase/fpupdater-tool-readme-305936.html)
+- [ClassLoader to Reload Class Definitions](https://stackoverflow.com/questions/3971534/how-to-force-java-to-reload-class-upon-instantiation)
 
 ## Bytecode Manipulations
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
