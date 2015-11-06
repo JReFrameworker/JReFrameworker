@@ -23,6 +23,7 @@ This is a just running list of useful references found during the development of
 - [Merging Classes with ASM](http://www.jroller.com/eu/entry/merging_class_methods_with_asm)
 - [Updated Version of ASM Bytecode Outline Plugin](http://andrei.gmxhome.de/bytecode/index.html)
 - [Konloch Bytecode Viewer](https://github.com/Konloch/bytecode-viewer)
+- [BCEL](https://commons.apache.org/proper/commons-bcel/manual.html)
 
 ## Intermediate Languages
 - [Soot](https://sable.github.io/soot/)
