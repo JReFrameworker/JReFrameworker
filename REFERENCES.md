@@ -11,6 +11,7 @@ This is a just running list of useful references found during the development of
 - [-Xbootclasspath Oracle Docs](https://docs.oracle.com/cd/E15289_01/doc.40/e15062/optionx.htm#i1018570)
 - Hotpatching a Java 6 Application ([Part 1](http://www.fasterj.com/articles/hotpatch1.shtml) and [Part 2](http://www.fasterj.com/articles/hotpatch2.shtml))
 - [Java Endorsed Standards Override Mechanism](https://docs.oracle.com/javase/7/docs/technotes/guides/standards/)
+- [JRebel Explained](http://zeroturnaround.com/rebellabs/reloading-objects-classes-classloaders/)
 
 ## Bytecode Manipulations
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
