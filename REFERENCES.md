@@ -13,6 +13,7 @@ This is a just running list of useful references found during the development of
 - [Java Endorsed Standards Override Mechanism](https://docs.oracle.com/javase/7/docs/technotes/guides/standards/)
 - [JRebel Explained](http://zeroturnaround.com/rebellabs/reloading-objects-classes-classloaders/)
 - [Stack Overflow Question on Editing rt.jar](https://stackoverflow.com/questions/8433047/overriding-single-classes-from-rt-jar)
+- [JEP 159: Enhanced Class Redefinition](http://openjdk.java.net/jeps/159)
 
 ## Bytecode Manipulations
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
