@@ -16,6 +16,7 @@ This is a just running list of useful references found during the development of
 - [Stack Overflow Question on Editing rt.jar](https://stackoverflow.com/questions/8433047/overriding-single-classes-from-rt-jar)
 - [JEP 159: Enhanced Class Redefinition](http://openjdk.java.net/jeps/159)
 - [HotswapAgent](http://www.hotswapagent.org/quick-start) + [Hotswap Projects](https://github.com/HotswapProjects)
+- [Oracle FPUpdater Tool](http://www.oracle.com/technetwork/java/javase/fpupdater-tool-readme-305936.html)
 
 ## Bytecode Manipulations
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
