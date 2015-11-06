@@ -1,10 +1,16 @@
 # References
 This is a just running list of useful references found during the development of this project.
 
+## JVM Talks
+- [invokedynamic for Mere Mortals](https://www.youtube.com/watch?v=Q5mVy0BAxG0#t=6h15m30s)
+- [The Adventurous Developer’s Guide to JVM Languages](https://www.youtube.com/watch?v=Q5mVy0BAxG0#t=7h44m20s)
+
 ## Runtime Patching
 - [Java Geeks Using the BootClasspath - Tweaking the Java Runtime API](http://www.tedneward.com/files/Papers/BootClasspath/BootClasspath.pdf)
 - [Covert Java: Techniques for Decompiling, Patching, and Reverse Engineering](http://www.amazon.com/gp/product/0672326388/ref=as_li_tl?ie=UTF8&camp=1789&creative=390957&creativeASIN=0672326388&linkCode=as2&tag=zombiest-20&linkId=6WARWI6KSNMYLBWS)
 - [-Xbootclasspath Oracle Docs](https://docs.oracle.com/cd/E15289_01/doc.40/e15062/optionx.htm#i1018570)
+- Hotpatching A Java 6 Application [Part 1](http://www.fasterj.com/articles/hotpatch1.shtml) and [Part 2]([Part 1](http://www.fasterj.com/articles/hotpatch2.shtml))
+- [Java Endorsed Standards Override Mechanism](https://docs.oracle.com/javase/7/docs/technotes/guides/standards/)
 
 ## Bytecode Manipulations
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
