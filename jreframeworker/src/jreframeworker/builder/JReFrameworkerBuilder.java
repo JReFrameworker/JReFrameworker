@@ -2,14 +2,13 @@ package jreframeworker.builder;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Map;
 
-import jreframeworker.common.JarModifier;
 import jreframeworker.core.JReFrameworker;
-import jreframeworker.core.bytecode.identifiers.JREFAnnotationIdentifier;
-import jreframeworker.core.bytecode.operations.Merge;
-import jreframeworker.core.bytecode.utils.BytecodeUtils;
+import jreframeworker.engine.Engine;
 import jreframeworker.log.Log;
+import jreframeworker.ui.PreferencesPage;
 
 import org.apache.commons.io.FileDeleteStrategy;
 import org.eclipse.core.resources.IProject;
@@ -24,8 +23,6 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.ClassNode;
 
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
@@ -106,10 +103,10 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			try {
 				// make modifications that are found in the compiled bytecode
-				JarModifier runtimeModifications = new JarModifier(getOriginalRuntime());
-				buildProject(binDirectory, jProject, runtimeModifications);
+				Engine engine = new Engine(getOriginalRuntime(), PreferencesPage.getMergeRenamingPrefix());
+				buildProject(binDirectory, jProject, engine);
 				File modifiedRuntime = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + "rt.jar");
-				runtimeModifications.save(modifiedRuntime);
+				engine.save(modifiedRuntime);
 			} catch (IOException e) {
 				Log.error("Error building " + jProject.getProject().getName(), e);
 				return;
@@ -137,48 +134,17 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void buildProject(File binDirectory, IJavaProject jProject, JarModifier runtimeModifications) throws IOException {
+	private void buildProject(File binDirectory, IJavaProject jProject, Engine engine) throws IOException {
 		// make changes for each annotated class file in current directory
 		File[] files = binDirectory.listFiles();
 		for(File file : files){
 			if(file.isFile()){
 				if(file.getName().endsWith(".class")){
-					// check to see if the class is annotated with 
-					ClassNode classNode = BytecodeUtils.getClassNode(file);
-					// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-					if(classNode.invisibleAnnotations != null){
-						for(Object o : classNode.invisibleAnnotations){
-							AnnotationNode annotationNode = (AnnotationNode) o;
-							JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-							checker.visitAnnotation(annotationNode.desc, false);
-							if(checker.isJREFAnnotation()){
-								String qualifiedClassName = classNode.name + ".class";
-								if(checker.isDefineTypeAnnotation()){
-									if(runtimeModifications.getJarEntrySet().contains(qualifiedClassName)){
-										runtimeModifications.add(qualifiedClassName, file, true);
-										Log.info("Replaced: " + qualifiedClassName + " in " + runtimeModifications.getJarFile().getName());
-									} else {
-										runtimeModifications.add(qualifiedClassName, file, false);
-										Log.info("Inserted: " + qualifiedClassName + " into " + runtimeModifications.getJarFile().getName());
-									}
-								} else if(checker.isMergeTypeAnnotation()){
-									File outputClass = File.createTempFile(classNode.name, ".class");
-									File baseClass = File.createTempFile(classNode.name, ".class");
-									String qualifiedParentClassName = classNode.superName + ".class";
-									runtimeModifications.extractEntry(qualifiedParentClassName, baseClass);
-									Merge.mergeClasses(baseClass, file, outputClass);
-									baseClass.delete();
-									runtimeModifications.add(qualifiedParentClassName, outputClass, true);
-									// TODO: clean up outputClass somehow, probably need to make a local temp
-									// directory which gets deleted at the end of the build
-									Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
-								}
-							}
-						}
-					}
+					byte[] bytes = Files.readAllBytes(file.toPath());
+					engine.process(bytes);
 				}
 			} else if(file.isDirectory()){
-				buildProject(file, jProject, runtimeModifications);
+				buildProject(file, jProject, engine);
 			}
 		}
 	}
