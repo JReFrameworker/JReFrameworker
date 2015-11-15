@@ -1,6 +1,1 @@
 merge-rename-prefix,jref_
-class,test.class
-class,test2.class
-runtime,/Library/Java/
-runtime,/System/Library/Frameworks/JavaVM.framework/
-runtime,/usr/libexec/java_home/
