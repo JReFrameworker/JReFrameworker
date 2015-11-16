@@ -2,7 +2,7 @@
 <feature
       id="JReFrameworkerFeature"
       label="JReFrameworkerFeature"
-      version="1.0.2.qualifier"
+      version="1.1.0.qualifier"
       provider-name="Ben Holland">
 
    <description url="https://ben-holland.com/JReFrameworker/">
