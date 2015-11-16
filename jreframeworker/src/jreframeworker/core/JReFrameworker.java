@@ -8,6 +8,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import jreframeworker.Activator;
@@ -50,6 +51,21 @@ public class JReFrameworker {
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";
 	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "JReFrameworkerAnnotations.jar";
+	
+	public static LinkedList<IJavaProject> getJReFrameworkerProjects(){
+		LinkedList<IJavaProject> projects = new LinkedList<IJavaProject>();
+		for(IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()){
+			try {
+				if(project.isOpen() && project.hasNature(JavaCore.NATURE_ID) && project.hasNature(JReFrameworkerNature.NATURE_ID)){
+					IJavaProject jProject = JavaCore.create(project);
+					if(jProject.exists()){
+						projects.add(jProject);
+					}
+				}
+			} catch (CoreException e) {}
+		}
+		return projects;
+	}
 	
 	public static IStatus deleteProject(IProject project) {
 		if (project != null && project.exists())
