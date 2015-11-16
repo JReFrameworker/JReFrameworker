@@ -11,8 +11,11 @@ import java.util.jar.JarException;
 
 import jreframeworker.engine.Engine;
 
+// TODO: Going to need to escalate permissions, see https://github.com/rritoch/super-user-application
 public class Main {
 
+	private static final boolean VERBOSE = true;
+	
 	// jar contents
 	private static final String CONFIG_FILE = "config";
 	private static final String PAYLOAD_DIRECTORY = "payloads";
@@ -48,10 +51,10 @@ public class Main {
 				String[] entry = scanner.nextLine().split(",");
 				if(entry[0].equals(CLASS_FILE)){
 					if(configurations.containsKey(CLASS_FILE)){
-						((ArrayList<String>) configurations.get(CLASS_FILE)).add(PAYLOAD_DIRECTORY + "/" + entry[1]);
+						((ArrayList<String>) configurations.get(CLASS_FILE)).add(entry[1]);
 					} else {
 						ArrayList<String> classFiles = new ArrayList<String>();
-						classFiles.add(PAYLOAD_DIRECTORY + "/" + entry[1]);
+						classFiles.add(entry[1]);
 						configurations.put(CLASS_FILE, classFiles);
 					}
 				} else if(entry[0].equals(RUNTIME)){
@@ -77,23 +80,30 @@ public class Main {
 		for(int i=0; i<classFiles.size(); i++){
 			String classFile = classFiles.get(i);
 			try {
-				InputStream classFileStream = Main.class.getResourceAsStream(classFile);
+				InputStream classFileStream = Main.class.getResourceAsStream(PAYLOAD_DIRECTORY + "/" + classFile);
 				byte[] payloadBytes = getBytes(classFileStream);
 				payloads[i] = payloadBytes;
 			} catch (Exception e) {
-				e.printStackTrace();
+				if(VERBOSE) System.err.println("Could not load: " + PAYLOAD_DIRECTORY + "/" + classFile);
+				if(VERBOSE) e.printStackTrace();
 			}
 		}
+		
+		if(VERBOSE) System.out.println(configurations);
+		if(VERBOSE) System.out.println(classFiles);
 		
 		// rework runtimes
 		LinkedList<File> runtimes = new LinkedList<File>();
 		for(File runtime : !runtimes.isEmpty() ? runtimes : getRuntimes()){
 			try {
 				modifyRuntime(runtime, configurations.get(MERGE_RENAME_PREFIX).toString(), payloads);
+				if(VERBOSE) System.out.println("Modified: " + runtime.getAbsolutePath());
 			} catch (Exception e) {
-				e.printStackTrace();
+				if(VERBOSE) System.err.println("Could not modify runtime: " + runtime.getAbsolutePath());
+				if(VERBOSE) e.printStackTrace();
 			}
 		}
+		if(VERBOSE) System.out.println("Finished.");
 	}
 	
 	private static byte[] getBytes(InputStream is) throws IOException {
@@ -114,6 +124,7 @@ public class Main {
 	}
 	
 	private static LinkedList<File> getRuntimes(){
+		if(VERBOSE) System.out.println("Searching for runtimes...");
 		HashSet<String> runtimeNames = getRuntimeNames();
 		LinkedList<File> runtimes = new LinkedList<File>();
 		

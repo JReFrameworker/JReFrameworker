@@ -37,26 +37,13 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 	private SelectJReFrameworkerProjectPage page1;
 	private ExportPayloadDropperPage page2;
 	
-	private File workspace = new File(ResourcesPlugin.getWorkspace().getRoot().getLocation().toFile().getAbsolutePath() + File.separatorChar + ".jreframeworker");
-	private File dropperJar = new File(workspace.getAbsolutePath() + File.separatorChar + EXPORT_PAYLOAD_DROPPER);
+	private File jReFrameworkerWorkspace = new File(ResourcesPlugin.getWorkspace().getRoot().getLocation().toFile().getAbsolutePath() + File.separatorChar + ".jreframeworker");
+	private File dropperJar = new File(jReFrameworkerWorkspace.getAbsolutePath() + File.separatorChar + PAYLOAD_DROPPER);
 	
 	public ExportPayloadDropperWizard() throws Exception {
 		page1 = new SelectJReFrameworkerProjectPage("Select JReFrameworker Project");
 		page2 = new ExportPayloadDropperPage("Create Payload Dropper");
 		setWindowTitle("Create Payload Dropper");
-
-		if(!dropperJar.exists()){
-			dropperJar.getParentFile().mkdirs();
-			URL fileURL = Activator.getContext().getBundle().getEntry(JReFrameworker.EXPORT_DIRECTORY + "/" + PAYLOAD_DROPPER);
-			URL resolvedFileURL = FileLocator.toFileURL(fileURL);
-			// need to use the 3-arg constructor of URI in order to properly escape file system chars
-			URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);
-			InputStream dropperJarInputStream = resolvedURI.toURL().openConnection().getInputStream();
-			if(dropperJarInputStream == null){
-				throw new RuntimeException("Could not locate: " + PAYLOAD_DROPPER);
-			}
-			Files.copy(dropperJarInputStream, dropperJar.toPath());
-		}
 	}
 
 	@Override
@@ -76,6 +63,23 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 			@Override
 			public void run(IProgressMonitor monitor) {
 				try {
+					
+					// make sure we have a fresh copy of the base dropper
+					if(dropperJar.exists()){
+						dropperJar.delete();
+					} else {
+						dropperJar.getParentFile().mkdirs();
+						URL fileURL = Activator.getContext().getBundle().getEntry(JReFrameworker.EXPORT_DIRECTORY + "/" + PAYLOAD_DROPPER);
+						URL resolvedFileURL = FileLocator.toFileURL(fileURL);
+						// need to use the 3-arg constructor of URI in order to properly escape file system chars
+						URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);
+						InputStream dropperJarInputStream = resolvedURI.toURL().openConnection().getInputStream();
+						if(dropperJarInputStream == null){
+							throw new RuntimeException("Could not locate: " + PAYLOAD_DROPPER);
+						}
+						Files.copy(dropperJarInputStream, dropperJar.toPath());
+					}
+					
 					JarModifier dropper = new JarModifier(dropperJar);
 					IProject project = page1.getJReFrameworkerProject().getProject();
 					
@@ -88,22 +92,29 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 					while(scanner.hasNextLine()){
 						String[] entry = scanner.nextLine().split(",");
 						if(entry[0].equals("class")){
-							String relativeClassPath = entry[1].replace(".", File.separator).replace("/class", ".class");
 							File classFile = new File(project.getFile(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getAbsolutePath()
-									+ File.separatorChar + relativeClassPath);
-							dropper.add("payloads/" + relativeClassPath, Files.readAllBytes(classFile.toPath()), true);
+									+ File.separatorChar + entry[1] + ".class");
+							dropper.add("payloads/" + entry[1], Files.readAllBytes(classFile.toPath()), true);
 						}
 					}
 					scanner.close();
 					
+					// set manifest
+					byte[] manifest = "Manifest-Version: 1.0\nClass-Path: .\nMain-Class: Main\n\n\n".getBytes();
+					dropper.add("META-INF/MANIFEST.MF", manifest, true);
+					
 					dropper.save(dropperFile);					
 				} catch (Throwable t) {
-					String message = "Could not create JAR binary project. " + t.getMessage();
-					int style = SWT.ICON_ERROR;
-					MessageBox messageBox = new MessageBox(Display.getDefault().getActiveShell(), style);
-					messageBox.setMessage(message);
-					messageBox.open();
+					final String message = "Could not create JAR binary project. " + t.getMessage();
 					Log.error(message, t);
+					Display.getDefault().asyncExec(new Runnable() {
+						public void run() {
+							int style = SWT.ICON_ERROR;
+							MessageBox messageBox = new MessageBox(Display.getDefault().getActiveShell(), style);
+							messageBox.setMessage(message);
+							messageBox.open();
+						}
+					});
 				} finally {
 					monitor.done();
 				}

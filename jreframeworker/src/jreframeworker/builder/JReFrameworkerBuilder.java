@@ -158,10 +158,11 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					byte[] bytes = Files.readAllBytes(file.toPath());
 					if(engine.process(bytes)){
 						String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
-						String entry = file.getCanonicalPath().substring(base.length()).replace(File.separator, ".");
-						if(entry.charAt(0) == '.'){
+						String entry = file.getCanonicalPath().substring(base.length());
+						if(entry.charAt(0) == File.separatorChar){
 							entry = entry.substring(1);
 						}
+						entry = entry.replace(".class", "");
 						config.write("\nclass," + entry);
 						config.flush();
 					}
