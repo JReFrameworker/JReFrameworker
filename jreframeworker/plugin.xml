@@ -134,5 +134,22 @@
          <configurationType id="jreframeworker.launchConfigurationType" />
       </shortcut>
    </extension>
+   <extension
+         point="org.eclipse.ui.exportWizards">
+      <category
+            id="jreframeworker.ui.category"
+            name="JReFrameworker">
+      </category>
+      <wizard
+            category="jreframeworker.ui.category"
+            class="jreframeworker.ui.ExportPayloadDropperWizard"
+            icon="icons/JReFrameworker.gif"
+            id="jreframeworker.ui.ExportPayloadDropperWizard"
+            name="JReFrameworker Payload Dropper">
+         <description>
+            Exports a JReFrameworker runtime payload dropper for the selected project.
+         </description>
+      </wizard>
+   </extension>
    
 </plugin>

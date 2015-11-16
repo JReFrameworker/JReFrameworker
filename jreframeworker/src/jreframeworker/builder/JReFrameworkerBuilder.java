@@ -1,6 +1,7 @@
 package jreframeworker.builder;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
@@ -57,6 +58,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			Log.info("Cleaning JReFrameworker project: " + jProject.getProject().getName());
 			try {
 				File runtimesDirectory = jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY).getLocation().toFile();
+				File configFile = jProject.getProject().getFile(JReFrameworker.RUNTIMES_CONFIG).getLocation().toFile();
+				configFile.delete();
 				clearProjectRuntimes(jProject, runtimesDirectory);
 				this.forgetLastBuiltState(); 
 			} catch (IOException e) {
@@ -100,11 +103,23 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			monitor.beginTask("Building JReFrameworker project: " + jProject.getProject().getName(), 1);
 			Log.info("Building JReFrameworker project: " + jProject.getProject().getName());
 
+			// write config file
+			File configFile = jProject.getProject().getFile(JReFrameworker.RUNTIMES_CONFIG).getLocation().toFile();
+			FileWriter config;
+			try {
+				config = new FileWriter(configFile);
+				config.write("merge-rename-prefix," + PreferencesPage.getMergeRenamingPrefix());
+			} catch (IOException e) {
+				Log.error("Could not write to config file.", e);
+				return;
+			}
+			
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			try {
 				// make modifications that are found in the compiled bytecode
 				Engine engine = new Engine(getOriginalRuntime(), PreferencesPage.getMergeRenamingPrefix());
-				buildProject(binDirectory, jProject, engine);
+				buildProject(binDirectory, jProject, engine, config);
+				config.close();
 				File modifiedRuntime = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + "rt.jar");
 				engine.save(modifiedRuntime);
 			} catch (IOException e) {
@@ -134,17 +149,25 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void buildProject(File binDirectory, IJavaProject jProject, Engine engine) throws IOException {
+	private void buildProject(File binDirectory, IJavaProject jProject, Engine engine, FileWriter config) throws IOException {
 		// make changes for each annotated class file in current directory
 		File[] files = binDirectory.listFiles();
 		for(File file : files){
 			if(file.isFile()){
 				if(file.getName().endsWith(".class")){
 					byte[] bytes = Files.readAllBytes(file.toPath());
-					engine.process(bytes);
+					if(engine.process(bytes)){
+						String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
+						String entry = file.getCanonicalPath().substring(base.length()).replace(File.separator, ".");
+						if(entry.charAt(0) == '.'){
+							entry = entry.substring(1);
+						}
+						config.write("\nclass," + entry);
+						config.flush();
+					}
 				}
 			} else if(file.isDirectory()){
-				buildProject(file, jProject, engine);
+				buildProject(file, jProject, engine, config);
 			}
 		}
 	}

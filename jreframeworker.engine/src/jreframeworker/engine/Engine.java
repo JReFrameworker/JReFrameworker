@@ -53,7 +53,8 @@ public class Engine {
 		this.runtimeModifications = new JarModifier(runtime);
 	}
 	
-	public void process(byte[] inputClass) throws IOException {
+	public boolean process(byte[] inputClass) throws IOException {
+		boolean processed = false;
 		// check to see if the class is annotated with 
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
 		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
@@ -81,9 +82,11 @@ public class Engine {
 						// directory which gets deleted at the end of the build
 //						Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
 					}
+					processed = true;
 				}
 			}
 		}
+		return processed;
 	}
 	
 	public void save(File outputFile) throws IOException {
