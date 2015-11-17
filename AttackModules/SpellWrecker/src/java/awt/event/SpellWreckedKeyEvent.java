@@ -1,4 +1,4 @@
-package test.java.awt.event;
+package java.awt.event;
 
 import java.awt.Frame;
 import java.awt.event.KeyEvent;
