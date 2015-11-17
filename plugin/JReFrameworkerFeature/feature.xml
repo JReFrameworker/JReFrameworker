@@ -55,6 +55,7 @@ SOFTWARE.
       <import plugin="org.eclipse.core.filesystem"/>
       <import plugin="org.apache.commons.io" version="2.0.1" match="greaterOrEqual"/>
       <import plugin="org.objectweb.asm" version="5.0.4" match="greaterOrEqual"/>
+      <import plugin="jreframeworker.engine" version="1.1.0" match="greaterOrEqual"/>
    </requires>
 
    <plugin
@@ -66,6 +67,13 @@ SOFTWARE.
 
    <plugin
          id="org.objectweb.asm"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="jreframeworker.engine"
          download-size="0"
          install-size="0"
          version="0.0.0"
