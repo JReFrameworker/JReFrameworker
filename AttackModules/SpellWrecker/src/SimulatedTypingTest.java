@@ -38,7 +38,7 @@ public class SimulatedTypingTest {
 		type('s'); sleep(1394);
 		type('p'); sleep(132);
 		type('e'); sleep(74);
-		type('l'); sleep(760);
+		type('l'); sleep(560);
 		type('l'); sleep(167);
 		type('w'); sleep(153);
 		type('r'); sleep(168);
@@ -54,7 +54,7 @@ public class SimulatedTypingTest {
 		type(' '); sleep(143);
 		type('b'); sleep(201);
 		type('e'); sleep(80);
-		type('.'); sleep(218);
+		type('.');
 	}
 
 	private static void sleep(long time) {
