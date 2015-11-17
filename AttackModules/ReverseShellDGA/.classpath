@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/resources.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/rt.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/jsse.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/jce.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/charsets.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/jfr.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/JObjC.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/dnsns.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/localedata.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/sunec.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/sunjce_provider.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/sunpkcs11.jar"/>
+	<classpathentry kind="lib" path="/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/ext/zipfs.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/AppleScriptEngine.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/dns_sd.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/j3daudio.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/j3dcore.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/j3dutils.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/jai_codec.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/jai_core.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/mlibwrapper_jai.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/MRJToolkit.jar"/>
+	<classpathentry kind="lib" path="/System/Library/Java/Extensions/vecmath.jar"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="annotations/JReFrameworkerAnnotations.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
