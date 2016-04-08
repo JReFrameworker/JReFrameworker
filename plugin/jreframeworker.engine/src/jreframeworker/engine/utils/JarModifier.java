@@ -2,6 +2,7 @@ package jreframeworker.engine.utils;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -97,10 +98,18 @@ public class JarModifier {
 		JarEntry currentEntry = null;
 		while ((currentEntry = zin.getNextJarEntry()) != null) {
 			if (currentEntry.getName().equals(entry)) {
-				byte[] bytes = new byte[(int) currentEntry.getSize()];
-				zin.read(bytes);
+				// currentEntry.getSize() may not be accurate, so read bytes into a stream first
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				byte[] buf = new byte[4096];
+				while (true) {
+					int n = zin.read(buf);
+					if (n < 0){
+						break;
+					}
+					baos.write(buf, 0, n);
+				}
 				zin.close();
-				return bytes;
+				return baos.toByteArray();
 			}
 		}
 		zin.close();
@@ -325,9 +334,13 @@ public class JarModifier {
 	        	}
 		    }
 	    } finally {
-	    	// close the streams        
-		    zin.close();
-		    zout.close();
+	    	// close the streams  
+	    	if(zin != null){
+	    		zin.close();
+	    	}
+	    	if(zout != null){
+	    		zout.close();
+	    	}
 	    } 
 	}
 	

@@ -6,10 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
 
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.engine.Engine;
-import jreframeworker.log.Log;
-import jreframeworker.ui.PreferencesPage;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.io.FileDeleteStrategy;
 import org.eclipse.core.resources.IProject;
@@ -24,6 +21,12 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
+import org.xml.sax.SAXException;
+
+import jreframeworker.core.JReFrameworker;
+import jreframeworker.engine.Engine;
+import jreframeworker.log.Log;
+import jreframeworker.ui.PreferencesPage;
 
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
@@ -114,15 +117,42 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				return;
 			}
 			
+			File applicationDirectory = new File(jProject.getProject().getLocation().toFile().getAbsolutePath() + File.separator + JReFrameworker.APPLICATION_DIRECTORY);
+			applicationDirectory.mkdirs();
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			try {
-				// make modifications that are found in the compiled bytecode
-				Engine engine = new Engine(getOriginalRuntime(), PreferencesPage.getMergeRenamingPrefix());
-				buildProject(binDirectory, jProject, engine, config);
-				config.close();
-				File modifiedRuntime = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + "rt.jar");
-				engine.save(modifiedRuntime);
-			} catch (IOException e) {
+				String targetJar = JReFrameworker.getTargetJar(jProject.getProject());
+				boolean isTargetJarRuntime = JReFrameworker.isTargetJarRuntime(jProject.getProject());
+				
+				// make modifications that are defined in the project to the compiled bytecode
+				if(isTargetJarRuntime){
+					// runtime project
+					File originalJar = getOriginalRuntime(targetJar);
+					if(originalJar.exists()){
+						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
+						buildProject(binDirectory, jProject, engine, config);
+						config.close();
+						File modifiedRuntime = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + targetJar);
+						engine.save(modifiedRuntime);
+						Log.info("Modified Runtime: " + modifiedRuntime.getCanonicalPath());
+					} else {
+						Log.warning("Jar not found: " + originalJar.getAbsolutePath());
+					}
+				} else {
+					// application project
+					File originalJar = jProject.getProject().getFile(targetJar).getLocation().toFile();
+					if(originalJar.exists()){
+						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
+						buildProject(binDirectory, jProject, engine, config);
+						config.close();
+						File modifiedApplication = new File(applicationDirectory.getCanonicalPath() + File.separatorChar + targetJar);
+						engine.save(modifiedApplication);
+						Log.info("Modified Application: " + modifiedApplication.getCanonicalPath());
+					} else {
+						Log.warning("Jar not found: " + originalJar.getAbsolutePath());
+					}
+				}
+			} catch (IOException | SAXException | ParserConfigurationException e) {
 				Log.error("Error building " + jProject.getProject().getName(), e);
 				return;
 			}
@@ -136,12 +166,12 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-	private File getOriginalRuntime() throws IOException {
+	private File getOriginalRuntime(String targetJar) throws IOException {
 		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
 		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
 		for (LibraryLocation library : locations) {
 			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
-			if(runtime.getName().equals("rt.jar")){
+			if(runtime.getName().equals(targetJar)){
 				return runtime;
 			}
 		}
@@ -156,7 +186,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			if(file.isFile()){
 				if(file.getName().endsWith(".class")){
 					byte[] bytes = Files.readAllBytes(file.toPath());
-					if(engine.process(bytes)){
+					if(bytes.length > 0 && engine.process(bytes)){
 						String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
 						String entry = file.getCanonicalPath().substring(base.length());
 						if(entry.charAt(0) == File.separatorChar){

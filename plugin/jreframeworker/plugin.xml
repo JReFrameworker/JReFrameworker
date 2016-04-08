@@ -6,8 +6,15 @@
    
    <extension point="org.eclipse.ui.newWizards">
       <category name="JReFrameworker" id="jreframeworker.ui.category" />
-      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewProjectWizard" name="JReFrameworker Runtime Project">
+      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewRuntimeProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewRuntimeProjectWizard" name="JReFrameworker Runtime Project">
          <description>Creates a new JReFrameworker runtime project in the workspace.</description>
+      </wizard>
+   </extension>
+   
+   <extension point="org.eclipse.ui.newWizards">
+      <category name="JReFrameworker" id="jreframeworker.ui.category" />
+      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewApplicationProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewApplicationProjectWizard" name="JReFrameworker Application Project">
+         <description>Creates a new JReFrameworker application project in the workspace.</description>
       </wizard>
    </extension>
    

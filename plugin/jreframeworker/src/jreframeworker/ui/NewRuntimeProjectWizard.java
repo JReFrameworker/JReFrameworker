@@ -22,11 +22,11 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.UIJob;
 
-public class NewProjectWizard extends Wizard implements INewWizard {
+public class NewRuntimeProjectWizard extends Wizard implements INewWizard {
 
 	private NewProjectPage page;
 
-	public NewProjectWizard(String startRuntimePath) {
+	public NewRuntimeProjectWizard(String startRuntimePath) {
 		page = new NewProjectPage("Create JReFrameworker Runtime Project");
 		String projectName = new File(startRuntimePath).getName();
 		projectName = projectName.substring(0, projectName.lastIndexOf('.'));
@@ -44,7 +44,7 @@ public class NewProjectWizard extends Wizard implements INewWizard {
 		this.setWindowTitle("Create JReFrameworker Runtime Project");
 	}
 
-	public NewProjectWizard() {
+	public NewRuntimeProjectWizard() {
 		page = new NewProjectPage("Create JReFrameworker Runtime Project");
 		this.setWindowTitle("Create JReFrameworker Runtime Project");
 	}
@@ -68,7 +68,7 @@ public class NewProjectWizard extends Wizard implements INewWizard {
 			public void run(IProgressMonitor monitor) {
 				IStatus result = null;
 				try {
-					result = JReFrameworker.createProject(projectName, projectLocation, monitor);
+					result = JReFrameworker.createProject(projectName, projectLocation, monitor, "rt.jar", true);
 				} catch (Throwable t) {
 					String message = "Could not create JReFrameworker runtime project. " + t.getMessage();
 					UIJob uiJob = new WizardErrorDialog("Error creating project...", message, projectName);

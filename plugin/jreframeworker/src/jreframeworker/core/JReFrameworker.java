@@ -11,10 +11,15 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import jreframeworker.Activator;
-import jreframeworker.builder.JReFrameworkerBuilder;
-import jreframeworker.builder.JReFrameworkerNature;
-import jreframeworker.log.Log;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.internal.events.BuildCommand;
@@ -40,10 +45,20 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+import jreframeworker.Activator;
+import jreframeworker.builder.JReFrameworkerBuilder;
+import jreframeworker.builder.JReFrameworkerNature;
+import jreframeworker.log.Log;
 
 @SuppressWarnings("restriction")
 public class JReFrameworker {
 
+	public static final String APPLICATION_DIRECTORY = "applications";
 	public static final String RUNTIMES_DIRECTORY = "runtimes";
 	public static final String RUNTIMES_CONFIG = "runtimes/config";
 	public static final String ANNOTATIONS_DIRECTORY = "annotations";
@@ -51,6 +66,7 @@ public class JReFrameworker {
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";
 	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "JReFrameworkerAnnotations.jar";
+	public static final String XML_BUILD_FILENAME = "jref-build.xml";
 	
 	public static LinkedList<IJavaProject> getJReFrameworkerProjects(){
 		LinkedList<IJavaProject> projects = new LinkedList<IJavaProject>();
@@ -82,7 +98,7 @@ public class JReFrameworker {
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
 	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
-	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor) throws CoreException, IOException, URISyntaxException {
+	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor, String targetJar, boolean isRuntime) throws CoreException, IOException, URISyntaxException {
 		IProject project = null;
 		
 		try {
@@ -100,6 +116,8 @@ public class JReFrameworker {
 				return Status.CANCEL_STATUS;
 			}
 			
+			createBuildFile(projectDirectory, targetJar, isRuntime);
+			
 			// copy runtimes and configure project classpath
 			monitor.setTaskName("Configuring project classpath...");
 			configureProjectClasspath(jProject);
@@ -115,6 +133,40 @@ public class JReFrameworker {
 			}
 			monitor.done();
 		}
+	}
+
+	private static File createBuildFile(File projectDirectory, String targetJar, boolean isRuntime) throws IOException {
+		File buildXMLFile = new File(projectDirectory + File.separator + XML_BUILD_FILENAME);
+		Log.info("Created Build XML File: " + buildXMLFile.getAbsolutePath());
+		try {
+			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+
+			// root elements
+			Document doc = docBuilder.newDocument();
+			Element rootElement = doc.createElement("build");
+			doc.appendChild(rootElement);
+
+			Element target = doc.createElement("target");
+			rootElement.appendChild(target);
+
+			target.setAttribute("name", targetJar);
+			target.setAttribute("type", isRuntime ? "runtime" : "application");
+
+			// write the content into xml file
+			TransformerFactory transformerFactory = TransformerFactory.newInstance();
+			Transformer transformer = transformerFactory.newTransformer();
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+			DOMSource source = new DOMSource(doc);
+			StreamResult result = new StreamResult(buildXMLFile);
+			transformer.transform(source, result);
+		} catch (ParserConfigurationException pce) {
+			Log.error("ParserConfigurationException", pce);
+		} catch (TransformerException tfe) {
+			Log.error("TransformerException", tfe);
+		}
+		return buildXMLFile;
 	}
 
 	private static void configureProjectClasspath(IJavaProject jProject) throws CoreException, JavaModelException, IOException, URISyntaxException {
@@ -219,6 +271,36 @@ public class JReFrameworker {
 			location = URIUtil.toURI(URIUtil.toPath(location) + File.separator + projectName);
 		}
 		return location;
+	}
+
+	public static String getTargetJar(IProject project) throws SAXException, IOException, ParserConfigurationException {
+		File buildXMLFile = project.getFile(XML_BUILD_FILENAME).getLocation().toFile();
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(buildXMLFile);
+		doc.getDocumentElement().normalize();
+		NodeList targets = doc.getElementsByTagName("target");
+		String result = ""; // TODO: support multiple targets
+		for (int i = 0; i < targets.getLength(); i++) {
+			Element target = (Element) targets.item(i);
+			result = target.getAttribute("name");
+		}
+		return result;
+	}
+	
+	public static boolean isTargetJarRuntime(IProject project) throws SAXException, IOException, ParserConfigurationException {
+		File buildXMLFile = project.getFile(XML_BUILD_FILENAME).getLocation().toFile();
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(buildXMLFile);
+		doc.getDocumentElement().normalize();
+		NodeList targets = doc.getElementsByTagName("target");
+		String result = ""; // TODO: support multiple targets
+		for (int i = 0; i < targets.getLength(); i++) {
+			Element target = (Element) targets.item(i);
+			result = target.getAttribute("type");
+		}
+		return result.equals("runtime") ? true : false;
 	}
 
 }
