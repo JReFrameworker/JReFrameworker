@@ -1,8 +1,8 @@
 package java.awt.event;
 
 import java.awt.Frame;
-import java.awt.event.KeyEvent;
 
+import jreframeworker.annotations.fields.DefineField;
 import jreframeworker.annotations.methods.MergeMethod;
 import jreframeworker.annotations.types.MergeType;
 
@@ -15,11 +15,19 @@ public class SpellWreckedKeyEvent extends KeyEvent {
 		super(frame, i, currentTimeMillis, j, vkUndefined, c);
 	}
 
+	@DefineField
+	boolean spellwrecked;
+	
 	@MergeMethod
 	@Override
 	public char getKeyChar(){
-		char original = super.getKeyChar();
-		return SpellWrecker.spellwreck(original);
+		if(spellwrecked){
+			return super.getKeyChar();
+		} else {
+			spellwrecked = true;
+			keyChar = SpellWrecker.spellwreck(keyChar);
+			return keyChar;
+		}
 	}
 
 }

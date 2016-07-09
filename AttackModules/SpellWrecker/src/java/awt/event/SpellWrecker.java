@@ -7,15 +7,17 @@ import jreframeworker.annotations.types.DefineType;
 @DefineType
 public class SpellWrecker {
 
-	public static boolean initialized = false;
+	private static final boolean DEBUG = false;
 	
-	public static long windowLength;
-	public static int[] observations;
-	public static long[] timestamps;
-	public static int index;
-	public static long lastAction;
+	private static boolean initialized = false;
+	
+	private static long windowLength;
+	private static int[] observations;
+	private static long[] timestamps;
+	private static int index;
+	private static long lastAction;
 
-	public static void init() {
+	private static void init() {
 		// 1 second window, with 5 second history
 		int windowHistory = 5;
 		
@@ -33,7 +35,7 @@ public class SpellWrecker {
 		initialized = true;
    }
 
-	public static void observe(){
+	private static void observe(){
 		
 		if(!initialized){
 			init();
@@ -56,31 +58,17 @@ public class SpellWrecker {
 			observations[index]++;
 		}
 	}
-	
-	public static int getCurrentObservations(){
-		return observations[index];
-	}
 
-	public static double getAverageObservations(){
+	private static double getAverageObservations(){
 		double result = 0.0;
 		for(int i=0; i<observations.length; i++){
 			result += observations[i];
 		}
 		return result / (double) observations.length;
 	}
-
-	public static int getMaxObservations() {
-		int result = 0;
-		for(int i=0; i<observations.length; i++){
-			if(observations[i] > result){
-				result = observations[i];
-			}
-		}
-		return result;
-	}
 	
 	// TODO: Don't use this algorithm as advised on http://stackoverflow.com/a/14839593/475329
-	public static double getHistoricalStandardDeviation(){
+	private static double getHistoricalStandardDeviation(){
 		int[] history = getHistoricalObservations();
 		
 		// calculate the mean
@@ -101,7 +89,7 @@ public class SpellWrecker {
 		return Math.sqrt(variance);
 	}
 	
-	public static int[] getHistoricalObservations(){
+	private static int[] getHistoricalObservations(){
 		int size = observations.length-1;
 		int offset = (index + 1) % observations.length;;
 		int[] historicalObservations = new int[size];
@@ -123,13 +111,14 @@ public class SpellWrecker {
 				if(System.currentTimeMillis() - lastAction > 700){
 					result = _spellwreck(input);
 					lastAction = System.currentTimeMillis();
+					if(DEBUG) System.out.println("spellwrecking..." + input + "->" + result);
 				}
 			}
 		}
 		return result;
 	}
 	
-	public static char _spellwreck(char input){
+	private static char _spellwreck(char input){
 		if(input == ' '){
 			return input;
 		}

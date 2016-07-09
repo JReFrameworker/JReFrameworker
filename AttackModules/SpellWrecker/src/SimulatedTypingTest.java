@@ -55,6 +55,8 @@ public class SimulatedTypingTest {
 		type('b'); sleep(201);
 		type('e'); sleep(80);
 		type('.');
+
+		frame.dispose();
 	}
 
 	private static void sleep(long time) {
