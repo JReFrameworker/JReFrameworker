@@ -13,14 +13,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 
 /**
- * Removes the final modifier from a defined field
+ * Sets the visibility of a field
  * 
  * target should be the field name (not qualified)
  * the target is qualified based on the super type
  * of the type it is placed on
  * 
+ * visibility should be "public", "protected", or "private"
+ * 
  * @author Ben Holland
  */
-public @interface NotFinalField {
+public @interface DefineFieldVisibility {
 	String target();
+	String visibility();
 }

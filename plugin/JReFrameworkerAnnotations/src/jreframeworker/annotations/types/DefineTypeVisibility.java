@@ -1,4 +1,4 @@
-package jreframeworker.annotations.methods;
+package jreframeworker.annotations.types;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -13,15 +13,16 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 
 /**
- * Indicates the annotated method should not be marked final
+ * Indicates the annotated class should not be marked final
  * in order to allow extending the class for reframeworking
  * 
- * target should be the method name (not qualified)
- * the target is qualified based on the super type
- * of the type it is placed on
+ * target should be the qualified class name
+ * 
+ * visibility should be "public", "protected", or "private"
  * 
  * @author Ben Holland
  */
-public @interface NotFinalMethod {
+public @interface DefineTypeVisibility {
 	String target();
+	String visibility();
 }

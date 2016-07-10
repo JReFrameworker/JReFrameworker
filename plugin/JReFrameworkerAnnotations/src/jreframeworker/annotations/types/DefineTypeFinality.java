@@ -13,13 +13,16 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 
 /**
- * Indicates the annotated class should not be marked final
- * in order to allow extending the class for reframeworking
+ * Adds or removes the final modifier from a target type
  * 
  * target should be the qualified class name
  * 
+ * finality should be a boolean true to add or boolean
+ * false to remove final keyword
+ * 
  * @author Ben Holland
  */
-public @interface NotFinalType {
+public @interface DefineTypeFinality {
 	String target();
+	boolean finality();
 }
