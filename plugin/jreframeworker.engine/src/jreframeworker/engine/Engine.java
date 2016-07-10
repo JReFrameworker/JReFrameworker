@@ -6,13 +6,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.jar.JarException;
 
-import jreframeworker.engine.identifiers.BaseMethodsIdentifier;
-import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
-import jreframeworker.engine.identifiers.MergeMethodsIdentifier;
-import jreframeworker.engine.utils.AnnotationUtils;
-import jreframeworker.engine.utils.BytecodeUtils;
-import jreframeworker.engine.utils.JarModifier;
-
+import org.eclipse.core.internal.runtime.Log;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -43,6 +37,17 @@ import org.objectweb.asm.tree.TableSwitchInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
+import jreframeworker.engine.identifiers.BaseMethodsIdentifier;
+import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
+import jreframeworker.engine.identifiers.MergeMethodsIdentifier;
+import jreframeworker.engine.identifiers.NotFinalIdentifier;
+import jreframeworker.engine.identifiers.NotFinalIdentifier.NotFinalFieldAnnotation;
+import jreframeworker.engine.identifiers.NotFinalIdentifier.NotFinalMethodAnnotation;
+import jreframeworker.engine.identifiers.NotFinalIdentifier.NotFinalTypeAnnotation;
+import jreframeworker.engine.utils.AnnotationUtils;
+import jreframeworker.engine.utils.BytecodeUtils;
+import jreframeworker.engine.utils.JarModifier;
+
 public class Engine {
 
 	private String mergeRenamePrefix;
@@ -64,13 +69,18 @@ public class Engine {
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotationNode.desc, false);
 				if(checker.isJREFAnnotation()){
-					String qualifiedClassName = classNode.name + ".class";
+					String qualifiedClassFilename = classNode.name + ".class";
+					
+					// remove finals
+					NotFinalIdentifier notFinalIdentifier = new NotFinalIdentifier(classNode);
+					removeFinals(notFinalIdentifier, runtimeModifications);
+
 					if(checker.isDefineTypeAnnotation()){
-						if(runtimeModifications.getJarEntrySet().contains(qualifiedClassName)){
-							runtimeModifications.add(qualifiedClassName, inputClass, true);
+						if(runtimeModifications.getJarEntrySet().contains(qualifiedClassFilename)){
+							runtimeModifications.add(qualifiedClassFilename, inputClass, true);
 //							Log.info("Replaced: " + qualifiedClassName + " in " + runtimeModifications.getJarFile().getName());
 						} else {
-							runtimeModifications.add(qualifiedClassName, inputClass, false);
+							runtimeModifications.add(qualifiedClassFilename, inputClass, false);
 //							Log.info("Inserted: " + qualifiedClassName + " into " + runtimeModifications.getJarFile().getName());
 						}
 					} else if(checker.isMergeTypeAnnotation()){
@@ -89,6 +99,59 @@ public class Engine {
 		return processed;
 	}
 	
+	// TODO: probably could be a bit more efficient about file I/O here...but for now this works
+	private void removeFinals(NotFinalIdentifier notFinalIdentifier, JarModifier runtimeModifications) throws IOException {
+		for(NotFinalTypeAnnotation notFinalTypeAnnotation : notFinalIdentifier.getMarkedTypes()){
+			String className = notFinalTypeAnnotation.getClassName();
+			String qualifiedClassFilename = className + ".class";
+			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
+			if(baseClass != null){
+				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_FINAL);
+				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+			} else {
+//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+			}
+		}
+		for(NotFinalMethodAnnotation notFinalMethodAnnotation : notFinalIdentifier.getMarkedMethods()){
+			String className = notFinalMethodAnnotation.getClassName();
+			String qualifiedClassFilename = className + ".class";
+			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
+			if(baseClass != null){
+				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+				for (Object o : baseClassNode.methods) {
+					MethodNode methodNode = (MethodNode) o;
+					if(methodNode.name.equals(notFinalMethodAnnotation.getMethodName())){
+						methodNode.access = methodNode.access & (~Opcodes.ACC_FINAL);
+//						break; // should only be one match
+						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+					}
+				}
+				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+			} else {
+//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+			}
+		}
+		for(NotFinalFieldAnnotation notFinalMethodAnnotation : notFinalIdentifier.getMarkedFields()){
+			String className = notFinalMethodAnnotation.getClassName();
+			String qualifiedClassFilename = className + ".class";
+			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
+			if(baseClass != null){
+				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+				for (Object o : baseClassNode.fields) {
+					FieldNode fieldNode = (FieldNode) o;
+					if(fieldNode.name.equals(notFinalMethodAnnotation.getFieldName())){
+						fieldNode.access = fieldNode.access & (~Opcodes.ACC_FINAL);
+						break; // should only be one match
+					}
+				}
+				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+			} else {
+//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+			}
+		}
+	}
+
 	public void save(File outputFile) throws IOException {
 		runtimeModifications.save(outputFile);
 	}
