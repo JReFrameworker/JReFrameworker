@@ -103,7 +103,7 @@ public class DefineVisibilityIdentifier {
 				AnnotationNode annotation = (AnnotationNode) annotationObject;
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotation.desc, false);
-				if(checker.isDefineTypeFinalityAnnotation()){
+				if(checker.isDefineTypeVisibilityAnnotation()){
 					String typeValue = null;
 					Visibility visibilityValue = null;
 					if (annotation.values != null) {
@@ -125,7 +125,7 @@ public class DefineVisibilityIdentifier {
 				        	targetTypes.add(new DefineTypeVisibilityAnnotation(className, visibilityValue));
 				        }
 				    }
-				} else if(checker.isDefineMethodFinalityAnnotation()){
+				} else if(checker.isDefineMethodVisibilityAnnotation()){
 					String typeValue = null;
 					String methodValue = null;
 					Visibility visibilityValue = null;
@@ -150,7 +150,7 @@ public class DefineVisibilityIdentifier {
 				        	targetMethods.add(new DefineMethodVisibilityAnnotation(className, methodValue, visibilityValue));
 				        }
 				    }
-				} else if(checker.isDefineFieldFinalityAnnotation()){
+				} else if(checker.isDefineFieldVisibilityAnnotation()){
 					String typeValue = null;
 					String fieldValue = null;
 					Visibility visibilityValue = null;

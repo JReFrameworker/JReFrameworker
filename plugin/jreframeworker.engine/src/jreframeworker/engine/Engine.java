@@ -121,7 +121,7 @@ public class Engine {
 			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
 			if(baseClass != null){
 				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
-				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC | ~Opcodes.ACC_PROTECTED | ~Opcodes.ACC_PRIVATE);
+				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 				if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
 				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
@@ -138,15 +138,47 @@ public class Engine {
 			}
 		}
 		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
-			String className = defineMethodVisibilityAnnotation.getClassName();
-			String qualifiedClassFilename = className + ".class";
+			String qualifiedClassName = defineMethodVisibilityAnnotation.getClassName();
+			String[] simpleClassNameParts = qualifiedClassName.split("/");
+			String simpleClassName = simpleClassNameParts[simpleClassNameParts.length-1];
+			String qualifiedClassFilename = qualifiedClassName + ".class";
 			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
 			if(baseClass != null){
 				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
 				for (Object o : baseClassNode.methods) {
 					MethodNode methodNode = (MethodNode) o;
-					if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
-						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC | ~Opcodes.ACC_PROTECTED | ~Opcodes.ACC_PRIVATE);
+					if(defineMethodVisibilityAnnotation.getMethodName().equals(simpleClassName)){
+						if(methodNode.name.equals("<init>")){
+							methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+							if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+								methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+								methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+								methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+							} else {
+								// should never happen
+								throw new RuntimeException("Missing visibility modifier");
+							}
+//							break; // should only be one match?
+							// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+						} else if(methodNode.name.equals("<clinit>")){
+							methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+							if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+								methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+								methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+								methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+							} else {
+								// should never happen
+								throw new RuntimeException("Missing visibility modifier");
+							}
+//							break; // should only be one match?
+							// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+						}
+					} else if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
+						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
 						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
@@ -175,7 +207,7 @@ public class Engine {
 				for (Object o : baseClassNode.fields) {
 					FieldNode fieldNode = (FieldNode) o;
 					if(fieldNode.name.equals(defineFieldVisibilityAnnotation.getFieldName())){
-						fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC | ~Opcodes.ACC_PROTECTED | ~Opcodes.ACC_PRIVATE);
+						fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 						if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 							fieldNode.access = fieldNode.access | Opcodes.ACC_PUBLIC;
 						} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
