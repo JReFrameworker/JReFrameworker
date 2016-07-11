@@ -15,15 +15,17 @@ import java.lang.annotation.Target;
 /**
  * Sets the visibility of a field
  * 
- * target should be the field name (not qualified)
- * the target is qualified based on the super type
- * of the type it is placed on
+ * "type" should be the qualified class name if not defined the target will be
+ * the super class of the class the annotation is placed on
  * 
- * visibility should be "public", "protected", or "private"
+ * "field" should be the name of the field for which to set visibility
+ * 
+ * "visibility" should be "public", "protected", or "private"
  * 
  * @author Ben Holland
  */
 public @interface DefineFieldVisibility {
-	String target();
+	String type() default "";
+	String field();
 	String visibility();
 }

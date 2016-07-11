@@ -4,40 +4,56 @@ import java.util.LinkedList;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 
-public class DefineFinalityIdentifier {
+public class DefineVisibilityIdentifier {
 
+	public static enum Visibility {
+		PRIVATE, PROTECTED, PUBLIC;
+		
+		public static Visibility getVisibilityFromString(String valueString) {
+			if(valueString.equalsIgnoreCase("private")){
+				return Visibility.PRIVATE;
+			} else if(valueString.equalsIgnoreCase("protected")){
+				return Visibility.PROTECTED;
+			} else if(valueString.equalsIgnoreCase("public")){
+				return Visibility.PUBLIC;
+			} else {
+				throw new RuntimeException("Invalid visibility modifier");
+			}
+		}
+	}
+	
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";
 	private static final String METHOD = "method";
-	private static final String FINALITY = "finality";
+	private static final String VISIBILITY = "visibility";
 	
-	public static class DefineTypeFinalityAnnotation {
+	public static class DefineTypeVisibilityAnnotation {
 		private String className;
-		private boolean finality;
+		private Visibility visibility;
 		
-		public DefineTypeFinalityAnnotation(String className, boolean finality) {
+		public DefineTypeVisibilityAnnotation(String className, Visibility visibility) {
 			this.className = className;
-			this.finality = finality;
+			this.visibility = visibility;
 		}
 		
 		public String getClassName(){
 			return className;
 		}
 		
-		public boolean getFinality(){
-			return finality;
+		public Visibility getVisibility(){
+			return visibility;
 		}
 	}
 	
-	public static class DefineMethodFinalityAnnotation {
+	public static class DefineMethodVisibilityAnnotation {
 		private String className;
 		private String methodName;
-		private boolean finality;
+		private Visibility visibility;
 		
-		public DefineMethodFinalityAnnotation(String className, String methodName, boolean finality) {
+		public DefineMethodVisibilityAnnotation(String className, String methodName, Visibility visibility) {
 			this.className = className;
 			this.methodName = methodName;
-			this.finality = finality;
+			this.visibility = visibility;
 		}
 		
 		public String getClassName(){
@@ -48,20 +64,20 @@ public class DefineFinalityIdentifier {
 			return methodName;
 		}
 		
-		public boolean getFinality(){
-			return finality;
+		public Visibility getVisibility(){
+			return visibility;
 		}
 	}
 	
-	public static class DefineFieldFinalityAnnotation {
+	public static class DefineFieldVisibilityAnnotation {
 		private String className;
 		private String fieldName;
-		private boolean finality;
+		private Visibility visibility;
 		
-		public DefineFieldFinalityAnnotation(String className, String fieldName, boolean finality) {
+		public DefineFieldVisibilityAnnotation(String className, String fieldName, Visibility visibility) {
 			this.className = className;
 			this.fieldName = fieldName;
-			this.finality = finality;
+			this.visibility = visibility;
 		}
 		
 		public String getClassName(){
@@ -72,16 +88,16 @@ public class DefineFinalityIdentifier {
 			return fieldName;
 		}
 		
-		public boolean getFinality(){
-			return finality;
+		public Visibility getVisibility(){
+			return visibility;
 		}
 	}
 	
-	private LinkedList<DefineTypeFinalityAnnotation> targetTypes = new LinkedList<DefineTypeFinalityAnnotation>();
-	private LinkedList<DefineMethodFinalityAnnotation> targetMethods = new LinkedList<DefineMethodFinalityAnnotation>();
-	private LinkedList<DefineFieldFinalityAnnotation> targetFields = new LinkedList<DefineFieldFinalityAnnotation>();
+	private LinkedList<DefineTypeVisibilityAnnotation> targetTypes = new LinkedList<DefineTypeVisibilityAnnotation>();
+	private LinkedList<DefineMethodVisibilityAnnotation> targetMethods = new LinkedList<DefineMethodVisibilityAnnotation>();
+	private LinkedList<DefineFieldVisibilityAnnotation> targetFields = new LinkedList<DefineFieldVisibilityAnnotation>();
 
-	public DefineFinalityIdentifier(ClassNode classNode) {
+	public DefineVisibilityIdentifier(ClassNode classNode) {
 		if (classNode.invisibleAnnotations != null) {
 			for (Object annotationObject : classNode.invisibleAnnotations) {
 				AnnotationNode annotation = (AnnotationNode) annotationObject;
@@ -89,29 +105,30 @@ public class DefineFinalityIdentifier {
 				checker.visitAnnotation(annotation.desc, false);
 				if(checker.isDefineTypeFinalityAnnotation()){
 					String typeValue = null;
-					Boolean finalityValue = null;
+					Visibility visibilityValue = null;
 					if (annotation.values != null) {
 				        for (int i = 0; i < annotation.values.size(); i += 2) {
 				            String name = (String) annotation.values.get(i);
 				            Object value = annotation.values.get(i + 1);
 				            if(name.equals(TYPE)){
 				            	typeValue = ((String)value).replaceAll("\\.", "/");
-				            } else if(name.equals(FINALITY)){
-				            	finalityValue = (boolean) value;
+				            } else if(name.equals(VISIBILITY)){
+				            	String valueString = (String) value;
+				            	visibilityValue = Visibility.getVisibilityFromString(valueString);
 				            }
 				        }
-				        if(typeValue != null && finalityValue != null){
+				        if(typeValue != null && visibilityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
 				        		 classNode.superName.replaceAll("\\.", "/");
 				        	}
-				        	targetTypes.add(new DefineTypeFinalityAnnotation(className, finalityValue));
+				        	targetTypes.add(new DefineTypeVisibilityAnnotation(className, visibilityValue));
 				        }
 				    }
 				} else if(checker.isDefineMethodFinalityAnnotation()){
 					String typeValue = null;
 					String methodValue = null;
-					Boolean finalityValue = null;
+					Visibility visibilityValue = null;
 					if (annotation.values != null) {
 				        for (int i = 0; i < annotation.values.size(); i += 2) {
 				            String name = (String) annotation.values.get(i);
@@ -120,22 +137,23 @@ public class DefineFinalityIdentifier {
 				            	typeValue = ((String)value).replaceAll("\\.", "/");
 				            } else if(name.equals(METHOD)){
 				            	methodValue = (String) value;
-				            } else if(name.equals(FINALITY)){
-				            	finalityValue = (boolean) value;
+				            } else if(name.equals(VISIBILITY)){
+				            	String valueString = (String) value;
+				            	visibilityValue = Visibility.getVisibilityFromString(valueString);
 				            }
 				        }
-				        if(typeValue != null && methodValue != null && finalityValue != null){
+				        if(typeValue != null && methodValue != null && visibilityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
 				        		 classNode.superName.replaceAll("\\.", "/");
 				        	}
-				        	targetMethods.add(new DefineMethodFinalityAnnotation(className, methodValue, finalityValue));
+				        	targetMethods.add(new DefineMethodVisibilityAnnotation(className, methodValue, visibilityValue));
 				        }
 				    }
 				} else if(checker.isDefineFieldFinalityAnnotation()){
 					String typeValue = null;
 					String fieldValue = null;
-					Boolean finalityValue = null;
+					Visibility visibilityValue = null;
 					if (annotation.values != null) {
 				        for (int i = 0; i < annotation.values.size(); i += 2) {
 				            String name = (String) annotation.values.get(i);
@@ -144,16 +162,17 @@ public class DefineFinalityIdentifier {
 				            	typeValue = ((String)value).replaceAll("\\.", "/");
 				            } else if(name.equals(FIELD)){
 				            	fieldValue = (String) value;
-				            } else if(name.equals(FINALITY)){
-				            	finalityValue = (boolean) value;
+				            } else if(name.equals(VISIBILITY)){
+				            	String valueString = (String) value;
+				            	visibilityValue = Visibility.getVisibilityFromString(valueString);
 				            }
 				        }
-				        if(typeValue != null && fieldValue != null && finalityValue != null){
+				        if(typeValue != null && fieldValue != null && visibilityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
 				        		 classNode.superName.replaceAll("\\.", "/");
 				        	}
-				        	targetFields.add(new DefineFieldFinalityAnnotation(className, fieldValue, finalityValue));
+				        	targetFields.add(new DefineFieldVisibilityAnnotation(className, fieldValue, visibilityValue));
 				        }
 				    }
 				} 	
@@ -161,15 +180,15 @@ public class DefineFinalityIdentifier {
 		}
     }
 	
-	public LinkedList<DefineTypeFinalityAnnotation> getTargetTypes() {
+	public LinkedList<DefineTypeVisibilityAnnotation> getTargetTypes() {
 		return targetTypes;
 	}
 	
-    public LinkedList<DefineMethodFinalityAnnotation> getTargetMethods() {
+    public LinkedList<DefineMethodVisibilityAnnotation> getTargetMethods() {
 		return targetMethods;
 	}
     
-    public LinkedList<DefineFieldFinalityAnnotation> getTargetFields() {
+    public LinkedList<DefineFieldVisibilityAnnotation> getTargetFields() {
 		return targetFields;
 	}
 }

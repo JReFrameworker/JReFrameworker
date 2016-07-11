@@ -13,18 +13,19 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 
 /**
- * Indicates the annotated method should not be marked final
- * in order to allow extending the class for reframeworking
+ * Sets the visibility of a method
  * 
- * target should be the method name (not qualified)
- * the target is qualified based on the super type
- * of the type it is placed on
+ * "type" should be the qualified class name if not defined the target will be
+ * the super class of the class the annotation is placed on
  * 
- * visibility should be "public", "protected", or "private"
+ * "method" should be the name of the method for which to set visibility
+ * 
+ * "visibility" should be "public", "protected", or "private"
  * 
  * @author Ben Holland
  */
 public @interface DefineMethodVisibility {
-	String target();
+	String type() default "";
+	String method();
 	String visibility();
 }

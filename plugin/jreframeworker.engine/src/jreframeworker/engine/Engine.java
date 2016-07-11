@@ -41,6 +41,11 @@ import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.Visibility;
 import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.engine.identifiers.MergeMethodsIdentifier;
 import jreframeworker.engine.utils.AnnotationUtils;
@@ -70,9 +75,13 @@ public class Engine {
 				if(checker.isJREFAnnotation()){
 					String qualifiedClassFilename = classNode.name + ".class";
 					
-					// remove finals
-					DefineFinalityIdentifier notFinalIdentifier = new DefineFinalityIdentifier(classNode);
-					removeFinals(notFinalIdentifier, runtimeModifications);
+					// set finality
+					DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
+					setFinality(defineFinalityIdentifier, runtimeModifications);
+					
+					// set visibility modifiers
+					DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+					setVisibility(defineVisibilityIdentifier, runtimeModifications);
 
 					if(checker.isDefineTypeAnnotation()){
 						if(runtimeModifications.getJarEntrySet().contains(qualifiedClassFilename)){
@@ -98,8 +107,103 @@ public class Engine {
 		return processed;
 	}
 	
-	// TODO: probably could be a bit more efficient about file I/O here...but for now this works
-	private void removeFinals(DefineFinalityIdentifier defineFinalityIdentifier, JarModifier runtimeModifications) throws IOException {
+	/**
+	 * Sets the access (visibility) modifiers for types, methods, and fields as defined by the annotation system
+	 * @param defineVisibilityIdentifier
+	 * @param runtimeModifications
+	 * @throws IOException 
+	 */
+	private void setVisibility(DefineVisibilityIdentifier defineVisibilityIdentifier, JarModifier runtimeModifications) throws IOException {
+		// TODO: probably could be a bit more efficient about file I/O here...but for now this works
+		for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
+			String className = defineTypeVisibilityAnnotation.getClassName();
+			String qualifiedClassFilename = className + ".class";
+			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
+			if(baseClass != null){
+				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC | ~Opcodes.ACC_PROTECTED | ~Opcodes.ACC_PRIVATE);
+				if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
+				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
+				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
+				} else {
+					// should never happen
+					throw new RuntimeException("Missing visibility modifier");
+				}
+				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+			} else {
+//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+			}
+		}
+		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
+			String className = defineMethodVisibilityAnnotation.getClassName();
+			String qualifiedClassFilename = className + ".class";
+			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
+			if(baseClass != null){
+				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+				for (Object o : baseClassNode.methods) {
+					MethodNode methodNode = (MethodNode) o;
+					if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
+						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC | ~Opcodes.ACC_PROTECTED | ~Opcodes.ACC_PRIVATE);
+						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
+						}
+//						break; // should only be one match?
+						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+					}
+				}
+				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+			} else {
+//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+			}
+		}
+		for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
+			String className = defineFieldVisibilityAnnotation.getClassName();
+			String qualifiedClassFilename = className + ".class";
+			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
+			if(baseClass != null){
+				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+				for (Object o : baseClassNode.fields) {
+					FieldNode fieldNode = (FieldNode) o;
+					if(fieldNode.name.equals(defineFieldVisibilityAnnotation.getFieldName())){
+						fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC | ~Opcodes.ACC_PROTECTED | ~Opcodes.ACC_PRIVATE);
+						if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							fieldNode.access = fieldNode.access | Opcodes.ACC_PUBLIC;
+						} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							fieldNode.access = fieldNode.access | Opcodes.ACC_PROTECTED;
+						} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							fieldNode.access = fieldNode.access | Opcodes.ACC_PRIVATE;
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
+						}
+						break; // should only be one match
+					}
+				}
+				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+			} else {
+//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+			}
+		}
+	}
+
+	/**
+	 * Sets the finality bit for for types, methods, and fields as defined by the annotation system
+	 * @param defineFinalityIdentifier
+	 * @param runtimeModifications
+	 * @throws IOException
+	 */
+	private void setFinality(DefineFinalityIdentifier defineFinalityIdentifier, JarModifier runtimeModifications) throws IOException {
+		// TODO: probably could be a bit more efficient about file I/O here...but for now this works
 		for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
 			String className = defineTypeFinalityAnnotation.getClassName();
 			String qualifiedClassFilename = className + ".class";

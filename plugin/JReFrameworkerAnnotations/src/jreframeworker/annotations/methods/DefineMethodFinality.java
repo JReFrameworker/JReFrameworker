@@ -13,18 +13,20 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 
 /**
- * Adds or removes the final modifier from a target method
+ * Adds or removes the final modifier from a method
  * 
- * target should be the method name (not qualified)
- * the target is qualified based on the super type
- * of the type it is placed on
+ * "type" should be the qualified class name, if not defined the target will be
+ * the super class of the class the annotation is placed on
  * 
- * finality should be a boolean true to add or boolean
- * false to remove final keyword
+ * "method" should be the name of the method for which to set finality
+ * 
+ * "finality" should be a boolean true to add or boolean false to remove the
+ * final keyword
  * 
  * @author Ben Holland
  */
 public @interface DefineMethodFinality {
-	String target();
+	String type() default "";
+	String method();
 	boolean finality();
 }

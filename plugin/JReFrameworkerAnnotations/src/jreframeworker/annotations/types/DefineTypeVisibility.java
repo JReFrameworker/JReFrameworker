@@ -13,16 +13,16 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 
 /**
- * Indicates the annotated class should not be marked final
- * in order to allow extending the class for reframeworking
+ * Sets the visibility of a type
  * 
- * target should be the qualified class name
+ * "type" should be the qualified class name, if not defined the target will be
+ * the super class of the class the annotation is placed on
  * 
- * visibility should be "public", "protected", or "private"
+ * "visibility" should be "public", "protected", or "private"
  * 
  * @author Ben Holland
  */
 public @interface DefineTypeVisibility {
-	String target();
+	String type() default "";
 	String visibility();
 }
