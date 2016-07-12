@@ -2,8 +2,10 @@ package jreframeworker.engine;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map.Entry;
 import java.util.jar.JarException;
 
 import org.objectweb.asm.ClassReader;
@@ -57,9 +59,46 @@ public class Engine {
 	private String mergeRenamePrefix;
 	private JarModifier runtimeModifications;
 	
+	private static class Bytecode {
+		private byte[] bytecode;
+		
+		public Bytecode(byte[] bytecode){
+			this.bytecode = bytecode;
+		}
+		
+		public byte[] getBytecode(){
+			return bytecode;
+		}
+	}
+	
+	private HashMap<String,Bytecode> bytecodeCache = new HashMap<String,Bytecode>();
+	
 	public Engine(File runtime, String mergeRenamePrefix) throws JarException, IOException {
 		this.mergeRenamePrefix = mergeRenamePrefix;
 		this.runtimeModifications = new JarModifier(runtime);
+	}
+	
+	private ClassNode getBytecode(String entry) throws IOException {
+		return BytecodeUtils.getClassNode(getRawBytecode(entry));
+	}
+	
+	private byte[] getRawBytecode(String entry) throws IOException {
+		if(bytecodeCache.containsKey(entry)){
+			return bytecodeCache.get(entry).getBytecode();
+		} else {
+			String qualifiedClassFilename = entry + ".class";
+			byte[] bytecode = runtimeModifications.extractEntry(qualifiedClassFilename);
+			bytecodeCache.put(entry, new Bytecode(bytecode));
+			return bytecode;
+		}
+	}
+	
+	private void updateBytecode(String entry, ClassNode classNode) throws IOException {
+		updateBytecode(entry, BytecodeUtils.writeClass(classNode));
+	}
+	
+	private void updateBytecode(String entry, byte[] bytecode) throws IOException {
+		bytecodeCache.put(entry, new Bytecode(bytecode));
 	}
 	
 	public boolean process(byte[] inputClass) throws IOException {
@@ -73,29 +112,27 @@ public class Engine {
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotationNode.desc, false);
 				if(checker.isJREFAnnotation()){
-					String qualifiedClassFilename = classNode.name + ".class";
-					
 					// set finality
 					DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
-					setFinality(defineFinalityIdentifier, runtimeModifications);
+					setFinality(defineFinalityIdentifier);
 					
 					// set visibility modifiers
 					DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
-					setVisibility(defineVisibilityIdentifier, runtimeModifications);
+					setVisibility(defineVisibilityIdentifier);
 
 					if(checker.isDefineTypeAnnotation()){
+						String qualifiedClassFilename = classNode.name + ".class";
 						if(runtimeModifications.getJarEntrySet().contains(qualifiedClassFilename)){
-							runtimeModifications.add(qualifiedClassFilename, inputClass, true);
+							updateBytecode(classNode.name, inputClass);
 //							Log.info("Replaced: " + qualifiedClassName + " in " + runtimeModifications.getJarFile().getName());
 						} else {
-							runtimeModifications.add(qualifiedClassFilename, inputClass, false);
+							updateBytecode(classNode.name, inputClass);
 //							Log.info("Inserted: " + qualifiedClassName + " into " + runtimeModifications.getJarFile().getName());
 						}
 					} else if(checker.isMergeTypeAnnotation()){
-						String qualifiedParentClassName = classNode.superName + ".class";
-						byte[] baseClass = runtimeModifications.extractEntry(qualifiedParentClassName);
+						byte[] baseClass = getRawBytecode(classNode.superName);
 						byte[] mergedClass = mergeClasses(baseClass, inputClass);
-						runtimeModifications.add(qualifiedParentClassName, mergedClass, true);
+						updateBytecode(classNode.superName, mergedClass);
 						// TODO: clean up outputClass somehow, probably need to make a local temp
 						// directory which gets deleted at the end of the build
 //						Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
@@ -113,71 +150,46 @@ public class Engine {
 	 * @param runtimeModifications
 	 * @throws IOException 
 	 */
-	private void setVisibility(DefineVisibilityIdentifier defineVisibilityIdentifier, JarModifier runtimeModifications) throws IOException {
-		// TODO: probably could be a bit more efficient about file I/O here...but for now this works
+	private void setVisibility(DefineVisibilityIdentifier defineVisibilityIdentifier) throws IOException {
 		for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
 			String className = defineTypeVisibilityAnnotation.getClassName();
-			String qualifiedClassFilename = className + ".class";
-			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
-			if(baseClass != null){
-				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
-				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-				if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
-				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
-				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
-				} else {
-					// should never happen
-					throw new RuntimeException("Missing visibility modifier");
-				}
-				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+			ClassNode baseClassNode = getBytecode(className);
+			baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+			if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
+			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
+			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
 			} else {
-//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+				// should never happen
+				throw new RuntimeException("Missing visibility modifier");
 			}
+			updateBytecode(className, baseClassNode);
 		}
 		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
 			String qualifiedClassName = defineMethodVisibilityAnnotation.getClassName();
 			String[] simpleClassNameParts = qualifiedClassName.split("/");
+			ClassNode baseClassNode = getBytecode(qualifiedClassName);
 			String simpleClassName = simpleClassNameParts[simpleClassNameParts.length-1];
-			String qualifiedClassFilename = qualifiedClassName + ".class";
-			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
-			if(baseClass != null){
-				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
-				for (Object o : baseClassNode.methods) {
-					MethodNode methodNode = (MethodNode) o;
-					if(defineMethodVisibilityAnnotation.getMethodName().equals(simpleClassName)){
-						if(methodNode.name.equals("<init>")){
-							methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-							if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-								methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
-							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-								methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
-							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-								methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
-							} else {
-								// should never happen
-								throw new RuntimeException("Missing visibility modifier");
-							}
-//							break; // should only be one match?
-							// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
-						} else if(methodNode.name.equals("<clinit>")){
-							methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-							if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-								methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
-							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-								methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
-							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-								methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
-							} else {
-								// should never happen
-								throw new RuntimeException("Missing visibility modifier");
-							}
-//							break; // should only be one match?
-							// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+			for (Object o : baseClassNode.methods) {
+				MethodNode methodNode = (MethodNode) o;
+				if(defineMethodVisibilityAnnotation.getMethodName().equals(simpleClassName)){
+					if(methodNode.name.equals("<init>")){
+						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
 						}
-					} else if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
+//						break; // should only be one match?
+						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+					} else if(methodNode.name.equals("<clinit>")){
 						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
@@ -192,39 +204,45 @@ public class Engine {
 //						break; // should only be one match?
 						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
 					}
+				} else if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
+					methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+					if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+						methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+					} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+						methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+					} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+						methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+					} else {
+						// should never happen
+						throw new RuntimeException("Missing visibility modifier");
+					}
+//					break; // should only be one match?
+					// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
 				}
-				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
-			} else {
-//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
 			}
+			updateBytecode(qualifiedClassName, baseClassNode);
 		}
 		for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
 			String className = defineFieldVisibilityAnnotation.getClassName();
-			String qualifiedClassFilename = className + ".class";
-			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
-			if(baseClass != null){
-				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
-				for (Object o : baseClassNode.fields) {
-					FieldNode fieldNode = (FieldNode) o;
-					if(fieldNode.name.equals(defineFieldVisibilityAnnotation.getFieldName())){
-						fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-						if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-							fieldNode.access = fieldNode.access | Opcodes.ACC_PUBLIC;
-						} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-							fieldNode.access = fieldNode.access | Opcodes.ACC_PROTECTED;
-						} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-							fieldNode.access = fieldNode.access | Opcodes.ACC_PRIVATE;
-						} else {
-							// should never happen
-							throw new RuntimeException("Missing visibility modifier");
-						}
-						break; // should only be one match
+			ClassNode baseClassNode = getBytecode(className);
+			for (Object o : baseClassNode.fields) {
+				FieldNode fieldNode = (FieldNode) o;
+				if(fieldNode.name.equals(defineFieldVisibilityAnnotation.getFieldName())){
+					fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+					if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+						fieldNode.access = fieldNode.access | Opcodes.ACC_PUBLIC;
+					} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+						fieldNode.access = fieldNode.access | Opcodes.ACC_PROTECTED;
+					} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+						fieldNode.access = fieldNode.access | Opcodes.ACC_PRIVATE;
+					} else {
+						// should never happen
+						throw new RuntimeException("Missing visibility modifier");
 					}
+					break; // should only be one match
 				}
-				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
-			} else {
-//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
 			}
+			updateBytecode(className, baseClassNode);
 		}
 	}
 
@@ -234,72 +252,60 @@ public class Engine {
 	 * @param runtimeModifications
 	 * @throws IOException
 	 */
-	private void setFinality(DefineFinalityIdentifier defineFinalityIdentifier, JarModifier runtimeModifications) throws IOException {
-		// TODO: probably could be a bit more efficient about file I/O here...but for now this works
+	private void setFinality(DefineFinalityIdentifier defineFinalityIdentifier) throws IOException {
 		for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
 			String className = defineTypeFinalityAnnotation.getClassName();
-			String qualifiedClassFilename = className + ".class";
-			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
-			if(baseClass != null){
-				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
+			ClassNode baseClassNode = getBytecode(className);
+			if(baseClassNode != null){
 				if(defineTypeFinalityAnnotation.getFinality()){
 					baseClassNode.access = baseClassNode.access | Opcodes.ACC_FINAL;
 				} else {
 					baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_FINAL);
 				}
-				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
+				updateBytecode(className, baseClassNode);
 			} else {
 //				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
 			}
 		}
 		for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
 			String className = defineMethodFinalityAnnotation.getClassName();
-			String qualifiedClassFilename = className + ".class";
-			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
-			if(baseClass != null){
-				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
-				for (Object o : baseClassNode.methods) {
-					MethodNode methodNode = (MethodNode) o;
-					if(methodNode.name.equals(defineMethodFinalityAnnotation.getMethodName())){
-						if(defineMethodFinalityAnnotation.getFinality()){
-							methodNode.access = methodNode.access | Opcodes.ACC_FINAL;
-						} else {
-							methodNode.access = methodNode.access & (~Opcodes.ACC_FINAL);
-						}
-//						break; // should only be one match?
-						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+			ClassNode baseClassNode = getBytecode(className);
+			for (Object o : baseClassNode.methods) {
+				MethodNode methodNode = (MethodNode) o;
+				if(methodNode.name.equals(defineMethodFinalityAnnotation.getMethodName())){
+					if(defineMethodFinalityAnnotation.getFinality()){
+						methodNode.access = methodNode.access | Opcodes.ACC_FINAL;
+					} else {
+						methodNode.access = methodNode.access & (~Opcodes.ACC_FINAL);
 					}
+//					break; // should only be one match?
+					// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
 				}
-				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
-			} else {
-//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
 			}
+			updateBytecode(className, baseClassNode);
 		}
 		for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
 			String className = defineFieldFinalityAnnotation.getClassName();
-			String qualifiedClassFilename = className + ".class";
-			byte[] baseClass = runtimeModifications.extractEntry(qualifiedClassFilename);
-			if(baseClass != null){
-				ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
-				for (Object o : baseClassNode.fields) {
-					FieldNode fieldNode = (FieldNode) o;
-					if(fieldNode.name.equals(defineFieldFinalityAnnotation.getFieldName())){
-						if(defineFieldFinalityAnnotation.getFinality()){
-							fieldNode.access = fieldNode.access | Opcodes.ACC_FINAL;
-						} else {
-							fieldNode.access = fieldNode.access & (~Opcodes.ACC_FINAL);
-						}
-						break; // should only be one match
+			ClassNode baseClassNode = getBytecode(className);
+			for (Object o : baseClassNode.fields) {
+				FieldNode fieldNode = (FieldNode) o;
+				if(fieldNode.name.equals(defineFieldFinalityAnnotation.getFieldName())){
+					if(defineFieldFinalityAnnotation.getFinality()){
+						fieldNode.access = fieldNode.access | Opcodes.ACC_FINAL;
+					} else {
+						fieldNode.access = fieldNode.access & (~Opcodes.ACC_FINAL);
 					}
+					break; // should only be one match
 				}
-				runtimeModifications.add(qualifiedClassFilename, BytecodeUtils.writeClass(baseClassNode), true);
-			} else {
-//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
 			}
+			updateBytecode(className, baseClassNode);
 		}
 	}
 
 	public void save(File outputFile) throws IOException {
+		for(Entry<String,Bytecode> entry : bytecodeCache.entrySet()){
+			runtimeModifications.add(entry.getKey() + ".class", entry.getValue().getBytecode(), true);
+		}
 		runtimeModifications.save(outputFile);
 	}
 	
