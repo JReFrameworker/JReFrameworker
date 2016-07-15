@@ -1,4 +1,4 @@
-package jreframeworker.log;
+package jreframeworker.engine.log;
 
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IStatus;
@@ -7,7 +7,8 @@ import org.eclipse.core.runtime.Status;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 
-import jreframeworker.Activator;
+import jreframeworker.engine.Activator;
+
 
 /**
  * Centralized logging for Eclipse plugins.
@@ -52,4 +53,3 @@ public class Log {
 		}
 	}
 }
-

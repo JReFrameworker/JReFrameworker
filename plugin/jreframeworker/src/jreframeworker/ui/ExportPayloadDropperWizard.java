@@ -69,7 +69,7 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 						dropperJar.delete();
 					} else {
 						dropperJar.getParentFile().mkdirs();
-						URL fileURL = Activator.getContext().getBundle().getEntry(JReFrameworker.EXPORT_DIRECTORY + "/" + PAYLOAD_DROPPER);
+						URL fileURL = Activator.getDefault().getBundle().getEntry(JReFrameworker.EXPORT_DIRECTORY + "/" + PAYLOAD_DROPPER);
 						URL resolvedFileURL = FileLocator.toFileURL(fileURL);
 						// need to use the 3-arg constructor of URI in order to properly escape file system chars
 						URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);

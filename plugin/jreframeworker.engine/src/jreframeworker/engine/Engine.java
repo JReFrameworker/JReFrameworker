@@ -50,6 +50,7 @@ import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVi
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.Visibility;
 import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.engine.identifiers.MergeMethodsIdentifier;
+import jreframeworker.engine.log.Log;
 import jreframeworker.engine.utils.AnnotationUtils;
 import jreframeworker.engine.utils.BytecodeUtils;
 import jreframeworker.engine.utils.JarModifier;
@@ -120,14 +121,15 @@ public class Engine {
 					DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
 					setVisibility(defineVisibilityIdentifier);
 
+					String qualifiedClassName = classNode.name;
 					if(checker.isDefineTypeAnnotation()){
-						String qualifiedClassFilename = classNode.name + ".class";
+						String qualifiedClassFilename = qualifiedClassName + ".class";
 						if(runtimeModifications.getJarEntrySet().contains(qualifiedClassFilename)){
 							updateBytecode(classNode.name, inputClass);
-//							Log.info("Replaced: " + qualifiedClassName + " in " + runtimeModifications.getJarFile().getName());
+							Log.info("Replaced: " + qualifiedClassName + " in " + runtimeModifications.getJarFile().getName());
 						} else {
 							updateBytecode(classNode.name, inputClass);
-//							Log.info("Inserted: " + qualifiedClassName + " into " + runtimeModifications.getJarFile().getName());
+							Log.info("Inserted: " + qualifiedClassName + " into " + runtimeModifications.getJarFile().getName());
 						}
 					} else if(checker.isMergeTypeAnnotation()){
 						byte[] baseClass = getRawBytecode(classNode.superName);
@@ -135,7 +137,8 @@ public class Engine {
 						updateBytecode(classNode.superName, mergedClass);
 						// TODO: clean up outputClass somehow, probably need to make a local temp
 						// directory which gets deleted at the end of the build
-//						Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
+						String qualifiedParentClassName = classNode.superName;
+						Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
 					}
 					processed = true;
 				}
@@ -264,7 +267,7 @@ public class Engine {
 				}
 				updateBytecode(className, baseClassNode);
 			} else {
-//				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
 			}
 		}
 		for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){

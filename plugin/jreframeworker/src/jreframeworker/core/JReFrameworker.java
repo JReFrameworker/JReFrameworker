@@ -234,7 +234,7 @@ public class JReFrameworker {
 		final String annotationsJarFilename = JRE_FRAMEWORKER_ANNOTATIONS_JAR;
 		String annotationsJarPath = ANNOTATIONS_DIRECTORY + "/" + annotationsJarFilename;
 		// see http://stackoverflow.com/q/23825933/475329 for logic of getting bundle resource
-		URL fileURL = Activator.getContext().getBundle().getEntry(annotationsJarPath);
+		URL fileURL = Activator.getDefault().getBundle().getEntry(annotationsJarPath);
 		URL resolvedFileURL = FileLocator.toFileURL(fileURL);
 		// need to use the 3-arg constructor of URI in order to properly escape file system chars
 		URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);
