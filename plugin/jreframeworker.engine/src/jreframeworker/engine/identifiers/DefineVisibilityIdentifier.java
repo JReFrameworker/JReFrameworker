@@ -120,7 +120,7 @@ public class DefineVisibilityIdentifier {
 				        if(typeValue != null && visibilityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
-				        		 classNode.superName.replaceAll("\\.", "/");
+				        		className = classNode.superName;;
 				        	}
 				        	targetTypes.add(new DefineTypeVisibilityAnnotation(className, visibilityValue));
 				        }
@@ -145,7 +145,7 @@ public class DefineVisibilityIdentifier {
 				        if(typeValue != null && methodValue != null && visibilityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
-				        		 classNode.superName.replaceAll("\\.", "/");
+				        		className = classNode.superName;;
 				        	}
 				        	targetMethods.add(new DefineMethodVisibilityAnnotation(className, methodValue, visibilityValue));
 				        }
@@ -170,7 +170,7 @@ public class DefineVisibilityIdentifier {
 				        if(typeValue != null && fieldValue != null && visibilityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
-				        		 classNode.superName.replaceAll("\\.", "/");
+				        		className = classNode.superName;;
 				        	}
 				        	targetFields.add(new DefineFieldVisibilityAnnotation(className, fieldValue, visibilityValue));
 				        }

@@ -2,9 +2,13 @@ package jreframeworker.engine.identifiers;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.ClassNode;
 
 public class JREFAnnotationIdentifier extends ClassVisitor {
 
+	private static final String SUPERTYPE = "supertype";
+	
 	private static final String DEFINE_TYPE_ANNOTATION = "Ljreframeworker/annotations/types/DefineType;";
 	private static final String DEFINE_TYPE_FINALITY_ANNOTATION = "Ljreframeworker/annotations/types/DefineTypeFinality;";
 	private static final String DEFINE_TYPE_VISIBILITY_ANNOTATION = "Ljreframeworker/annotations/types/DefineTypeVisibility;";
@@ -132,6 +136,35 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 			
 			|| isMergeTypeAnnotation 
 			|| isMergeMethodAnnotation;
+	}
+	
+	public static class MergeTypeAnnotation {
+		private String supertype;
+		
+		public MergeTypeAnnotation(String supertype) {
+			this.supertype = supertype;
+		}
+		
+		public String getSupertype(){
+			return supertype;
+		}
+	}
+	
+	public static MergeTypeAnnotation getMergeTypeAnnotation(ClassNode classNode, AnnotationNode annotation){
+		String superTypeValue = null;
+		if(annotation.values != null){
+	        for (int i = 0; i < annotation.values.size(); i += 2) {
+	            String name = (String) annotation.values.get(i);
+	            Object value = annotation.values.get(i + 1);
+	            if(name.equals(SUPERTYPE)){
+	            	superTypeValue = ((String)value).replaceAll("\\.", "/");
+	            }
+	        }
+	    }
+		if(superTypeValue == null || superTypeValue.equals("")){
+			superTypeValue = classNode.superName;
+        }
+		return new MergeTypeAnnotation(superTypeValue);
 	}
 	
 }

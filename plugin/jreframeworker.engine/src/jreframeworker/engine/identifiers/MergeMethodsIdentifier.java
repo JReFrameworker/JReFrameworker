@@ -6,7 +6,7 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 public class MergeMethodsIdentifier {
-
+	
 	private LinkedList<MethodNode> mergeMethods = new LinkedList<MethodNode>();
 
 	public MergeMethodsIdentifier(ClassNode classNode) {

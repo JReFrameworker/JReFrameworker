@@ -17,8 +17,12 @@ import java.lang.annotation.Target;
  * inserted into the runtime. If the runtime type already exists it will be 
  * replaced with the annotated type. Ignores all other JReFrameworker annotations.
  * 
+ * "supertype" forces merges into the specified qualified type
+ * This option is useful for nasty edge case hacks...or forcing stubborn compiles to work.
+ * Hopefully in the future this option can be removed
+ * 
  * @author Ben Holland
  */
 public @interface MergeType {
-
+	String supertype() default "";
 }

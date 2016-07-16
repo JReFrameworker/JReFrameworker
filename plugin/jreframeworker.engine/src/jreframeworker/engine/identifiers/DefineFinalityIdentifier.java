@@ -103,7 +103,7 @@ public class DefineFinalityIdentifier {
 				        if(typeValue != null && finalityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
-				        		 classNode.superName.replaceAll("\\.", "/");
+				        		className = classNode.superName;;
 				        	}
 				        	targetTypes.add(new DefineTypeFinalityAnnotation(className, finalityValue));
 				        }
@@ -127,7 +127,7 @@ public class DefineFinalityIdentifier {
 				        if(typeValue != null && methodValue != null && finalityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
-				        		 classNode.superName.replaceAll("\\.", "/");
+				        		className = classNode.superName;;
 				        	}
 				        	targetMethods.add(new DefineMethodFinalityAnnotation(className, methodValue, finalityValue));
 				        }
@@ -151,7 +151,7 @@ public class DefineFinalityIdentifier {
 				        if(typeValue != null && fieldValue != null && finalityValue != null){
 				        	String className = typeValue;
 				        	if(className.equals("")){
-				        		 classNode.superName.replaceAll("\\.", "/");
+				        		className = classNode.superName;;
 				        	}
 				        	targetFields.add(new DefineFieldFinalityAnnotation(className, fieldValue, finalityValue));
 				        }
