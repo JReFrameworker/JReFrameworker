@@ -365,9 +365,18 @@ public class Engine {
 		LinkedList<MethodNode> methodsToRename = new LinkedList<MethodNode>();
 		for(MethodNode methodToMerge : methodsToMerge){
 			for(MethodNode baseMethod : baseMethods){
-				if(methodToMerge.name.equals(baseMethod.name)){
-					methodsToRename.add(baseMethod);
-					continue;
+				if(methodToMerge.signature != null && baseMethod.signature != null){
+					if(methodToMerge.signature.equals(baseMethod.signature)){
+						if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
+							methodsToRename.add(baseMethod);
+							continue;
+						}
+					}
+				} else {
+					if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
+						methodsToRename.add(baseMethod);
+						continue;
+					}
 				}
 			}
 		}
