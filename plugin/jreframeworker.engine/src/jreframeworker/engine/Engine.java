@@ -43,6 +43,7 @@ import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
+import jreframeworker.engine.identifiers.DefineMethodsIdentifier;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
@@ -353,52 +354,57 @@ public class Engine {
 		ClassNode baseClassNode = BytecodeUtils.getClassNode(baseClass);
 		ClassNode classToMergeClassNode = BytecodeUtils.getClassNode(classToMerge);
 
-		// identify methods to merge
-		MergeMethodsIdentifier mergeMethodsIdentifier = new MergeMethodsIdentifier(classToMergeClassNode);
-		LinkedList<MethodNode> methodsToMerge = mergeMethodsIdentifier.getMergeMethods();
-		
 		// get a list of base methods conflicting with methods to merge
 		BaseMethodsIdentifier baseMethodsIdentifier = new BaseMethodsIdentifier(baseClassNode);
 		LinkedList<MethodNode> baseMethods = baseMethodsIdentifier.getBaseMethods();
 		
-		// create a list of methods to rename
-		LinkedList<MethodNode> methodsToRename = new LinkedList<MethodNode>();
-		for(MethodNode methodToMerge : methodsToMerge){
+		// identify methods to insert or replace
+		DefineMethodsIdentifier defineMethodsIdentifier = new DefineMethodsIdentifier(classToMergeClassNode);
+		LinkedList<MethodNode> methodsToDefine = defineMethodsIdentifier.getDefineMethods();
+		
+		// purge defined methods that are already there
+		for(MethodNode methodToPurge : methodsToDefine){
 			for(MethodNode baseMethod : baseMethods){
-				if(methodToMerge.signature != null && baseMethod.signature != null){
-					if(methodToMerge.signature.equals(baseMethod.signature)){
-						if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
-							methodsToRename.add(baseMethod);
+				if(methodToPurge.signature != null && baseMethod.signature != null){
+					if(methodToPurge.signature.equals(baseMethod.signature)){
+						if(methodToPurge.name.equals(baseMethod.name) && methodToPurge.desc.equals(baseMethod.desc)){
+							purgeMethod(baseMethod);
 							continue;
 						}
 					}
 				} else {
-					if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
-						methodsToRename.add(baseMethod);
+					// signature was null, fall back to name and description only
+					if(methodToPurge.name.equals(baseMethod.name) && methodToPurge.desc.equals(baseMethod.desc)){
+						purgeMethod(baseMethod);
 						continue;
 					}
 				}
 			}
 		}
 		
+		// identify methods to merge
+		MergeMethodsIdentifier mergeMethodsIdentifier = new MergeMethodsIdentifier(classToMergeClassNode);
+		LinkedList<MethodNode> methodsToMerge = mergeMethodsIdentifier.getMergeMethods();
+		
 		// rename conflicting base methods
 		LinkedList<String> renamedMethods = new LinkedList<String>();
-		for(MethodNode methodToRename : methodsToRename){
-			// first remove any annotations from renamed base methods
-			// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
-			// to maintain the cover of the original method annotations
-			AnnotationUtils.clearMethodAnnotations(methodToRename);
-			
-			// rename the method
-			String originalMethodName = methodToRename.name;
-			renamedMethods.add(originalMethodName); // save the original name
-			String renamedMethodName = mergeRenamePrefix + methodToRename.name;
-			methodToRename.name = renamedMethodName;
-			
-			// make the method private to hide it from the end user
-			methodToRename.access = Opcodes.ACC_PRIVATE;
-			
-			Log.info("Renamed " + originalMethodName + " to " + renamedMethodName);
+		for(MethodNode methodToMerge : methodsToMerge){
+			for(MethodNode baseMethod : baseMethods){
+				if(methodToMerge.signature != null && baseMethod.signature != null){
+					if(methodToMerge.signature.equals(baseMethod.signature)){
+						if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
+							renamedMethods.add(renameMethod(baseMethod));
+							continue;
+						}
+					}
+				} else {
+					// signature was null, fall back to name and description only
+					if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
+						renamedMethods.add(renameMethod(baseMethod));
+						continue;
+					}
+				}
+			}
 		}
 
 		// write out the modified base class
@@ -414,6 +420,47 @@ public class Engine {
 		modifiedBaseClassReader.accept(mergeAdapter, ClassReader.EXPAND_FRAMES);
 
 		return classWriter.toByteArray();
+	}
+
+	private String renameMethod(MethodNode methodToRename) {
+		// first remove any annotations from renamed base methods
+		// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
+		// to maintain the cover of the original method annotations
+		AnnotationUtils.clearMethodAnnotations(methodToRename);
+		
+		// rename the method
+		String originalMethodName = methodToRename.name;
+		String renamedMethodName = mergeRenamePrefix + methodToRename.name;
+		methodToRename.name = renamedMethodName;
+		
+		// make the method private to hide it from the end user
+		methodToRename.access = Opcodes.ACC_PRIVATE;
+		
+		Log.info("Renamed " + originalMethodName + " to " + renamedMethodName);
+		
+		return originalMethodName; // return the original name
+	}
+	
+	// TODO: refactor to remove this hack
+	// currently just renaming and hiding methods to "purge" them, 
+	// but really we should just remove the bytecode entirely
+	private String purgeMethod(MethodNode methodToPurge) {
+		// first remove any annotations from renamed base methods
+		// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
+		// to maintain the cover of the original method annotations
+		AnnotationUtils.clearMethodAnnotations(methodToPurge);
+		
+		// rename the method
+		String originalMethodName = methodToPurge.name;
+		String renamedMethodName = mergeRenamePrefix + "_purged_" + methodToPurge.name;
+		methodToPurge.name = renamedMethodName;
+		
+		// make the method private to hide it from the end user
+		methodToPurge.access = Opcodes.ACC_PRIVATE;
+		
+		Log.info("Renamed " + originalMethodName + " to " + renamedMethodName);
+		
+		return originalMethodName; // return the original name
 	}
 	
 	/**
