@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Dex2Jar
+Bundle-SymbolicName: com.googlecode.dex2jar
+Bundle-Version: 0.9.16.qualifier
+Bundle-Vendor: EnSoft Corp.
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Export-Package: com.googlecode.dex2jar.tools,
+ com.googlecode.dex2jar.util,
+ com.googlecode.dex2jar.v3

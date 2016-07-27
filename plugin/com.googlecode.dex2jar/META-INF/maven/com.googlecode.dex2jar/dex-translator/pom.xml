@@ -1,0 +1,57 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.googlecode.dex2jar</groupId>
+        <artifactId>dex2jar</artifactId>
+        <version>1.1</version>
+    </parent>
+
+    <artifactId>dex-translator</artifactId>
+    <version>0.0.9.16-SNAPSHOT</version>
+    <name>Dex Translator</name>
+    <description>Tools to work with android .dex and java .class files</description>
+    <url>http://code.google.como/p/dex2jar/</url>
+    <dependencies>
+        <dependency>
+            <groupId>com.googlecode.dex2jar</groupId>
+            <artifactId>dex-reader</artifactId>
+            <version>1.15-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.dex2jar</groupId>
+            <artifactId>dex-ir</artifactId>
+            <version>1.12-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.dex2jar</groupId>
+            <artifactId>commons-lite</artifactId>
+            <version>1.15-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        </manifest>
+                        <manifestEntries>
+                            <Implementation-Build>${maven.build.timestamp}</Implementation-Build>
+                        </manifestEntries>
+                    </archive>
+                    <excludes>
+                        <exclude>*.bat</exclude>
+                        <exclude>*.sh</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

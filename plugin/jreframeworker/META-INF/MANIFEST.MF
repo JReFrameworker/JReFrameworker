@@ -16,7 +16,9 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.core.filesystem,
  org.apache.commons.io;bundle-version="2.0.1",
  org.objectweb.asm;bundle-version="5.0.4",
- jreframeworker.engine;bundle-version="1.1.0"
+ jreframeworker.engine;bundle-version="1.1.0",
+ com.googlecode.dex2jar;bundle-version="0.9.16",
+ brut.apktool;bundle-version="2.1.1"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Export-Package: jreframeworker,
@@ -26,3 +28,5 @@ Export-Package: jreframeworker,
  jreframeworker.launcher,
  jreframeworker.log,
  jreframeworker.ui
+Bundle-ClassPath: .,
+ swing2swt.jar

@@ -18,6 +18,13 @@
       </wizard>
    </extension>
    
+   <extension point="org.eclipse.ui.newWizards">
+      <category name="JReFrameworker" id="jreframeworker.ui.category" />
+      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewAndroidProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewAndroidProjectWizard" name="JReFrameworker Android Project">
+         <description>Creates a new JReFrameworker Android project in the workspace.</description>
+      </wizard>
+   </extension>
+   
    <!-- A project import wizard -->
    
    <!--
