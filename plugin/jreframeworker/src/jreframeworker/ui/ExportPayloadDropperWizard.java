@@ -67,18 +67,19 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 					// make sure we have a fresh copy of the base dropper
 					if(dropperJar.exists()){
 						dropperJar.delete();
-					} else {
-						dropperJar.getParentFile().mkdirs();
-						URL fileURL = Activator.getDefault().getBundle().getEntry(JReFrameworker.EXPORT_DIRECTORY + "/" + PAYLOAD_DROPPER);
-						URL resolvedFileURL = FileLocator.toFileURL(fileURL);
-						// need to use the 3-arg constructor of URI in order to properly escape file system chars
-						URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);
-						InputStream dropperJarInputStream = resolvedURI.toURL().openConnection().getInputStream();
-						if(dropperJarInputStream == null){
-							throw new RuntimeException("Could not locate: " + PAYLOAD_DROPPER);
-						}
-						Files.copy(dropperJarInputStream, dropperJar.toPath());
 					}
+					
+					dropperJar.getParentFile().mkdirs();
+					URL fileURL = Activator.getDefault().getBundle().getEntry(JReFrameworker.EXPORT_DIRECTORY + "/" + PAYLOAD_DROPPER);
+					URL resolvedFileURL = FileLocator.toFileURL(fileURL);
+					// need to use the 3-arg constructor of URI in order to properly escape file system chars
+					URI resolvedURI = new URI(resolvedFileURL.getProtocol(), resolvedFileURL.getPath(), null);
+					InputStream dropperJarInputStream = resolvedURI.toURL().openConnection().getInputStream();
+					if(dropperJarInputStream == null){
+						throw new RuntimeException("Could not locate: " + PAYLOAD_DROPPER);
+					}
+					Files.copy(dropperJarInputStream, dropperJar.toPath());
+
 					
 					JarModifier dropper = new JarModifier(dropperJar);
 					IProject project = page1.getJReFrameworkerProject().getProject();

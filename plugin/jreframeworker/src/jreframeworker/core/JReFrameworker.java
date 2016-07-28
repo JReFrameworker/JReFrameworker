@@ -144,7 +144,7 @@ public class JReFrameworker {
 		
 		try {
 			monitor.beginTask("Create JReFrameworker Runtime Project", 2);
-			
+
 			// create the empty eclipse project
 			monitor.setTaskName("Creating Eclipse project...");
 			project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
@@ -178,8 +178,10 @@ public class JReFrameworker {
 			brut.apktool.Main.main(args);
 
 			// convert dex to jar with dex2jar util
+			File applicationDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + APPLICATION_DIRECTORY);
+			applicationDirectory.mkdirs();
 			File dexFile = new File(appResources.getAbsolutePath() + File.separatorChar + "classes.dex");
-			File jarFile = new File(appResources.getAbsolutePath() + File.separatorChar + "classes.jar");
+			File jarFile = new File(applicationDirectory.getAbsolutePath() + File.separatorChar + "classes.jar");
 			com.googlecode.dex2jar.v3.Main.doFile(dexFile, jarFile);
 			
 			createBuildFile(projectDirectory, "classes.jar", false);
@@ -237,9 +239,13 @@ public class JReFrameworker {
 
 	private static void configureProjectClasspath(IJavaProject jProject) throws CoreException, JavaModelException, IOException, URISyntaxException {
 		// create bin folder
-		IFolder binFolder = jProject.getProject().getFolder(BINARY_DIRECTORY);
-		binFolder.create(false, true, null);
-		jProject.setOutputLocation(binFolder.getFullPath(), null);
+		try {
+			IFolder binFolder = jProject.getProject().getFolder(BINARY_DIRECTORY);
+			binFolder.create(false, true, null);
+			jProject.setOutputLocation(binFolder.getFullPath(), null);
+		} catch (Exception e){
+			Log.warning("Could not created bin folder.", e);
+		}
 		
 		// add the runtime libraries
 		cloneDefaultRuntimeLibraries(jProject);
