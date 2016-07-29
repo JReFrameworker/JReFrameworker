@@ -5,11 +5,11 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
-public class MergeMethodsIdentifier {
+public class DefineMethodsIdentifier {
 	
-	private LinkedList<MethodNode> mergeMethods = new LinkedList<MethodNode>();
+	private LinkedList<MethodNode> defineMethods = new LinkedList<MethodNode>();
 
-	public MergeMethodsIdentifier(ClassNode classNode) {
+	public DefineMethodsIdentifier(ClassNode classNode) {
     	for (Object o : classNode.methods) {
 			MethodNode methodNode = (MethodNode) o;
 			if (methodNode.invisibleAnnotations != null) {
@@ -17,16 +17,16 @@ public class MergeMethodsIdentifier {
 					AnnotationNode annotation = (AnnotationNode) annotationObject;
 					JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 					checker.visitAnnotation(annotation.desc, false);
-					if(checker.isMergeMethodAnnotation()){
-						mergeMethods.add(methodNode);
+					if(checker.isDefineMethodAnnotation()){
+						defineMethods.add(methodNode);
 					}
 				}
 			}
     	}
     }
 	
-    public LinkedList<MethodNode> getMergeMethods() {
-		return mergeMethods;
+    public LinkedList<MethodNode> getDefineMethods() {
+		return defineMethods;
 	}
     
 }
