@@ -12,7 +12,6 @@ import java.util.jar.JarException;
 
 import jreframeworker.engine.Engine;
 
-// TODO: Going to need to escalate permissions, see https://github.com/rritoch/super-user-application
 public class Main {
 	
 	// jar contents
