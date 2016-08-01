@@ -1,9 +1,12 @@
 package jreframeworker.annotations.fields;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import jreframeworker.annotations.methods.MethodFinalities;
 
 //this annotation is valid for types
 @Target({ ElementType.TYPE })
@@ -25,6 +28,7 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
+@Repeatable(FieldFinalities.class)
 public @interface DefineFieldFinality {
 	String type() default "";
 	String field();
