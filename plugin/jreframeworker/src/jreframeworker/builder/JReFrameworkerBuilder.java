@@ -139,17 +139,19 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 						// add the class files from libraries
 						// TODO: cross-reference with jar dependencies (don't add unreferenced libraries)
 						File libDirectory = jProject.getProject().getFolder(JReFrameworker.LIBRARY_DIRECTORY).getLocation().toFile();
-						for(File jarFile : libDirectory.listFiles()){
-							if(jarFile.getName().endsWith(".jar")){
-								Log.info("Embedding library: " + jarFile.getName());
-								
-								File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
-								JarModifier.unjar(jarFile, outputDirectory);
-								
-								addClassFiles(engine, outputDirectory);
-								
-								// cleanup
-								delete(outputDirectory);
+						if(libDirectory.exists()){
+							for(File jarFile : libDirectory.listFiles()){
+								if(jarFile.getName().endsWith(".jar")){
+									Log.info("Embedding library: " + jarFile.getName());
+									
+									File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
+									JarModifier.unjar(jarFile, outputDirectory);
+									
+									addClassFiles(engine, outputDirectory);
+									
+									// cleanup
+									delete(outputDirectory);
+								}
 							}
 						}
 						
