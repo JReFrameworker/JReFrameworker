@@ -1,6 +1,7 @@
 package jreframeworker.builder;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ import org.xml.sax.SAXException;
 
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.engine.Engine;
+import jreframeworker.engine.utils.JarModifier;
 import jreframeworker.log.Log;
 import jreframeworker.ui.PreferencesPage;
 
@@ -133,6 +135,24 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 						buildProject(binDirectory, jProject, engine, config);
 						config.close();
 						File modifiedRuntime = new File(runtimesDirectory.getCanonicalPath() + File.separatorChar + targetJar);
+
+						// add the class files from libraries
+						// TODO: cross-reference with jar dependencies (don't add unreferenced libraries)
+						File libDirectory = jProject.getProject().getFolder(JReFrameworker.LIBRARY_DIRECTORY).getLocation().toFile();
+						for(File jarFile : libDirectory.listFiles()){
+							if(jarFile.getName().endsWith(".jar")){
+								Log.info("Embedding library: " + jarFile.getName());
+								
+								File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
+								JarModifier.unjar(jarFile, outputDirectory);
+								
+								addClassFiles(engine, outputDirectory);
+								
+								// cleanup
+								delete(outputDirectory);
+							}
+						}
+						
 						engine.save(modifiedRuntime);
 						Log.info("Modified Runtime: " + modifiedRuntime.getCanonicalPath());
 					} else {
@@ -166,6 +186,16 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
+	private void addClassFiles(Engine engine, File f) throws IOException {
+		if (f.isDirectory()){
+			for (File f2 : f.listFiles()){
+				addClassFiles(engine, f2);
+			}
+		} else if(f.getName().endsWith(".class")){
+			engine.addUnprocessed(Files.readAllBytes(f.toPath()), true);
+		}
+	}
+
 	private File getOriginalRuntime(String targetJar) throws IOException {
 		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
 		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
@@ -263,6 +293,17 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			}
 		} catch (CoreException e) {}
 		return null;
+	}
+	
+	private void delete(File f) throws IOException {
+		if (f.isDirectory()){
+			for (File c : f.listFiles()){
+				delete(c);
+			}
+		}
+		if (!f.delete()){
+			throw new FileNotFoundException("Failed to delete file: " + f);
+		}
 	}
 	
 }

@@ -1,6 +1,7 @@
 package jreframeworker.engine;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -102,6 +103,17 @@ public class Engine {
 	
 	private void updateBytecode(String entry, byte[] bytecode) throws IOException {
 		bytecodeCache.put(entry, new Bytecode(bytecode));
+	}
+	
+//	public void addUnprocessed(byte[] inputClass) throws IOException {
+//		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
+//		updateBytecode(classNode.name, inputClass);
+//	}
+	
+	public void addUnprocessed(byte[] inputClass, boolean overwrite) throws IOException {
+		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
+		String qualifiedClassName = classNode.name + ".class";
+		runtimeModifications.add(qualifiedClassName, inputClass, overwrite);
 	}
 	
 	public boolean process(byte[] inputClass) throws IOException {

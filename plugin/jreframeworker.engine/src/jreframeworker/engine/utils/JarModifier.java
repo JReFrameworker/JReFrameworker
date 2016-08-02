@@ -41,6 +41,36 @@ public class JarModifier {
 	 */
 	public static final String META_INF = "META-INF";
 	
+	/**
+	 * Extracts a Jar file
+	 * 
+	 * @param inputJar
+	 * @param outputPath
+	 * @throws IOException
+	 */
+	public static void unjar(File inputJar, File outputPath) throws IOException {
+		outputPath.mkdirs();
+		JarFile jar = new JarFile(inputJar);
+		Enumeration<JarEntry> jarEntries = jar.entries();
+		while (jarEntries.hasMoreElements()) {
+			JarEntry jarEntry = jarEntries.nextElement();
+			File file = new File(outputPath.getAbsolutePath() + java.io.File.separator + jarEntry.getName());
+			new File(file.getParent()).mkdirs();
+			if (jarEntry.isDirectory()) {
+				file.mkdir();
+				continue;
+			}
+			InputStream is = jar.getInputStream(jarEntry);
+			FileOutputStream fos = new FileOutputStream(file);
+			while (is.available() > 0) {
+				fos.write(is.read());
+			}
+			fos.close();
+			is.close();
+		}
+		jar.close();
+	}
+	
 	private HashMap<String,JarEntry> jarEntries = new HashMap<String,JarEntry>();
 	private HashMap<String,byte[]> jarEntriesToAdd = new HashMap<String,byte[]>();
 	private File jarFile;
