@@ -470,7 +470,7 @@ public class Engine {
 		
 		// rename the method
 		String originalMethodName = methodToPurge.name;
-		String renamedMethodName = mergeRenamePrefix + "_purged_" + methodToPurge.name;
+		String renamedMethodName = mergeRenamePrefix + "purged_" + methodToPurge.name;
 		methodToPurge.name = renamedMethodName;
 		
 		// make the method private to hide it from the end user
