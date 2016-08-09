@@ -442,8 +442,6 @@ public class Engine {
 
 	private String renameMethod(MethodNode methodToRename) {
 		// first remove any annotations from renamed base methods
-		// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
-		// to maintain the cover of the original method annotations
 		AnnotationUtils.clearMethodAnnotations(methodToRename);
 		
 		// rename the method
@@ -464,8 +462,6 @@ public class Engine {
 	// but really we should just remove the bytecode entirely
 	private String purgeMethod(MethodNode methodToPurge) {
 		// first remove any annotations from renamed base methods
-		// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
-		// to maintain the cover of the original method annotations
 		AnnotationUtils.clearMethodAnnotations(methodToPurge);
 		
 		// rename the method
