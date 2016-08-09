@@ -50,7 +50,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import brut.common.BrutException;
 import jreframeworker.Activator;
 import jreframeworker.builder.JReFrameworkerBuilder;
 import jreframeworker.builder.JReFrameworkerNature;
@@ -122,70 +121,6 @@ public class JReFrameworker {
 			}
 			
 			createBuildFile(projectDirectory, targetJar, isRuntime);
-			
-			// copy runtimes and configure project classpath
-			monitor.setTaskName("Configuring project classpath...");
-			configureProjectClasspath(jProject);
-			monitor.worked(1);
-			if (monitor.isCanceled()){
-				return Status.CANCEL_STATUS;
-			}
-			
-			return Status.OK_STATUS;
-		} finally {
-			if (project != null && project.exists()){
-				project.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
-			}
-			monitor.done();
-		}
-	}
-	
-	public static IStatus createAndroidProject(String projectName, IPath projectPath, IProgressMonitor monitor, File targetAPK) throws CoreException, IOException, URISyntaxException, InterruptedException, BrutException {
-		IProject project = null;
-		
-		try {
-			monitor.beginTask("Create JReFrameworker Runtime Project", 2);
-
-			// create the empty eclipse project
-			monitor.setTaskName("Creating Eclipse project...");
-			project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
-			File projectDirectory = new File(projectPath.toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
-			IJavaProject jProject = createProject(projectName, projectPath, monitor, project);
-			monitor.worked(1);
-			if (monitor.isCanceled()){
-				return Status.CANCEL_STATUS;
-			}
-
-			// extract application resources
-			ArrayList<String> apktoolArgs = new ArrayList<String>();
-			
-			// decode apk
-			apktoolArgs.add("decode");
-			apktoolArgs.add(targetAPK.getAbsolutePath());
-			
-			// replace conflicting contents if any
-			apktoolArgs.add("--force");
-			
-			// we will use dex2jar instead...
-			apktoolArgs.add("--no-src");
-			
-			// output resources to the project directory
-			File appResources = new File(projectDirectory.getAbsolutePath() + File.separatorChar + "app");
-			apktoolArgs.add("--output=" + appResources.getAbsolutePath());
-			
-			Log.info("Extracting APK resources: " + apktoolArgs.toString());
-			String[] args = new String[apktoolArgs.size()];
-			apktoolArgs.toArray(args);
-			brut.apktool.Main.main(args);
-
-			// convert dex to jar with dex2jar util
-			File applicationDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + APPLICATION_DIRECTORY);
-			applicationDirectory.mkdirs();
-			File dexFile = new File(appResources.getAbsolutePath() + File.separatorChar + "classes.dex");
-			File jarFile = new File(applicationDirectory.getAbsolutePath() + File.separatorChar + "classes.jar");
-			com.googlecode.dex2jar.v3.Main.doFile(dexFile, jarFile);
-			
-			createBuildFile(projectDirectory, "classes.jar", false);
 			
 			// copy runtimes and configure project classpath
 			monitor.setTaskName("Configuring project classpath...");
