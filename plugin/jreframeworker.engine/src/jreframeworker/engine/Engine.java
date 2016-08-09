@@ -407,6 +407,7 @@ public class Engine {
 					if(methodToMerge.signature.equals(baseMethod.signature)){
 						if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
 							renamedMethods.add(renameMethod(baseMethod));
+							foundTargetMethod = true;
 							continue;
 						}
 					}
@@ -414,6 +415,7 @@ public class Engine {
 					// signature was null, fall back to name and description only
 					if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
 						renamedMethods.add(renameMethod(baseMethod));
+						foundTargetMethod = true;
 						continue;
 					}
 				}
