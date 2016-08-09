@@ -401,6 +401,7 @@ public class Engine {
 		// rename conflicting base methods
 		LinkedList<String> renamedMethods = new LinkedList<String>();
 		for(MethodNode methodToMerge : methodsToMerge){
+			boolean foundTargetMethod = false;
 			for(MethodNode baseMethod : baseMethods){
 				if(methodToMerge.signature != null && baseMethod.signature != null){
 					if(methodToMerge.signature.equals(baseMethod.signature)){
@@ -416,6 +417,9 @@ public class Engine {
 						continue;
 					}
 				}
+			}
+			if(!foundTargetMethod){
+				Log.warning("Target method " + methodToMerge.desc.toString() + " does not exist! Runtime behavior may not be correct.");
 			}
 		}
 
