@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="JReFrameworkerFeature"
+      id="jreframeworker.feature.group"
       label="JReFrameworkerFeature"
-      version="1.1.1.qualifier"
+      version="1.2.0.qualifier"
       provider-name="Ben Holland">
 
    <description url="https://ben-holland.com/JReFrameworker/">
       JReFrameworker is an Eclipse plugin for creating and building projects that allow the user to write annotated Java source that is automatically merged or inserted into the runtime. The framework supports developing and debugging attack modules directly in the Eclipse IDE. Working at the intended abstraction level of source code allows the attacker to &quot;write once, exploit anywhere&quot;.
    </description>
 
-   <copyright url="https://ben-holland.com/JReFrameworker/">
-      Copyright 2015 Ben Holland
+   <copyright url="https://jreframeworker.com">
+      Copyright 2016 Ben Holland
    </copyright>
 
-   <license url="https://raw.githubusercontent.com/benjholla/JReFrameworker/master/LICENSE">
+   <license url="https://raw.githubusercontent.com/JReFrameworker/JReFrameworker/master/LICENSE">
       The MIT License (MIT)
 
-Copyright (c) 2015 Ben Holland
+Copyright (c) 2016 Ben Holland
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the &quot;Software&quot;), to deal
@@ -38,8 +38,8 @@ SOFTWARE.
    </license>
 
    <url>
-      <update label="ben-holland.com" url="http://ben-holland.com/JReFrameworker/updates/"/>
-      <discovery label="ben-holland.com" url="http://ben-holland.com/JReFrameworker/updates/"/>
+      <update label="jreframeworker.com" url="http://jreframeworker.com/updates/"/>
+      <discovery label="jreframeworker.com" url="http://jreframeworker.com/updates/"/>
    </url>
 
    <requires>
