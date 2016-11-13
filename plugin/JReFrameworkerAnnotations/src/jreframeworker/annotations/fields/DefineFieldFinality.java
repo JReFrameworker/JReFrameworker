@@ -6,8 +6,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import jreframeworker.annotations.methods.MethodFinalities;
-
 //this annotation is valid for types
 @Target({ ElementType.TYPE })
 

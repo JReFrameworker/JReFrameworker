@@ -104,6 +104,17 @@ public class Engine {
 		bytecodeCache.put(entry, new Bytecode(bytecode));
 	}
 	
+//	public void addUnprocessed(byte[] inputClass) throws IOException {
+//		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
+//		updateBytecode(classNode.name, inputClass);
+//	}
+	
+	public void addUnprocessed(byte[] inputClass, boolean overwrite) throws IOException {
+		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
+		String qualifiedClassName = classNode.name + ".class";
+		runtimeModifications.add(qualifiedClassName, inputClass, overwrite);
+	}
+	
 	public boolean process(byte[] inputClass) throws IOException {
 		boolean processed = false;
 		// check to see if the class is annotated with 
@@ -389,11 +400,13 @@ public class Engine {
 		// rename conflicting base methods
 		LinkedList<String> renamedMethods = new LinkedList<String>();
 		for(MethodNode methodToMerge : methodsToMerge){
+			boolean foundTargetMethod = false;
 			for(MethodNode baseMethod : baseMethods){
 				if(methodToMerge.signature != null && baseMethod.signature != null){
 					if(methodToMerge.signature.equals(baseMethod.signature)){
 						if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
 							renamedMethods.add(renameMethod(baseMethod));
+							foundTargetMethod = true;
 							continue;
 						}
 					}
@@ -401,9 +414,13 @@ public class Engine {
 					// signature was null, fall back to name and description only
 					if(methodToMerge.name.equals(baseMethod.name) && methodToMerge.desc.equals(baseMethod.desc)){
 						renamedMethods.add(renameMethod(baseMethod));
+						foundTargetMethod = true;
 						continue;
 					}
 				}
+			}
+			if(!foundTargetMethod){
+				Log.warning("Target method " + methodToMerge.desc.toString() + " does not exist! Runtime behavior may not be correct.");
 			}
 		}
 
@@ -424,8 +441,6 @@ public class Engine {
 
 	private String renameMethod(MethodNode methodToRename) {
 		// first remove any annotations from renamed base methods
-		// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
-		// to maintain the cover of the original method annotations
 		AnnotationUtils.clearMethodAnnotations(methodToRename);
 		
 		// rename the method
@@ -446,13 +461,11 @@ public class Engine {
 	// but really we should just remove the bytecode entirely
 	private String purgeMethod(MethodNode methodToPurge) {
 		// first remove any annotations from renamed base methods
-		// TODO: consider adding base method annotations to the method to merge (ex: @Deprecated??)
-		// to maintain the cover of the original method annotations
 		AnnotationUtils.clearMethodAnnotations(methodToPurge);
 		
 		// rename the method
 		String originalMethodName = methodToPurge.name;
-		String renamedMethodName = mergeRenamePrefix + "_purged_" + methodToPurge.name;
+		String renamedMethodName = mergeRenamePrefix + "purged_" + methodToPurge.name;
 		methodToPurge.name = renamedMethodName;
 		
 		// make the method private to hide it from the end user
