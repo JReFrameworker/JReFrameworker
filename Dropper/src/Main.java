@@ -26,6 +26,7 @@ public class Main {
 	public static final String[] JVM_LOCATIONS = {
 		// Linux
 		"/usr/java/",
+		"/usr/lib/jvm/",
 		// OSX
 		"/Library/Java/",
 		"/System/Library/Frameworks/JavaVM.framework/",
@@ -131,6 +132,11 @@ public class Main {
 		// load configurations
 		HashMap<String,Object> configurations = new HashMap<String,Object>();
 		InputStream configStream = Main.class.getResourceAsStream(CONFIG_FILE);
+		if(configStream == null){
+			System.out.println("Configuration file is missing or corrupted.");
+			System.exit(1);
+		}
+		
 		Scanner scanner = new Scanner(configStream);
 		while(scanner.hasNextLine()){
 			try {
