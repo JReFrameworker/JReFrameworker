@@ -36,8 +36,10 @@ import org.objectweb.asm.Opcodes;
 /**
  * An {@link AnnotationVisitor} adapter for type remapping.
  * 
+ * @deprecated use {@link AnnotationRemapper} instead.
  * @author Eugene Kuleshov
  */
+@Deprecated
 public class RemappingAnnotationAdapter extends AnnotationVisitor {
 
     protected final Remapper remapper;

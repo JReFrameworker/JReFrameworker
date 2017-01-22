@@ -146,6 +146,10 @@ public interface Opcodes {
      */
     int F_SAME1 = 4;
 
+    // Do not try to change the following code to use auto-boxing,
+    // these values are compared by reference and not by value
+    // The constructor of Integer was deprecated in 9
+    // but we are stuck with it by backward compatibility
     Integer TOP = new Integer(0);
     Integer INTEGER = new Integer(1);
     Integer FLOAT = new Integer(2);

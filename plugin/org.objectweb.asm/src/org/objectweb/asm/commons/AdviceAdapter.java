@@ -360,8 +360,8 @@ public abstract class AdviceAdapter extends GeneratorAdapter implements Opcodes 
                 break;
             case PUTFIELD:
                 popValue();
+                popValue();
                 if (longOrDouble) {
-                    popValue();
                     popValue();
                 }
                 break;

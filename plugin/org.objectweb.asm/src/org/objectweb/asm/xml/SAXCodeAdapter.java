@@ -81,7 +81,7 @@ public final class SAXCodeAdapter extends MethodVisitor {
         if (name != null) {
             attrs.addAttribute("", "name", "name", "", name);
         }
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         SAXClassAdapter.appendAccess(access, sb);
         attrs.addAttribute("", "access", "access", "", sb.toString());
         sa.addElement("parameter", attrs);

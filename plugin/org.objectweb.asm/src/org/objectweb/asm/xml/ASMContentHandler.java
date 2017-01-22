@@ -362,7 +362,7 @@ public class ASMContentHandler extends DefaultHandler implements Opcodes {
         String name = lName == null || lName.length() == 0 ? qName : lName;
 
         // Compute the current matching rule
-        StringBuffer sb = new StringBuffer(match);
+        StringBuilder sb = new StringBuilder(match);
         if (match.length() > 0) {
             sb.append('/');
         }
@@ -554,13 +554,16 @@ public class ASMContentHandler extends DefaultHandler implements Opcodes {
                 int dotIndex = val.indexOf('.');
                 int descIndex = val.indexOf('(', dotIndex + 1);
                 int tagIndex = val.lastIndexOf('(');
-
-                int tag = Integer.parseInt(val.substring(tagIndex + 1,
-                        val.length() - 1));
+                int itfIndex = val.indexOf(' ', tagIndex + 1);
+                
+                boolean itf = itfIndex != -1;
+                int tag = Integer.parseInt(
+                              val.substring(tagIndex + 1,
+                                    itf? val.length() - 1: itfIndex));
                 String owner = val.substring(0, dotIndex);
                 String name = val.substring(dotIndex + 1, descIndex);
                 String desc = val.substring(descIndex, tagIndex - 1);
-                return new Handle(tag, owner, name, desc);
+                return new Handle(tag, owner, name, desc, itf);
 
             } catch (RuntimeException e) {
                 throw new SAXException("Malformed handle " + val, e);
@@ -568,7 +571,7 @@ public class ASMContentHandler extends DefaultHandler implements Opcodes {
         }
 
         private final String decode(final String val) throws SAXException {
-            StringBuffer sb = new StringBuffer(val.length());
+            StringBuilder sb = new StringBuilder(val.length());
             try {
                 int n = 0;
                 while (n < val.length()) {

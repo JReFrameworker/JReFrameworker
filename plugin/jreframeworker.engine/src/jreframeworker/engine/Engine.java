@@ -57,6 +57,7 @@ import jreframeworker.engine.utils.AnnotationUtils;
 import jreframeworker.engine.utils.BytecodeUtils;
 import jreframeworker.engine.utils.JarModifier;
 
+@SuppressWarnings("deprecation")
 public class Engine {
 
 	private String mergeRenamePrefix;
