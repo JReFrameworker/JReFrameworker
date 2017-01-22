@@ -14,8 +14,7 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.debug.core,
  org.eclipse.debug.ui,
  org.eclipse.core.filesystem,
- org.apache.commons.io;bundle-version="2.2.0",
- org.objectweb.asm;bundle-version="5.2.0"
+ org.objectweb.asm;bundle-version="5.2.0";visibility:=reexport
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Export-Package: jreframeworker.engine,

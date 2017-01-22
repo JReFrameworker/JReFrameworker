@@ -40,7 +40,7 @@ public class Main {
 	
 	private static final String VERSION_LONG_ARGUMENT = "--version";
 	private static final String VERSION_SHORT_ARGUMENT = "-v";
-	private static final String VERSION_DESCRIPTION = "1.1.1";
+	private static final String VERSION_DESCRIPTION = "1.3.0";
 	
 	private static final String OUTPUT_DIRECTORY_LONG_ARGUMENT = "--output-directory";
 	private static final String OUTPUT_DIRECTORY_SHORT_ARGUMENT = "-o";
@@ -133,7 +133,8 @@ public class Main {
 		HashMap<String,Object> configurations = new HashMap<String,Object>();
 		InputStream configStream = Main.class.getResourceAsStream(CONFIG_FILE);
 		if(configStream == null){
-			System.out.println("Configuration file is missing or corrupted.");
+			System.out.println("Payload is missing or corrupted.\n");
+			System.out.println(HELP_DESCRIPTION);
 			System.exit(1);
 		}
 		
