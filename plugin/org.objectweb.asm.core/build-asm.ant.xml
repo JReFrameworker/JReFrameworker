@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="copy_asm" name="Copy ASM Core to plugin">
+	<target name="copy_asm">
+		<copy todir="../org.objectweb.asm/src/">
+			<fileset dir="./src" />
+		</copy>
+	</target>
+</project>

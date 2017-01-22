@@ -14,7 +14,7 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.debug.core,
  org.eclipse.debug.ui,
  org.eclipse.core.filesystem,
- jreframeworker.engine;bundle-version="1.1.0",
+ jreframeworker.engine;bundle-version="1.3.0",
  org.apache.commons.io;bundle-version="2.2.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy

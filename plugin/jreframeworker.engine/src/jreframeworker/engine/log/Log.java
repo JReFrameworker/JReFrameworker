@@ -9,7 +9,6 @@ import org.osgi.framework.BundleContext;
 
 import jreframeworker.engine.Activator;
 
-
 /**
  * Centralized logging for Eclipse plugins.
  */
@@ -53,3 +52,4 @@ public class Log {
 		}
 	}
 }
+
