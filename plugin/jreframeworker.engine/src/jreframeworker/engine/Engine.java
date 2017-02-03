@@ -62,6 +62,7 @@ public class Engine {
 
 	private String mergeRenamePrefix;
 	private JarModifier runtimeModifications;
+	private ClassLoader[] classLoaders = new ClassLoader[]{ getClass().getClassLoader() };
 	
 	private static class Bytecode {
 		private byte[] bytecode;
@@ -76,10 +77,15 @@ public class Engine {
 	}
 	
 	private HashMap<String,Bytecode> bytecodeCache = new HashMap<String,Bytecode>();
-	
+
 	public Engine(File runtime, String mergeRenamePrefix) throws JarException, IOException {
 		this.mergeRenamePrefix = mergeRenamePrefix;
 		this.runtimeModifications = new JarModifier(runtime);
+	}
+	
+	public Engine(File runtime, String mergeRenamePrefix, ClassLoader[] classLoaders) throws JarException, IOException {
+		this(runtime, mergeRenamePrefix);
+		this.classLoaders = classLoaders;
 	}
 	
 	private ClassNode getBytecode(String entry) throws IOException {
@@ -98,7 +104,7 @@ public class Engine {
 	}
 	
 	private void updateBytecode(String entry, ClassNode classNode) throws IOException {
-		updateBytecode(entry, BytecodeUtils.writeClass(classNode));
+		updateBytecode(entry, BytecodeUtils.writeClass(classNode, classLoaders));
 	}
 	
 	private void updateBytecode(String entry, byte[] bytecode) throws IOException {
@@ -426,7 +432,7 @@ public class Engine {
 		}
 
 		// write out the modified base class
-		byte[] modifiedBaseClass = BytecodeUtils.writeClass(baseClassNode);
+		byte[] modifiedBaseClass = BytecodeUtils.writeClass(baseClassNode, classLoaders);
 
 		// adapt a ClassWriter with the MergeAdapter
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);

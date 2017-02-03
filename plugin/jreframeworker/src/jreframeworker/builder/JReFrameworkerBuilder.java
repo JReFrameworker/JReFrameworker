@@ -164,6 +164,10 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					// application project
 					File originalJar = jProject.getProject().getFile(targetJar).getLocation().toFile();
 					if(originalJar.exists()){
+						// TODO: add custom class loader for application jars
+//						String pathToJar = "/Users/benjholla/Desktop/JReFrameworker/neon/runtime-EclipseApplication/AirPlan1Logger/airplan_1.jar";
+//						URL[] urls = { new URL("jar:file:" + pathToJar+"!/") };
+//						classLoader = URLClassLoader.newInstance(urls);
 						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
 						buildProject(binDirectory, jProject, engine, config);
 						config.close();

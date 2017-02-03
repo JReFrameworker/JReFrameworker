@@ -295,6 +295,7 @@ public class Main {
 	}
 	
 	// TODO: Consider accepting and writing to an output stream instead of a File so that we could generically write to a file, memory, stdout, etc.
+	// TODO: need to consider alternate class loaders
 	private static void modifyRuntime(File originalRuntime, String mergeRenamePrefix, File outputRuntime, byte[]... classFiles) throws JarException, IOException {
 		Engine engine = new Engine(originalRuntime, mergeRenamePrefix);
 		for(byte[] classFile : classFiles){

@@ -37,6 +37,7 @@ package org.objectweb.asm;
  * to generate a modified class from one or more existing Java classes.
  * 
  * @author Eric Bruneton
+ * @author Benjamin Holland - Added support to specify class loaders
  */
 public class ClassWriter extends ClassVisitor {
 
@@ -514,6 +515,11 @@ public class ClassWriter extends ClassVisitor {
      */
     boolean hasAsmInsns;
 
+    /**
+     * A set of ordered class loaders to use when loading class definitions
+     */
+	private ClassLoader[] classLoaders = new ClassLoader[]{ getClass().getClassLoader() };
+
     // ------------------------------------------------------------------------
     // Static initializer
     // ------------------------------------------------------------------------
@@ -605,7 +611,17 @@ public class ClassWriter extends ClassVisitor {
     // ------------------------------------------------------------------------
     // Constructor
     // ------------------------------------------------------------------------
-
+  
+    /**
+     * Constructs a new {@link ClassWriter} object and specifies a set of alternative ClassLoaders to use
+     * @param flags
+     * @param alternateClassLoaders
+     */
+    public ClassWriter(final int flags, ClassLoader... classLoaders){
+    	this(flags);
+    	this.classLoaders = classLoaders;
+    }
+    
     /**
      * Constructs a new {@link ClassWriter} object.
      * 
@@ -665,6 +681,17 @@ public class ClassWriter extends ClassVisitor {
         this(flags);
         classReader.copyPool(this);
         this.cr = classReader;
+    }
+    
+    /**
+     * Constructs a new {@link ClassWriter} object and specifies a set of alternative ClassLoaders to use
+     * @param classReader
+     * @param flags
+     * @param classLoaders
+     */
+    public ClassWriter(final ClassReader classReader, final int flags, ClassLoader... classLoaders){
+    	this(classReader, flags);
+    	this.classLoaders = classLoaders;
     }
 
     // ------------------------------------------------------------------------
@@ -1719,14 +1746,23 @@ public class ClassWriter extends ClassVisitor {
      *         classes.
      */
     protected String getCommonSuperClass(final String type1, final String type2) {
-        Class<?> c, d;
-        ClassLoader classLoader = getClass().getClassLoader();
-        try {
-            c = Class.forName(type1.replace('/', '.'), false, classLoader);
-            d = Class.forName(type2.replace('/', '.'), false, classLoader);
-        } catch (Exception e) {
-            throw new RuntimeException(e.toString());
+        Class<?> c = null;
+        Class<?> d = null;
+        
+        for(ClassLoader classLoader : classLoaders){
+        	try {
+                c = Class.forName(type1.replace('/', '.'), false, classLoader);
+                d = Class.forName(type2.replace('/', '.'), false, classLoader);
+                break;
+            } catch (Exception e) {
+                continue;
+            }
         }
+        
+        if(c == null || d == null){
+        	throw new RuntimeException("Could not find common super class of: [type1=" + type1 + "], [type2=" + type2 + "]");
+        }
+        
         if (c.isAssignableFrom(d)) {
             return type1;
         }
