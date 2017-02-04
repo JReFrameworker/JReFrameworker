@@ -59,12 +59,12 @@ public class JReFrameworker {
 
 	public static final String APPLICATION_DIRECTORY = "applications";
 	public static final String RUNTIMES_DIRECTORY = "runtimes";
-	public static final String RUNTIMES_CONFIG = "runtimes/config";
+	public static final String RUNTIMES_CONFIG = RUNTIMES_DIRECTORY + "/" + "config";
 	public static final String JREF_PROJECT_RESOURCE_DIRECTORY = ".jref"; // hidden directory
 	public static final String EXPORT_DIRECTORY = "export";
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";
-	public static final String LIBRARY_DIRECTORY = "lib";
+	public static final String RAW_DIRECTORY = "raw";
 	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "jref-annotations.jar";
 	public static final String ANNOTATIONS_JAR_PATH = "annotations" + "/" + JRE_FRAMEWORKER_ANNOTATIONS_JAR;
 	public static final String XML_BUILD_FILENAME = "jref-build.xml";
@@ -73,7 +73,7 @@ public class JReFrameworker {
 		LinkedList<IJavaProject> projects = new LinkedList<IJavaProject>();
 		for(IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()){
 			try {
-				if(project.isOpen() && project.hasNature(JavaCore.NATURE_ID) && project.hasNature(JReFrameworkerNature.NATURE_ID)){
+				if(project.isOpen() && project.hasNature(JReFrameworkerNature.NATURE_ID) && project.hasNature(JavaCore.NATURE_ID)){
 					IJavaProject jProject = JavaCore.create(project);
 					if(jProject.exists()){
 						projects.add(jProject);
@@ -221,7 +221,7 @@ public class JReFrameworker {
 		projectDescription.setLocationURI(location);
 		
 		// make this a JReFrameworker project
-		projectDescription.setNatureIds(new String[] { JavaCore.NATURE_ID, JReFrameworkerNature.NATURE_ID });
+		projectDescription.setNatureIds(new String[] { JReFrameworkerNature.NATURE_ID, JavaCore.NATURE_ID });
 
 		// build first with Java compiler then JReFramewoker bytecode operations
 		BuildCommand javaBuildCommand = new BuildCommand();

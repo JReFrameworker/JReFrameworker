@@ -22,11 +22,11 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.UIJob;
 
-public class NewRuntimeProjectWizard extends Wizard implements INewWizard {
+public class NewProjectWizard extends Wizard implements INewWizard {
 
 	private NewProjectPage page;
 
-	public NewRuntimeProjectWizard(String startRuntimePath) {
+	public NewProjectWizard(String startRuntimePath) {
 		page = new NewProjectPage("Create JReFrameworker Runtime Project");
 		String projectName = new File(startRuntimePath).getName();
 		projectName = projectName.substring(0, projectName.lastIndexOf('.'));
@@ -44,7 +44,7 @@ public class NewRuntimeProjectWizard extends Wizard implements INewWizard {
 		this.setWindowTitle("Create JReFrameworker Runtime Project");
 	}
 
-	public NewRuntimeProjectWizard() {
+	public NewProjectWizard() {
 		page = new NewProjectPage("Create JReFrameworker Runtime Project");
 		this.setWindowTitle("Create JReFrameworker Runtime Project");
 	}

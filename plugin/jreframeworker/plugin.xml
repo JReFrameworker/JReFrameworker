@@ -3,23 +3,23 @@
 <plugin>
    
    <!-- New project wizard -->
-   
    <extension point="org.eclipse.ui.newWizards">
       <category name="JReFrameworker" id="jreframeworker.ui.category" />
-      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewRuntimeProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewRuntimeProjectWizard" name="JReFrameworker Runtime Project">
-         <description>Creates a new JReFrameworker runtime project in the workspace.</description>
+      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewProjectWizard" name="JReFrameworker Project">
+         <description>Creates a new JReFrameworker project in the workspace.</description>
       </wizard>
    </extension>
    
-   <extension point="org.eclipse.ui.newWizards">
-      <category name="JReFrameworker" id="jreframeworker.ui.category" />
-      <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewApplicationProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewApplicationProjectWizard" name="JReFrameworker Application Project">
-         <description>Creates a new JReFrameworker application project in the workspace.</description>
-      </wizard>
+   <!-- Project nature icon -->
+   <extension point="org.eclipse.ui.ide.projectNatureImages">
+	<image 
+		id="jreframeworker.ui.natureImage"
+		natureId="jreframeworker.JReFrameworkerNature"
+		icon="icons/nature.gif">
+	</image>
    </extension>
    
    <!-- A project import wizard -->
-   
    <!--
    <extension
          point="org.eclipse.ui.importWizards">
@@ -29,19 +29,18 @@
       </category>
       <wizard
             category="jreframeworker.ui.category"
-            class="jreframeworker.ui.ImportRuntimeWizard"
+            class="jreframeworker.ui.ImportWizard"
             icon="icons/JReFrameworker.gif"
-            id="jreframeworker.ui.ImportRuntimeWizard"
-            name="JReFrameworker Runtime Project">
+            id="jreframeworker.ui.ImportWizard"
+            name="JReFrameworker Project">
          <description>
-            Imports an existing JReFrameworker runtime project into the workspace.
+            Imports an existing JReFrameworker project into the workspace.
          </description>
       </wizard>
    </extension>
    -->
    
    <!-- Project builder -->
-   
    <extension id="JReFrameworkerBuilder" name="JReFrameworker Project Builder" point="org.eclipse.core.resources.builders">
       <builder hasNature="true">
          <run class="jreframeworker.builder.JReFrameworkerBuilder" />
@@ -49,7 +48,6 @@
    </extension>
    
    <!-- Project build nature -->
-   
    <extension id="JReFrameworkerNature" name="JReFrameworker Project Nature" point="org.eclipse.core.resources.natures">
       <runtime>
          <run class="jreframeworker.builder.JReFrameworkerNature" />
@@ -58,14 +56,12 @@
    </extension>
    
    <!-- Project build command -->
-   
    <extension point="org.eclipse.ui.commands">
       <category name="JReFrameworker Project Nature commands" id="jreframeworker.JReFrameworkerNature.category" />
       <command name="Add/RemoveJReFrameworker Project Nature" defaultHandler="jreframeworker.builder.AddRemoveJReFrameworkerNatureHandler" categoryId="jreframeworker.JReFrameworkerNature.category" id="jreframeworker.addRemoveJReFrameworkerNature" />
    </extension>
    
    <!-- Add/remove project build nature -->
-   
    <extension point="org.eclipse.ui.menus">
       <menuContribution locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
          <command commandId="jreframeworker.addRemoveJReFrameworkerNature" label="Disable JReFrameworker Builder" style="push">
@@ -98,25 +94,20 @@
    </extension>
    
    <!-- Preferences page -->
-   
    <extension point="org.eclipse.ui.preferencePages">
       <page class="jreframeworker.ui.PreferencesPage" id="jreframeworker.preferences" name="JReFrameworker" />
    </extension>
    
-   <!-- Launch Profile -->
-   
+   <!-- Launch Profiles -->
    <extension point="org.eclipse.debug.core.launchConfigurationTypes">
       <launchConfigurationType id="jreframeworker.launchConfigurationType" name="JReFrameworker Java Application" delegate="jreframeworker.launcher.JReFrameworkerLaunchDelegate" modes="run, debug" />
    </extension>
-   
    <extension point="org.eclipse.debug.ui.launchConfigurationTypeImages">
       <launchConfigurationTypeImage icon="icons/JReFrameworker.gif" configTypeID="jreframeworker.launchConfigurationType" id="jreframeworker.launchConfigurationTypeImage" />
    </extension>
-   
    <extension point="org.eclipse.debug.ui.launchConfigurationTabGroups">
       <launchConfigurationTabGroup type="jreframeworker.launchConfigurationType" class="jreframeworker.launcher.JReFrameworkerTabGroup" id="jreframeworker.launchConfigurationTabGroup" />
    </extension>
-   
    <extension point="org.eclipse.debug.ui.launchShortcuts">
       <shortcut label="JReFrameworker Java Application" icon="icons/JReFrameworker-toolbar.gif" modes="run, debug" class="jreframeworker.launcher.JReFrameworkerLaunchShortcut" description="Launch Java application with the JReFrameworker modified runtime" id="jreframeworker.launcher.launchShortcut">
          <description description="Runs the Java application with the JReFrameworker modified runtime" mode="run" />
@@ -142,6 +133,7 @@
       </shortcut>
    </extension>
    
+   <!-- Export wizard -->
    <extension
          point="org.eclipse.ui.exportWizards">
       <category
@@ -158,14 +150,6 @@
             Exports a JReFrameworker runtime payload dropper for the selected project.
          </description>
       </wizard>
-   </extension>
-   
-   <extension point="org.eclipse.ui.ide.projectNatureImages">
-	<image 
-		id="jreframeworker.ui.natureImage"
-		natureId="jreframeworker.JReFrameworkerNature"
-		icon="icons/nature.gif">
-	</image>
    </extension>
    
 </plugin>

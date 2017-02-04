@@ -5,7 +5,7 @@ import org.eclipse.jface.wizard.Wizard;
 import org.eclipse.ui.IImportWizard;
 import org.eclipse.ui.IWorkbench;
 
-public class ImportRuntimeWizard extends Wizard implements IImportWizard {
+public class ImportWizard extends Wizard implements IImportWizard {
 
 	@Override
 	public void init(IWorkbench workbench, IStructuredSelection selection) {
