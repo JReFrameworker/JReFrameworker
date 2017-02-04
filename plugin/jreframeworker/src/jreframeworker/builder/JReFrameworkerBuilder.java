@@ -17,8 +17,10 @@ import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
@@ -129,7 +131,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				// make modifications that are defined in the project to the compiled bytecode
 				if(isTargetJarRuntime){
 					// runtime project
-					File originalJar = getOriginalRuntime(targetJar);
+					File originalJar = getOriginalJar(targetJar, jProject);
 					if(originalJar.exists()){
 						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
 						buildProject(binDirectory, jProject, engine, config);
@@ -200,6 +202,18 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		} else if(f.getName().endsWith(".class")){
 			engine.addUnprocessed(Files.readAllBytes(f.toPath()), true);
 		}
+	}
+	
+	private File getOriginalJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
+		for(IClasspathEntry classpathEntry : jProject.getRawClasspath()){
+			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
+				File jar = classpathEntry.getPath().toFile().getAbsoluteFile();
+				if(jar.getName().equals(targetJar)){
+					return jar;
+				}
+			}
+		}
+		return getOriginalRuntime(targetJar);
 	}
 
 	private File getOriginalRuntime(String targetJar) throws IOException {

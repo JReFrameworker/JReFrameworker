@@ -77,7 +77,7 @@ public class NewRuntimeProjectWizard extends Wizard implements INewWizard {
 				} finally {
 					monitor.done();
 				}
-				if (result.equals(Status.CANCEL_STATUS)) {
+				if (result != null && result.equals(Status.CANCEL_STATUS)) {
 					IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 					JReFrameworker.deleteProject(project);
 				}

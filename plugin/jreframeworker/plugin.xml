@@ -141,6 +141,7 @@
          <configurationType id="jreframeworker.launchConfigurationType" />
       </shortcut>
    </extension>
+   
    <extension
          point="org.eclipse.ui.exportWizards">
       <category
@@ -157,6 +158,14 @@
             Exports a JReFrameworker runtime payload dropper for the selected project.
          </description>
       </wizard>
+   </extension>
+   
+   <extension point="org.eclipse.ui.ide.projectNatureImages">
+	<image 
+		id="jreframeworker.ui.natureImage"
+		natureId="jreframeworker.JReFrameworkerNature"
+		icon="icons/nature.gif">
+	</image>
    </extension>
    
 </plugin>

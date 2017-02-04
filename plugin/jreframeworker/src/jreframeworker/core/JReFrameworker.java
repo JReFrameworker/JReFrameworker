@@ -60,13 +60,13 @@ public class JReFrameworker {
 	public static final String APPLICATION_DIRECTORY = "applications";
 	public static final String RUNTIMES_DIRECTORY = "runtimes";
 	public static final String RUNTIMES_CONFIG = "runtimes/config";
-	public static final String ANNOTATIONS_DIRECTORY = "annotations";
+	public static final String JREF_PROJECT_RESOURCE_DIRECTORY = ".jref"; // hidden directory
 	public static final String EXPORT_DIRECTORY = "export";
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";
 	public static final String LIBRARY_DIRECTORY = "lib";
-	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "JReFrameworkerAnnotations.jar";
-	public static final String ANNOTATIONS_JAR_PATH = ANNOTATIONS_DIRECTORY + "/" + JRE_FRAMEWORKER_ANNOTATIONS_JAR;
+	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "jref-annotations.jar";
+	public static final String ANNOTATIONS_JAR_PATH = "annotations" + "/" + JRE_FRAMEWORKER_ANNOTATIONS_JAR;
 	public static final String XML_BUILD_FILENAME = "jref-build.xml";
 	
 	public static LinkedList<IJavaProject> getJReFrameworkerProjects(){
@@ -195,7 +195,7 @@ public class JReFrameworker {
 
 		// have to create this manually instead of using JavaCore.newLibraryEntry because JavaCore insists the path be absolute
 		IClasspathEntry relativeAnnotationsLibraryEntry = new ClasspathEntry(IPackageFragmentRoot.K_BINARY,
-				IClasspathEntry.CPE_LIBRARY, new Path(ANNOTATIONS_JAR_PATH), ClasspathEntry.INCLUDE_ALL, // inclusion patterns
+				IClasspathEntry.CPE_LIBRARY, new Path(JREF_PROJECT_RESOURCE_DIRECTORY + "/" + JRE_FRAMEWORKER_ANNOTATIONS_JAR), ClasspathEntry.INCLUDE_ALL, // inclusion patterns
 				ClasspathEntry.EXCLUDE_NONE, // exclusion patterns
 				null, null, null, // specific output folder
 				false, // exported
@@ -282,7 +282,7 @@ public class JReFrameworker {
 		if(annotationsJarInputStream == null){
 			throw new RuntimeException("Could not locate: " + ANNOTATIONS_JAR_PATH);
 		}
-		File annotationsLibDirectory = new File(jProject.getProject().getLocation().toFile().getCanonicalPath() + File.separatorChar + ANNOTATIONS_DIRECTORY);
+		File annotationsLibDirectory = new File(jProject.getProject().getLocation().toFile().getCanonicalPath() + File.separatorChar + JREF_PROJECT_RESOURCE_DIRECTORY);
 		annotationsLibDirectory.mkdirs();
 		File annotationsJar = new File(annotationsLibDirectory.getCanonicalPath() + File.separatorChar + JRE_FRAMEWORKER_ANNOTATIONS_JAR);
 		Files.copy(annotationsJarInputStream, annotationsJar.toPath());
