@@ -221,25 +221,47 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				if(file.getName().endsWith(".class")){
 					byte[] classBytes = Files.readAllBytes(file.toPath());
 					if(classBytes.length > 0){
-						ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
-						boolean mergeModification = isMergeTypeModification(classNode);
-						boolean defineModification = isDefineTypeModification(classNode);
-						
-						if(mergeModification || defineModification){
-							// get the qualified modification class name
-							String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
-							String modificationClassName = file.getCanonicalPath().substring(base.length());
-							if(modificationClassName.charAt(0) == File.separatorChar){
-								modificationClassName = modificationClassName.substring(1);
-							}
-							modificationClassName = modificationClassName.replace(".class", "");
+						try {
+							ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
+							boolean mergeModification = isMergeTypeModification(classNode);
+							boolean defineModification = isDefineTypeModification(classNode);
 							
-							if(mergeModification){
-								String mergeTarget = getMergeTarget(classNode);
-								// merge into each target jar that contains the merge target
-								boolean modified = false;
-								if(engineMap.containsKey(mergeTarget)){
-									for(Engine engine : engineMap.get(mergeTarget)){
+							if(mergeModification || defineModification){
+								// get the qualified modification class name
+								String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
+								String modificationClassName = file.getCanonicalPath().substring(base.length());
+								if(modificationClassName.charAt(0) == File.separatorChar){
+									modificationClassName = modificationClassName.substring(1);
+								}
+								modificationClassName = modificationClassName.replace(".class", "");
+								
+								if(mergeModification){
+									String mergeTarget = getMergeTarget(classNode);
+									// merge into each target jar that contains the merge target
+									boolean modified = false;
+									if(engineMap.containsKey(mergeTarget)){
+										for(Engine engine : engineMap.get(mergeTarget)){
+											if(isRuntimeJar(engine.getJarName())){
+												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+											} else {
+												URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+											}
+											if(engine.process(classBytes)){
+												modified = true;
+											}
+										}
+										if(modified){
+											config.write("\nclass," + modificationClassName);
+											config.flush();
+										}
+									} else {
+										Log.warning("Class entry [" + mergeTarget + "] could not be found in any of the target jars.");
+									}
+								} else if(defineModification){
+									// define or replace in every target jar
+									boolean modified = false;
+									for(Engine engine : allEngines){
 										if(isRuntimeJar(engine.getJarName())){
 											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
 										} else {
@@ -254,28 +276,10 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 										config.write("\nclass," + modificationClassName);
 										config.flush();
 									}
-								} else {
-									Log.warning("Class entry [" + mergeTarget + "] could not be found in any of the target jars.");
-								}
-							} else if(defineModification){
-								// define or replace in every target jar
-								boolean modified = false;
-								for(Engine engine : allEngines){
-									if(isRuntimeJar(engine.getJarName())){
-										engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-									} else {
-										URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-										engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-									}
-									if(engine.process(classBytes)){
-										modified = true;
-									}
-								}
-								if(modified){
-									config.write("\nclass," + modificationClassName);
-									config.flush();
 								}
 							}
+						} catch (RuntimeException e){
+							Log.error("Error modifying jar...", e);
 						}
 					}
 				}
@@ -375,6 +379,18 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
 				File jar = classpathEntry.getPath().toFile().getCanonicalFile();
 				if(jar.getName().equals(targetJar)){
+					if(!jar.exists()){
+						// path may have been relative, so try again to resolve path relative to project directory
+						String relativePath = jar.getAbsolutePath();
+						String projectName = jProject.getProject().getName();
+						String projectRoot = File.separator + projectName;
+						relativePath = relativePath.substring(relativePath.indexOf(projectRoot) + projectRoot.length());
+						jar = jProject.getProject().getFile(relativePath).getLocation().toFile();
+						if(!jar.exists()){
+							// if jar still doesn't exist match any jar in the project with the same name
+							jar = jProject.getProject().getFile(jar.getName()).getLocation().toFile();
+						}
+					}
 					return jar;
 				}
 			}

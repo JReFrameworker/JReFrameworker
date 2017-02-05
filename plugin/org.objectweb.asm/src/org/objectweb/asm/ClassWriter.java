@@ -515,11 +515,6 @@ public class ClassWriter extends ClassVisitor {
      */
     boolean hasAsmInsns;
 
-    /**
-     * A set of ordered class loaders to use when loading class definitions
-     */
-	private ClassLoader[] classLoaders = new ClassLoader[]{ getClass().getClassLoader() };
-
     // ------------------------------------------------------------------------
     // Static initializer
     // ------------------------------------------------------------------------
@@ -611,16 +606,6 @@ public class ClassWriter extends ClassVisitor {
     // ------------------------------------------------------------------------
     // Constructor
     // ------------------------------------------------------------------------
-  
-    /**
-     * Constructs a new {@link ClassWriter} object and specifies a set of alternative ClassLoaders to use
-     * @param flags
-     * @param alternateClassLoaders
-     */
-    public ClassWriter(final int flags, ClassLoader... classLoaders){
-    	this(flags);
-    	this.classLoaders = classLoaders;
-    }
     
     /**
      * Constructs a new {@link ClassWriter} object.
@@ -681,17 +666,6 @@ public class ClassWriter extends ClassVisitor {
         this(flags);
         classReader.copyPool(this);
         this.cr = classReader;
-    }
-    
-    /**
-     * Constructs a new {@link ClassWriter} object and specifies a set of alternative ClassLoaders to use
-     * @param classReader
-     * @param flags
-     * @param classLoaders
-     */
-    public ClassWriter(final ClassReader classReader, final int flags, ClassLoader... classLoaders){
-    	this(classReader, flags);
-    	this.classLoaders = classLoaders;
     }
 
     // ------------------------------------------------------------------------
@@ -1749,7 +1723,7 @@ public class ClassWriter extends ClassVisitor {
         Class<?> c = null;
         Class<?> d = null;
         
-        for(ClassLoader classLoader : classLoaders){
+        for(ClassLoader classLoader : ClassLoaders.getClassLoaders()){
         	try {
                 c = Class.forName(type1.replace('/', '.'), false, classLoader);
                 d = Class.forName(type2.replace('/', '.'), false, classLoader);

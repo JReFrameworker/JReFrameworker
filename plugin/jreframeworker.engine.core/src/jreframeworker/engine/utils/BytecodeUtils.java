@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import org.objectweb.asm.ClassLoaders;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
@@ -18,19 +19,6 @@ public class BytecodeUtils {
 	 */
 	public static byte[] writeClass(ClassNode classNode) throws IOException {
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-		classNode.accept(classWriter);
-        return classWriter.toByteArray();
-	}
-	
-	/**
-	 * Writes a class to a byte array
-	 * Allows for custom class loaders to be specified
-	 * @param classNode
-	 * @param classFile
-	 * @throws IOException
-	 */
-	public static byte[] writeClass(ClassNode classNode, ClassLoader... classLoaders) throws IOException {
-		ClassWriter classWriter = new ClassWriter((ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES), classLoaders);
 		classNode.accept(classWriter);
         return classWriter.toByteArray();
 	}

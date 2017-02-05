@@ -10,6 +10,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarException;
 
+import org.objectweb.asm.ClassLoaders;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -156,7 +157,7 @@ public class Engine {
 	}
 	
 	private void updateBytecode(String entry, ClassNode classNode) throws IOException {
-		updateBytecode(entry, BytecodeUtils.writeClass(classNode, classLoaders));
+		updateBytecode(entry, BytecodeUtils.writeClass(classNode));
 	}
 	
 	private void updateBytecode(String entry, byte[] bytecode) throws IOException {
@@ -175,6 +176,10 @@ public class Engine {
 	}
 	
 	public boolean process(byte[] inputClass) throws IOException {
+		
+		// set the ASM class loaders to be used to process this input
+		ClassLoaders.setClassLoaders(classLoaders);
+		
 		boolean processed = false;
 		// check to see if the class is annotated with 
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
@@ -485,7 +490,7 @@ public class Engine {
 		}
 
 		// write out the modified base class
-		byte[] modifiedBaseClass = BytecodeUtils.writeClass(baseClassNode, classLoaders);
+		byte[] modifiedBaseClass = BytecodeUtils.writeClass(baseClassNode);
 
 		// adapt a ClassWriter with the MergeAdapter
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);

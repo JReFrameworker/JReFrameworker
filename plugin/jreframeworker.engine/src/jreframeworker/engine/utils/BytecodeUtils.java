@@ -21,19 +21,6 @@ public class BytecodeUtils {
 		classNode.accept(classWriter);
         return classWriter.toByteArray();
 	}
-	
-	/**
-	 * Writes a class to a byte array
-	 * Allows for custom class loaders to be specified
-	 * @param classNode
-	 * @param classFile
-	 * @throws IOException
-	 */
-	public static byte[] writeClass(ClassNode classNode, ClassLoader... classLoaders) throws IOException {
-		ClassWriter classWriter = new ClassWriter((ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES), classLoaders);
-		classNode.accept(classWriter);
-        return classWriter.toByteArray();
-	}
 
 	/**
 	 * Reads a bytecode class file into a ClassNode object
