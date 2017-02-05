@@ -3,9 +3,11 @@ package jreframeworker.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.jar.JarException;
 
 import org.objectweb.asm.ClassReader;
@@ -60,8 +62,37 @@ import jreframeworker.engine.utils.JarModifier;
 @SuppressWarnings("deprecation")
 public class Engine {
 
+	private String jarName;
+	private Set<String> originalEntries;
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((jarName == null) ? 0 : jarName.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Engine other = (Engine) obj;
+		if (jarName == null) {
+			if (other.jarName != null)
+				return false;
+		} else if (!jarName.equals(other.jarName))
+			return false;
+		return true;
+	}
+
 	private String mergeRenamePrefix;
-	private JarModifier runtimeModifications;
+	private JarModifier jarModifier;
+	private ClassLoader[] classLoaders = new ClassLoader[]{ getClass().getClassLoader() };
 	
 	private static class Bytecode {
 		private byte[] bytecode;
@@ -76,10 +107,29 @@ public class Engine {
 	}
 	
 	private HashMap<String,Bytecode> bytecodeCache = new HashMap<String,Bytecode>();
+
+	public String getJarName(){
+		return jarName;
+	}
 	
-	public Engine(File runtime, String mergeRenamePrefix) throws JarException, IOException {
+	public Set<String> getOriginalEntries(){
+		return new HashSet<String>(originalEntries);
+	}
+	
+	public Set<String> getModificationEntries(){
+		return new HashSet<String>(bytecodeCache.keySet());
+	}
+	
+	public Engine(File jar, String mergeRenamePrefix) throws JarException, IOException {
 		this.mergeRenamePrefix = mergeRenamePrefix;
-		this.runtimeModifications = new JarModifier(runtime);
+		this.jarModifier = new JarModifier(jar);
+		this.jarName = jar.getName();
+		this.originalEntries = new HashSet<String>(jarModifier.getJarEntrySet());
+	}
+	
+	public Engine(File jar, String mergeRenamePrefix, ClassLoader[] classLoaders) throws JarException, IOException {
+		this(jar, mergeRenamePrefix);
+		this.classLoaders = classLoaders;
 	}
 	
 	private ClassNode getBytecode(String entry) throws IOException {
@@ -91,14 +141,14 @@ public class Engine {
 			return bytecodeCache.get(entry).getBytecode();
 		} else {
 			String qualifiedClassFilename = entry + ".class";
-			byte[] bytecode = runtimeModifications.extractEntry(qualifiedClassFilename);
+			byte[] bytecode = jarModifier.extractEntry(qualifiedClassFilename);
 			bytecodeCache.put(entry, new Bytecode(bytecode));
 			return bytecode;
 		}
 	}
 	
 	private void updateBytecode(String entry, ClassNode classNode) throws IOException {
-		updateBytecode(entry, BytecodeUtils.writeClass(classNode));
+		updateBytecode(entry, BytecodeUtils.writeClass(classNode, classLoaders));
 	}
 	
 	private void updateBytecode(String entry, byte[] bytecode) throws IOException {
@@ -113,7 +163,7 @@ public class Engine {
 	public void addUnprocessed(byte[] inputClass, boolean overwrite) throws IOException {
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
 		String qualifiedClassName = classNode.name + ".class";
-		runtimeModifications.add(qualifiedClassName, inputClass, overwrite);
+		jarModifier.add(qualifiedClassName, inputClass, overwrite);
 	}
 	
 	public boolean process(byte[] inputClass) throws IOException {
@@ -139,12 +189,12 @@ public class Engine {
 				String qualifiedClassName = classNode.name;
 				if(checker.isDefineTypeAnnotation()){
 					String qualifiedClassFilename = qualifiedClassName + ".class";
-					if(runtimeModifications.getJarEntrySet().contains(qualifiedClassFilename)){
+					if(jarModifier.getJarEntrySet().contains(qualifiedClassFilename)){
 						updateBytecode(classNode.name, inputClass);
-						Log.info("Replaced: " + qualifiedClassName + " in " + runtimeModifications.getJarFile().getName());
+						Log.info("Replaced: " + qualifiedClassName + " in " + jarModifier.getJarFile().getName());
 					} else {
 						updateBytecode(classNode.name, inputClass);
-						Log.info("Inserted: " + qualifiedClassName + " into " + runtimeModifications.getJarFile().getName());
+						Log.info("Inserted: " + qualifiedClassName + " into " + jarModifier.getJarFile().getName());
 					}
 					processed = true;
 				} else if(checker.isMergeTypeAnnotation()){
@@ -153,7 +203,7 @@ public class Engine {
 					byte[] baseClass = getRawBytecode(qualifiedParentClassName);
 					byte[] mergedClass = mergeClasses(baseClass, inputClass);
 					updateBytecode(qualifiedParentClassName, mergedClass);
-					Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + runtimeModifications.getJarFile().getName());
+					Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + jarModifier.getJarFile().getName());
 					processed = true;
 				}
 			}
@@ -356,9 +406,9 @@ public class Engine {
 
 	public void save(File outputFile) throws IOException {
 		for(Entry<String,Bytecode> entry : bytecodeCache.entrySet()){
-			runtimeModifications.add(entry.getKey() + ".class", entry.getValue().getBytecode(), true);
+			jarModifier.add(entry.getKey() + ".class", entry.getValue().getBytecode(), true);
 		}
-		runtimeModifications.save(outputFile);
+		jarModifier.save(outputFile);
 	}
 	
 	private byte[] mergeClasses(byte[] baseClass, byte[] classToMerge) throws IOException {
@@ -426,7 +476,7 @@ public class Engine {
 		}
 
 		// write out the modified base class
-		byte[] modifiedBaseClass = BytecodeUtils.writeClass(baseClassNode);
+		byte[] modifiedBaseClass = BytecodeUtils.writeClass(baseClassNode, classLoaders);
 
 		// adapt a ClassWriter with the MergeAdapter
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);

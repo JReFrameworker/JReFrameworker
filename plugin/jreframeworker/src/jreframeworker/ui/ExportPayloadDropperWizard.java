@@ -85,7 +85,7 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 					IProject project = page1.getJReFrameworkerProject().getProject();
 					
 					// add config file
-					File configFile = project.getFile(JReFrameworker.RUNTIMES_CONFIG).getLocation().toFile();
+					File configFile = project.getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
 					dropper.add("config", Files.readAllBytes(configFile.toPath()), true);
 					
 					// add payloads

@@ -9,8 +9,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -57,9 +59,8 @@ import jreframeworker.log.Log;
 @SuppressWarnings("restriction")
 public class JReFrameworker {
 
-	public static final String APPLICATION_DIRECTORY = "applications";
-	public static final String RUNTIMES_DIRECTORY = "runtimes";
-	public static final String RUNTIMES_CONFIG = RUNTIMES_DIRECTORY + "/" + "config";
+	public static final String BUILD_DIRECTORY = "build";
+	public static final String BUILD_CONFIG = BUILD_DIRECTORY + "/" + "config";
 	public static final String JREF_PROJECT_RESOURCE_DIRECTORY = ".jref"; // hidden directory
 	public static final String EXPORT_DIRECTORY = "export";
 	public static final String SOURCE_DIRECTORY = "src";
@@ -99,7 +100,7 @@ public class JReFrameworker {
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
 	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
-	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor, String targetJar, boolean isRuntime) throws CoreException, IOException, URISyntaxException {
+	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor, String targetJar) throws CoreException, IOException, URISyntaxException {
 		IProject project = null;
 		
 		try {
@@ -109,10 +110,9 @@ public class JReFrameworker {
 			monitor.setTaskName("Creating Eclipse project...");
 			project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 			File projectDirectory = new File(projectPath.toFile().getCanonicalPath() + File.separatorChar + project.getName()).getCanonicalFile();
-			if(isRuntime){
-				File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + RUNTIMES_DIRECTORY);
-				runtimesDirectory.mkdirs();
-			}
+			
+			File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + BUILD_DIRECTORY);
+			runtimesDirectory.mkdirs();
 			
 			IJavaProject jProject = createProject(projectName, projectPath, monitor, project);
 			monitor.worked(1);
@@ -120,7 +120,7 @@ public class JReFrameworker {
 				return Status.CANCEL_STATUS;
 			}
 			
-			createBuildFile(projectDirectory, targetJar, isRuntime);
+			createBuildFile(projectDirectory, targetJar);
 			
 			// copy runtimes and configure project classpath
 			monitor.setTaskName("Configuring project classpath...");
@@ -139,7 +139,7 @@ public class JReFrameworker {
 		}
 	}
 
-	private static File createBuildFile(File projectDirectory, String targetJar, boolean isRuntime) throws IOException {
+	private static File createBuildFile(File projectDirectory, String targetJar) throws IOException {
 		File buildXMLFile = new File(projectDirectory + File.separator + XML_BUILD_FILENAME);
 		Log.info("Created Build XML File: " + buildXMLFile.getAbsolutePath());
 		try {
@@ -155,7 +155,6 @@ public class JReFrameworker {
 			rootElement.appendChild(target);
 
 			target.setAttribute("name", targetJar);
-			target.setAttribute("type", isRuntime ? "runtime" : "application");
 
 			// write the content into xml file
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
@@ -302,19 +301,19 @@ public class JReFrameworker {
 		return location;
 	}
 
-	public static String getTargetJar(IProject project) throws SAXException, IOException, ParserConfigurationException {
+	public static Set<String> getTargetJars(IProject project) throws SAXException, IOException, ParserConfigurationException {
 		File buildXMLFile = project.getFile(XML_BUILD_FILENAME).getLocation().toFile();
 		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 		Document doc = dBuilder.parse(buildXMLFile);
 		doc.getDocumentElement().normalize();
 		NodeList targets = doc.getElementsByTagName("target");
-		String result = ""; // TODO: support multiple targets
+		Set<String> results = new HashSet<String>();
 		for (int i = 0; i < targets.getLength(); i++) {
 			Element target = (Element) targets.item(i);
-			result = target.getAttribute("name");
+			results.add(target.getAttribute("name"));
 		}
-		return result;
+		return results;
 	}
 	
 	public static boolean isTargetJarRuntime(IProject project) throws SAXException, IOException, ParserConfigurationException {

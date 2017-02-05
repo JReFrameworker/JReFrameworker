@@ -50,7 +50,7 @@ public class JReFrameworkerLaunchDelegate extends JavaLaunchDelegate {
 	public String getVMArguments(ILaunchConfiguration configuration) throws CoreException {
 		IJavaProject jProject = getJavaProject(configuration);
 		String bootClasspath = "-Xbootclasspath/p:" + 
-								jProject.getProject().getFolder(JReFrameworker.RUNTIMES_DIRECTORY)
+								jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY)
 								.getLocation().toFile().getAbsolutePath() + File.separatorChar + "rt.jar";
 		return bootClasspath + super.getVMArguments(configuration);
 	}
