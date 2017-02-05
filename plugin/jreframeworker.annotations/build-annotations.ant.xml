@@ -3,7 +3,7 @@
     <property name="dir.buildfile" value="."/>
     <property name="dir.jarfile" value="../jreframeworker/annotations"/>
     <target name="create_annotations_jar">
-        <jar destfile="${dir.jarfile}/jref-annotations.jar" filesetmanifest="mergewithoutmain">
+        <jar destfile="${dir.jarfile}/jreframeworker-annotations.jar" filesetmanifest="mergewithoutmain">
             <manifest>
             	<!-- just make an empty manifest -->
             </manifest>

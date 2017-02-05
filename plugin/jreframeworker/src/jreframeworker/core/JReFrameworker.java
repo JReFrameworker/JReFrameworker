@@ -66,9 +66,9 @@ public class JReFrameworker {
 	public static final String SOURCE_DIRECTORY = "src";
 	public static final String BINARY_DIRECTORY = "bin";
 	public static final String RAW_DIRECTORY = "raw";
-	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "jref-annotations.jar";
+	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "jreframeworker-annotations.jar";
 	public static final String ANNOTATIONS_JAR_PATH = "annotations" + "/" + JRE_FRAMEWORKER_ANNOTATIONS_JAR;
-	public static final String XML_BUILD_FILENAME = "jref-build.xml";
+	public static final String XML_BUILD_FILENAME = "jreframeworker.xml";
 	
 	public static LinkedList<IJavaProject> getJReFrameworkerProjects(){
 		LinkedList<IJavaProject> projects = new LinkedList<IJavaProject>();
@@ -314,21 +314,6 @@ public class JReFrameworker {
 			results.add(target.getAttribute("name"));
 		}
 		return results;
-	}
-	
-	public static boolean isTargetJarRuntime(IProject project) throws SAXException, IOException, ParserConfigurationException {
-		File buildXMLFile = project.getFile(XML_BUILD_FILENAME).getLocation().toFile();
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-		Document doc = dBuilder.parse(buildXMLFile);
-		doc.getDocumentElement().normalize();
-		NodeList targets = doc.getElementsByTagName("target");
-		String result = ""; // TODO: support multiple targets
-		for (int i = 0; i < targets.getLength(); i++) {
-			Element target = (Element) targets.item(i);
-			result = target.getAttribute("type");
-		}
-		return result.equals("runtime") ? true : false;
 	}
 
 }

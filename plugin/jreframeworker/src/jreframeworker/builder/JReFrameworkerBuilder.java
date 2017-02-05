@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -122,7 +124,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			try {
-				
 				// map class entries to and initial modification engine sets
 				Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
 				Set<Engine> allEngines = new HashSet<Engine>();
@@ -157,7 +158,29 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					return;
 				}
 				
-				// compute the jar modifications
+				// add each class from classes in jars in raw directory
+				File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
+				if(rawDirectory.exists()){
+					for(File jarFile : rawDirectory.listFiles()){
+						if(jarFile.getName().endsWith(".jar")){
+							for(Engine engine : allEngines){
+								Log.info("Embedding raw resource: " + jarFile.getName() + " in " + engine.getJarName());
+								
+								// TODO: unjar to temp directory instead?
+								File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
+								JarModifier.unjar(jarFile, outputDirectory);
+								
+								// add raw class files
+								addClassFiles(engine, outputDirectory);
+								
+								// cleanup temporary directory
+								delete(outputDirectory);
+							}
+						}
+					}
+				}
+				
+				// compute the source based jar modifications
 				buildProject(binDirectory, jProject, engineMap, allEngines, config);
 				config.close();
 				
@@ -165,7 +188,14 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				for(Engine engine : allEngines){
 					File modifiedRuntime = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
 					engine.save(modifiedRuntime);
-					Log.info("Modified Runtime: " + modifiedRuntime.getCanonicalPath());
+					
+					// log the modified runtime
+					String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
+					String relativeFilePath = modifiedRuntime.getCanonicalPath().substring(base.length());
+					if(relativeFilePath.charAt(0) == File.separatorChar){
+						relativeFilePath = relativeFilePath.substring(1);
+					}
+					Log.info("Modified: " + relativeFilePath);
 				}
 				
 			} catch (IOException | SAXException | ParserConfigurationException e) {
@@ -180,40 +210,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
-	}
-	
-	private void addClassFiles(Engine engine, File f) throws IOException {
-		if (f.isDirectory()){
-			for (File f2 : f.listFiles()){
-				addClassFiles(engine, f2);
-			}
-		} else if(f.getName().endsWith(".class")){
-			engine.addUnprocessed(Files.readAllBytes(f.toPath()), true);
-		}
-	}
-	
-	private File getOriginalJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
-		for(IClasspathEntry classpathEntry : jProject.getRawClasspath()){
-			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
-				File jar = classpathEntry.getPath().toFile().getAbsoluteFile();
-				if(jar.getName().equals(targetJar)){
-					return jar;
-				}
-			}
-		}
-		return getOriginalRuntime(targetJar);
-	}
-
-	private File getOriginalRuntime(String targetJar) throws IOException {
-		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
-		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
-		for (LibraryLocation library : locations) {
-			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
-			if(runtime.getName().equals(targetJar)){
-				return runtime;
-			}
-		}
-		return null;
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
@@ -240,10 +236,16 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							
 							if(mergeModification){
 								String mergeTarget = getMergeTarget(classNode);
-								// process each jar that has the entry
+								// merge into each target jar that contains the merge target
 								boolean modified = false;
 								if(engineMap.containsKey(mergeTarget)){
 									for(Engine engine : engineMap.get(mergeTarget)){
+										if(isRuntimeJar(engine.getJarName())){
+											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+										} else {
+											URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+										}
 										if(engine.process(classBytes)){
 											modified = true;
 										}
@@ -256,9 +258,15 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									Log.warning("Class entry [" + mergeTarget + "] could not be found in any of the target jars.");
 								}
 							} else if(defineModification){
-								// process every target jar
+								// define or replace in every target jar
 								boolean modified = false;
 								for(Engine engine : allEngines){
+									if(isRuntimeJar(engine.getJarName())){
+										engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+									} else {
+										URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+										engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+									}
 									if(engine.process(classBytes)){
 										modified = true;
 									}
@@ -277,47 +285,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-	private static boolean isDefineTypeModification(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-				checker.visitAnnotation(annotationNode.desc, false);
-				if(checker.isDefineTypeAnnotation()){
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static boolean isMergeTypeModification(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-				checker.visitAnnotation(annotationNode.desc, false);
-				if(checker.isMergeTypeAnnotation()){
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static String getMergeTarget(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				MergeTypeAnnotation mergeTypeAnnotation = JREFAnnotationIdentifier.getMergeTypeAnnotation(classNode, annotationNode);
-				return mergeTypeAnnotation.getSupertype();
-			}
-		}
-		return null;
-	}
+
 
 	// TODO: see http://help.eclipse.org/mars/index.jsp?topic=%2Forg.eclipse.platform.doc.isv%2Fguide%2FresAdv_builders.htm
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
@@ -392,4 +360,91 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
+	private void addClassFiles(Engine engine, File f) throws IOException {
+		if (f.isDirectory()){
+			for (File f2 : f.listFiles()){
+				addClassFiles(engine, f2);
+			}
+		} else if(f.getName().endsWith(".class")){
+			engine.addUnprocessed(Files.readAllBytes(f.toPath()), true);
+		}
+	}
+	
+	private File getOriginalJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
+		for(IClasspathEntry classpathEntry : jProject.getRawClasspath()){
+			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
+				File jar = classpathEntry.getPath().toFile().getCanonicalFile();
+				if(jar.getName().equals(targetJar)){
+					return jar;
+				}
+			}
+		}
+		return getOriginalRuntimeJar(targetJar);
+	}
+
+	private boolean isRuntimeJar(String jar) throws IOException {
+		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
+		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
+		for (LibraryLocation library : locations) {
+			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
+			if(runtime.getName().equals(jar)){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private File getOriginalRuntimeJar(String targetJar) throws IOException {
+		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
+		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
+		for (LibraryLocation library : locations) {
+			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
+			if(runtime.getName().equals(targetJar)){
+				return runtime;
+			}
+		}
+		return null;
+	}
+	
+	private static boolean isMergeTypeModification(ClassNode classNode) throws IOException {
+		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+		if(classNode.invisibleAnnotations != null){
+			for(Object annotationObject : classNode.invisibleAnnotations){
+				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
+				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
+				checker.visitAnnotation(annotationNode.desc, false);
+				if(checker.isMergeTypeAnnotation()){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	private static String getMergeTarget(ClassNode classNode) throws IOException {
+		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+		if(classNode.invisibleAnnotations != null){
+			for(Object annotationObject : classNode.invisibleAnnotations){
+				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
+				MergeTypeAnnotation mergeTypeAnnotation = JREFAnnotationIdentifier.getMergeTypeAnnotation(classNode, annotationNode);
+				return mergeTypeAnnotation.getSupertype();
+			}
+		}
+		return null;
+	}
+	
+	private static boolean isDefineTypeModification(ClassNode classNode) throws IOException {
+		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+		if(classNode.invisibleAnnotations != null){
+			for(Object annotationObject : classNode.invisibleAnnotations){
+				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
+				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
+				checker.visitAnnotation(annotationNode.desc, false);
+				if(checker.isDefineTypeAnnotation()){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 }

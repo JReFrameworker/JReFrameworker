@@ -112,6 +112,10 @@ public class Engine {
 		return jarName;
 	}
 	
+	public File getOriginalJar(){
+		return jarModifier.getJarFile();
+	}
+	
 	public Set<String> getOriginalEntries(){
 		return new HashSet<String>(originalEntries);
 	}
@@ -129,6 +133,10 @@ public class Engine {
 	
 	public Engine(File jar, String mergeRenamePrefix, ClassLoader[] classLoaders) throws JarException, IOException {
 		this(jar, mergeRenamePrefix);
+		this.classLoaders = classLoaders;
+	}
+	
+	public void setClassLoaders(ClassLoader... classLoaders){
 		this.classLoaders = classLoaders;
 	}
 	
@@ -170,7 +178,7 @@ public class Engine {
 		boolean processed = false;
 		// check to see if the class is annotated with 
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
-		Log.info("Processing Input Class: " + classNode.name + "...");
+		Log.info("Processing input class: " + classNode.name + "...");
 		
 		// set finality
 		DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
@@ -425,6 +433,7 @@ public class Engine {
 		LinkedList<MethodNode> methodsToDefine = defineMethodsIdentifier.getDefineMethods();
 		
 		// purge defined methods that are already there
+		// TODO: Fix: http://asm.ow2.org/doc/faq.html#Q1, https://github.com/JReFrameworker/JReFrameworker/issues/2
 		for(MethodNode methodToPurge : methodsToDefine){
 			for(MethodNode baseMethod : baseMethods){
 				if(methodToPurge.signature != null && baseMethod.signature != null){
