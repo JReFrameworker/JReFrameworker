@@ -10,7 +10,6 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import jreframeworker.engine.log.Log;
-import jreframeworker.engine.utils.AnnotationUtils;
 
 /**
  * This class is responsible for purging methods and fields from a class 

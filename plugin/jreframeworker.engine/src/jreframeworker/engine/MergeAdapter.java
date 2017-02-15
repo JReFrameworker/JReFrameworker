@@ -43,6 +43,7 @@ import jreframeworker.engine.utils.AnnotationUtils;
  * 
  * @author Ben Holland
  */
+@SuppressWarnings("deprecation")
 public class MergeAdapter extends ClassVisitor {
 	private ClassNode classToMerge;
 	private String baseClassName;
