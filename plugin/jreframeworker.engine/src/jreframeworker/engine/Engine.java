@@ -151,6 +151,26 @@ public class Engine {
 		jarModifier.add(qualifiedClassName, inputClass, overwrite);
 	}
 	
+	public boolean preprocess(byte[] inputClass) throws IOException {
+		// set the ASM class loaders to be used to process this input
+		ClassLoaders.setClassLoaders(classLoaders);
+		
+		boolean processed = false;
+		// check to see if the class is annotated with 
+		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
+		Log.info("Preprocessing input class: " + classNode.name + "...");
+		
+		// set finality
+		DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
+		processed |= setFinality(defineFinalityIdentifier);
+		
+		// set visibility modifiers
+		DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+		processed |= setVisibility(defineVisibilityIdentifier);
+		
+		return processed;
+	}
+	
 	public boolean process(byte[] inputClass) throws IOException {
 		
 		// set the ASM class loaders to be used to process this input
@@ -170,6 +190,10 @@ public class Engine {
 		processed |= setVisibility(defineVisibilityIdentifier);
 		
 		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+//		the Java compiler generates three classes:
+//		1) YourClass -> regular class
+//		2) YourClass$YourInnerClass -> "$ + name" for inner classes
+//		3) YourClass$1 -> "$ + number" for anonymous classes
 		if(classNode.invisibleAnnotations != null){
 			for(Object annotationObject : classNode.invisibleAnnotations){
 				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
@@ -197,6 +221,7 @@ public class Engine {
 				}
 			}
 		}
+		
 		return processed;
 	}
 	

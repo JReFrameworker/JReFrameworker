@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.JarException;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -98,17 +99,32 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 	
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
-
 		Log.info("JReFrameworker Build Number: " + buildNumber++);
 
 		IJavaProject jProject = getJReFrameworkerProject();
 		if (jProject != null) {
 			// make sure the build directory exists
+			File projectPreBuildDirectory = jProject.getProject().getFolder(JReFrameworker.PREBUILD_DIRECTORY).getLocation().toFile();
+			if (!projectPreBuildDirectory.exists()) {
+				projectPreBuildDirectory.mkdirs();
+			}
+			
+			// delete the modified runtimes
+			try {
+				clearProjectBuildDirectory(jProject, projectPreBuildDirectory);
+			} catch (IOException e) {
+				Log.error("Error building " + jProject.getProject().getName()
+						+ ", could not purge runtimes.  Project may be in an invalid state.", e);
+				return;
+			}
+			
+			// next make sure the build directory exists
 			File projectBuildDirectory = jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
 			if (!projectBuildDirectory.exists()) {
 				projectBuildDirectory.mkdirs();
 			}
-			// first delete the modified runtime
+			
+			// then delete the modified runtimes
 			try {
 				clearProjectBuildDirectory(jProject, projectBuildDirectory);
 			} catch (IOException e) {
@@ -120,84 +136,18 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			// build each jref project fresh
 			monitor.beginTask("Building JReFrameworker project: " + jProject.getProject().getName(), 1);
 			Log.info("Building JReFrameworker project [" + jProject.getProject().getName() + "]");
-
 			
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
+
 			try {
-				// map class entries to and initial modification engine sets
-				Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
-				Set<Engine> allEngines = new HashSet<Engine>();
-				for (String targetJar : JReFrameworker.getTargetJars(jProject.getProject())) {
-					File originalJar = getOriginalJar(targetJar, jProject);
-					if (originalJar.exists()) {
-						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
-						allEngines.add(engine);
-						for(String entry : engine.getOriginalEntries()){
-							entry = entry.replace(".class", "");
-							if(engineMap.containsKey(entry)){
-								engineMap.get(entry).add(engine);
-							} else {
-								Set<Engine> engines = new HashSet<Engine>();
-								engines.add(engine);
-								engineMap.put(entry, engines);
-							}
-						}
-					} else {
-						Log.warning("Jar not found: " + originalJar.getAbsolutePath());
-					}
-				}
-				
-				// write config file
-				File configFile = jProject.getProject().getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
-				FileWriter config;
-				try {
-					config = new FileWriter(configFile);
-					config.write("merge-rename-prefix," + PreferencesPage.getMergeRenamingPrefix());
-				} catch (IOException e) {
-					Log.error("Could not write to config file.", e);
-					return;
-				}
-				
-				// add each class from classes in jars in raw directory
-				File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
-				if(rawDirectory.exists()){
-					for(File jarFile : rawDirectory.listFiles()){
-						if(jarFile.getName().endsWith(".jar")){
-							for(Engine engine : allEngines){
-								Log.info("Embedding raw resource: " + jarFile.getName() + " in " + engine.getJarName());
-								
-								// TODO: unjar to temp directory instead?
-								File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
-								JarModifier.unjar(jarFile, outputDirectory);
-								
-								// add raw class files
-								addClassFiles(engine, outputDirectory);
-								
-								// cleanup temporary directory
-								delete(outputDirectory);
-							}
-						}
-					}
-				}
-				
-				// compute the source based jar modifications
-				buildProject(binDirectory, jProject, engineMap, allEngines, config);
-				config.close();
-				
-				// write out the modified jars
-				for(Engine engine : allEngines){
-					File modifiedRuntime = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
-					engine.save(modifiedRuntime);
-					
-					// log the modified runtime
-					String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
-					String relativeFilePath = modifiedRuntime.getCanonicalPath().substring(base.length());
-					if(relativeFilePath.charAt(0) == File.separatorChar){
-						relativeFilePath = relativeFilePath.substring(1);
-					}
-					Log.info("Modified: " + relativeFilePath);
-				}
-				
+				prebuildProject(jProject, projectPreBuildDirectory, binDirectory);
+			} catch (IOException | SAXException | ParserConfigurationException e) {
+				Log.error("Error pre-building " + jProject.getProject().getName(), e);
+				return;
+			}
+			
+			try {
+				buildProject(jProject, projectBuildDirectory, binDirectory);
 			} catch (IOException | SAXException | ParserConfigurationException e) {
 				Log.error("Error building " + jProject.getProject().getName(), e);
 				return;
@@ -212,6 +162,160 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 
+	private void buildProject(IJavaProject jProject, File projectBuildDirectory, File binDirectory) throws SAXException, IOException, ParserConfigurationException, JavaModelException, JarException {
+		// map class entries to and initial modification engine sets
+		Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
+		Set<Engine> allEngines = new HashSet<Engine>();
+		for (String targetJar : JReFrameworker.getTargetJars(jProject.getProject())) {
+			File originalJar = getOriginalJar(targetJar, jProject);
+			if (originalJar.exists()) {
+				Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
+				allEngines.add(engine);
+				for(String entry : engine.getOriginalEntries()){
+					entry = entry.replace(".class", "");
+					if(engineMap.containsKey(entry)){
+						engineMap.get(entry).add(engine);
+					} else {
+						Set<Engine> engines = new HashSet<Engine>();
+						engines.add(engine);
+						engineMap.put(entry, engines);
+					}
+				}
+			} else {
+				Log.warning("Jar not found: " + originalJar.getAbsolutePath());
+			}
+		}
+		
+		// write config file
+		File configFile = jProject.getProject().getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
+		FileWriter config;
+		try {
+			config = new FileWriter(configFile);
+			config.write("merge-rename-prefix," + PreferencesPage.getMergeRenamingPrefix());
+		} catch (IOException e) {
+			Log.error("Could not write to config file.", e);
+			return;
+		}
+		
+		// add each class from classes in jars in raw directory
+		File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
+		if(rawDirectory.exists()){
+			for(File jarFile : rawDirectory.listFiles()){
+				if(jarFile.getName().endsWith(".jar")){
+					for(Engine engine : allEngines){
+						Log.info("Embedding raw resource: " + jarFile.getName() + " in " + engine.getJarName());
+						
+						// TODO: unjar to temp directory instead?
+						File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
+						JarModifier.unjar(jarFile, outputDirectory);
+						
+						// add raw class files
+						addClassFiles(engine, outputDirectory);
+						
+						// cleanup temporary directory
+						delete(outputDirectory);
+					}
+				}
+			}
+		}
+		
+		// compute the source based jar modifications
+		buildProject(binDirectory, jProject, engineMap, allEngines, config);
+		config.close();
+		
+		// write out the modified jars
+		for(Engine engine : allEngines){
+			File modifiedRuntime = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
+			engine.save(modifiedRuntime);
+			
+			// log the modified runtime
+			String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
+			String relativeFilePath = modifiedRuntime.getCanonicalPath().substring(base.length());
+			if(relativeFilePath.charAt(0) == File.separatorChar){
+				relativeFilePath = relativeFilePath.substring(1);
+			}
+			Log.info("Modified: " + relativeFilePath);
+		}
+	}
+
+	private void prebuildProject(IJavaProject jProject, File projectPreBuildDirectory, File binDirectory) throws SAXException, IOException, ParserConfigurationException, JavaModelException, JarException {
+		// map class entries to and initial modification engine sets
+		Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
+		Set<Engine> allEngines = new HashSet<Engine>();
+		for (String targetJar : JReFrameworker.getTargetJars(jProject.getProject())) {
+			File originalJar = getOriginalJar(targetJar, jProject);
+			if (originalJar.exists()) {
+				Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
+				allEngines.add(engine);
+				for(String entry : engine.getOriginalEntries()){
+					entry = entry.replace(".class", "");
+					if(engineMap.containsKey(entry)){
+						engineMap.get(entry).add(engine);
+					} else {
+						Set<Engine> engines = new HashSet<Engine>();
+						engines.add(engine);
+						engineMap.put(entry, engines);
+					}
+				}
+			} else {
+				Log.warning("Jar not found: " + originalJar.getAbsolutePath());
+			}
+		}
+		
+		// compute the source based jar modifications
+		prebuildProject(binDirectory, jProject, engineMap, allEngines);
+		
+		// write out the modified jars
+		for(Engine engine : allEngines){
+			File modifiedRuntime = new File(projectPreBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
+			engine.save(modifiedRuntime);
+			
+			// log the modified runtime
+			String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
+			String relativeFilePath = modifiedRuntime.getCanonicalPath().substring(base.length());
+			if(relativeFilePath.charAt(0) == File.separatorChar){
+				relativeFilePath = relativeFilePath.substring(1);
+			}
+			Log.info("Prebuilt: " + relativeFilePath);
+		}
+		
+		// TODO: update classpath...
+	}
+	
+	private void prebuildProject(File binDirectory, IJavaProject jProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines) throws IOException {
+		// make changes for each annotated class file in current directory
+		File[] files = binDirectory.listFiles();
+		for(File file : files){
+			if(file.isFile()){
+				if(file.getName().endsWith(".class")){
+					byte[] classBytes = Files.readAllBytes(file.toPath());
+					if(classBytes.length > 0){
+						try {
+							ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
+							boolean preprocessingModification = isDefineFinalityModification(classNode) || isDefineVisibilityModification(classNode);
+							if(preprocessingModification){
+								// define or replace in every target jar
+								for(Engine engine : allEngines){
+									if(isRuntimeJar(engine.getJarName())){
+										engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+									} else {
+										URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+										engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+									}
+									engine.preprocess(classBytes);
+								}
+							}
+						} catch (RuntimeException e){
+							Log.error("Error modifying jar...", e);
+						}
+					}
+				}
+			} else if(file.isDirectory()){
+				prebuildProject(file, jProject, engineMap, allEngines);
+			}
+		}
+	}
+
 	// TODO: adding a progress monitor subtask here would be a nice feature
 	private void buildProject(File binDirectory, IJavaProject jProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines, FileWriter config) throws IOException {
 		// make changes for each annotated class file in current directory
@@ -223,10 +327,11 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					if(classBytes.length > 0){
 						try {
 							ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
+							boolean preprocessingModification = isDefineFinalityModification(classNode) || isDefineVisibilityModification(classNode);
 							boolean mergeModification = isMergeTypeModification(classNode);
 							boolean defineModification = isDefineTypeModification(classNode);
 							
-							if(mergeModification || defineModification){
+							if(preprocessingModification || mergeModification || defineModification){
 								// get the qualified modification class name
 								String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
 								String modificationClassName = file.getCanonicalPath().substring(base.length());
@@ -288,15 +393,13 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			}
 		}
 	}
-	
-
 
 	// TODO: see http://help.eclipse.org/mars/index.jsp?topic=%2Forg.eclipse.platform.doc.isv%2Fguide%2FresAdv_builders.htm
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
 
 		// for now just doing nothing, incremental build is fighting with full build and can't delete rt.jar for some reason
 		
-//		Log.info("Incremental Build");
+		Log.info("Incremental Build");
 		
 		// TODO: implement an incremental build
 //		delta.accept(new BuildDeltaVisitor());
@@ -373,6 +476,31 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			engine.addUnprocessed(Files.readAllBytes(f.toPath()), true);
 		}
 	}
+	
+//	private File getPrebuiltJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
+//		for(IClasspathEntry classpathEntry : jProject.getRawClasspath()){
+//			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
+//				File jar = classpathEntry.getPath().toFile().getCanonicalFile();
+//				if(jar.getName().equals(targetJar)){
+//					if(!jar.exists()){
+//						// path may have been relative, so try again to resolve path relative to project directory
+//						String relativePath = jar.getAbsolutePath();
+//						String projectName = jProject.getProject().getName();
+//						String projectRoot = File.separator + projectName;
+//						String prebuildDirectory = projectRoot + File.separator + JReFrameworker.PREBUILD_DIRECTORY + File.separator;
+//						prebuildDirectory = prebuildDirectory + jar.getName();
+//						jar = jProject.getProject().getFile(relativePath).getLocation().toFile();
+//						if(!jar.exists()){
+//							// if jar still doesn't exist match any jar in the project with the same name
+//							jar = jProject.getProject().getFile(jar.getName()).getLocation().toFile();
+//						}
+//					}
+//					return jar;
+//				}
+//			}
+//		}
+//		return getOriginalRuntimeJar(targetJar);
+//	}
 	
 	private File getOriginalJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
 		for(IClasspathEntry classpathEntry : jProject.getRawClasspath()){
@@ -457,6 +585,36 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotationNode.desc, false);
 				if(checker.isDefineTypeAnnotation()){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	private static boolean isDefineFinalityModification(ClassNode classNode) throws IOException {
+		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+		if(classNode.invisibleAnnotations != null){
+			for(Object annotationObject : classNode.invisibleAnnotations){
+				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
+				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
+				checker.visitAnnotation(annotationNode.desc, false);
+				if(checker.isDefineFinalityAnnotation()){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	private static boolean isDefineVisibilityModification(ClassNode classNode) throws IOException {
+		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+		if(classNode.invisibleAnnotations != null){
+			for(Object annotationObject : classNode.invisibleAnnotations){
+				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
+				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
+				checker.visitAnnotation(annotationNode.desc, false);
+				if(checker.isDefineVisibilityAnnotation()){
 					return true;
 				}
 			}

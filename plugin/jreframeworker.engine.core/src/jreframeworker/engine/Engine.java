@@ -16,6 +16,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import jreframeworker.engine.identifiers.BaseMethodsIdentifier;
@@ -151,6 +152,26 @@ public class Engine {
 		jarModifier.add(qualifiedClassName, inputClass, overwrite);
 	}
 	
+	public boolean preprocess(byte[] inputClass) throws IOException {
+		// set the ASM class loaders to be used to process this input
+		ClassLoaders.setClassLoaders(classLoaders);
+		
+		boolean processed = false;
+		// check to see if the class is annotated with 
+		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
+		Log.info("Preprocessing input class: " + classNode.name + "...");
+		
+		// set finality
+		DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
+		processed |= setFinality(defineFinalityIdentifier);
+		
+		// set visibility modifiers
+		DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+		processed |= setVisibility(defineVisibilityIdentifier);
+		
+		return processed;
+	}
+	
 	public boolean process(byte[] inputClass) throws IOException {
 		
 		// set the ASM class loaders to be used to process this input
@@ -170,6 +191,10 @@ public class Engine {
 		processed |= setVisibility(defineVisibilityIdentifier);
 		
 		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+//		the Java compiler generates three classes:
+//		1) YourClass -> regular class
+//		2) YourClass$YourInnerClass -> "$ + name" for inner classes
+//		3) YourClass$1 -> "$ + number" for anonymous classes
 		if(classNode.invisibleAnnotations != null){
 			for(Object annotationObject : classNode.invisibleAnnotations){
 				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
@@ -197,6 +222,7 @@ public class Engine {
 				}
 			}
 		}
+		
 		return processed;
 	}
 	
@@ -213,14 +239,41 @@ public class Engine {
 			ClassNode baseClassNode = getBytecode(className);
 			baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 			if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
-				Log.info("Set " + baseClassNode.name + " class to be public.");
+				if(baseClassNode.name.equals(className)){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
+					Log.info("Set " + baseClassNode.name + " class to be public.");
+				} else {
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PUBLIC;
+							Log.info("Set " + innerClassNode.name + " inner class to be public.");
+						}
+					}
+				}
 			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
-				Log.info("Set " + baseClassNode.name + " class to be protected.");
+				if(baseClassNode.name.equals(className)){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
+					Log.info("Set " + baseClassNode.name + " class to be protected.");
+				} else {
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PROTECTED;
+							Log.info("Set " + innerClassNode.name + " inner class to be protected.");
+						}
+					}
+				}
 			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
-				Log.info("Set " + baseClassNode.name + " class to be private.");
+				if(baseClassNode.name.equals(className)){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
+					Log.info("Set " + baseClassNode.name + " class to be private.");
+				} else {
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PRIVATE;
+							Log.info("Set " + innerClassNode.name + " inner class to be private.");
+						}
+					}
+				}
 			} else {
 				// should never happen
 				throw new RuntimeException("Missing visibility modifier");
@@ -229,6 +282,9 @@ public class Engine {
 			processed = true;
 		}
 		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
+			
+			// TODO: account for inner classes as was done above
+			
 			String qualifiedClassName = defineMethodVisibilityAnnotation.getClassName();
 			String[] simpleClassNameParts = qualifiedClassName.split("/");
 			ClassNode baseClassNode = getBytecode(qualifiedClassName);
