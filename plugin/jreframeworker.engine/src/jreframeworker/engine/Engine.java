@@ -16,6 +16,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import jreframeworker.engine.identifiers.BaseMethodsIdentifier;
@@ -152,7 +153,6 @@ public class Engine {
 	}
 	
 	public boolean process(byte[] inputClass) throws IOException {
-		
 		// set the ASM class loaders to be used to process this input
 		ClassLoaders.setClassLoaders(classLoaders);
 		
@@ -211,21 +211,53 @@ public class Engine {
 		for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
 			String className = defineTypeVisibilityAnnotation.getClassName();
 			ClassNode baseClassNode = getBytecode(className);
-			baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-			if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
-				Log.info("Set " + baseClassNode.name + " class to be public.");
-			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
-				Log.info("Set " + baseClassNode.name + " class to be protected.");
-			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
-				Log.info("Set " + baseClassNode.name + " class to be private.");
-			} else {
-				// should never happen
-				throw new RuntimeException("Missing visibility modifier");
+			
+			boolean isInnerClass = false;
+			for(InnerClassNode innerClass : baseClassNode.innerClasses){
+				if(innerClass.name.equals(className)){
+					isInnerClass = true;
+					// clear our visibility modifiers
+					innerClass.access = innerClass.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+					// set the appropriate visibility modifier
+					if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+						innerClass.access = innerClass.access | Opcodes.ACC_PUBLIC;
+						Log.info("Set " + innerClass.name + " inner class to be public.");
+					} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+						innerClass.access = innerClass.access | Opcodes.ACC_PROTECTED;
+						Log.info("Set " + innerClass.name + " inner class to be protected.");
+					} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+						innerClass.access = innerClass.access | Opcodes.ACC_PRIVATE;
+						Log.info("Set " + innerClass.name + " inner class to be private.");
+					} else {
+						// should never happen
+						throw new RuntimeException("Missing visibility modifier");
+					}
+				}
 			}
+			
+//			if(!isInnerClass){
+				// clear our visibility modifiers
+				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+				// set the appropriate visibility modifier
+				if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
+					Log.info("Set " + baseClassNode.name + " class to be public.");
+				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
+					Log.info("Set " + baseClassNode.name + " class to be protected.");
+				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
+					Log.info("Set " + baseClassNode.name + " class to be private.");
+				} else {
+					// should never happen
+					throw new RuntimeException("Missing visibility modifier");
+				}
+//			}
+			
 			updateBytecode(className, baseClassNode);
+			
+			ClassNode test = BytecodeUtils.getClassNode(BytecodeUtils.writeClass(baseClassNode));
+			
 			processed = true;
 		}
 		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
