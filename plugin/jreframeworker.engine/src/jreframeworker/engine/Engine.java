@@ -358,29 +358,13 @@ public class Engine {
 			String[] simpleClassNameParts = qualifiedClassName.split("/");
 			ClassNode baseClassNode = getBytecode(qualifiedClassName);
 			String simpleClassName = simpleClassNameParts[simpleClassNameParts.length-1];
+			if(simpleClassName.contains("$")){
+				simpleClassName = simpleClassName.substring(simpleClassName.indexOf("$")+1,simpleClassName.length());
+			}
 			for (Object o : baseClassNode.methods) {
 				MethodNode methodNode = (MethodNode) o;
 				if(defineMethodVisibilityAnnotation.getMethodName().equals(simpleClassName)){
 					if(methodNode.name.equals("<init>")){
-						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
-							Log.info("Set " + methodNode.name + " static initializer to be public.");
-						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-							methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
-							Log.info("Set " + methodNode.name + " static initializer to be protected.");
-						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-							methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
-							Log.info("Set " + methodNode.name + " static initializer to be private.");
-						} else {
-							// should never happen
-							throw new RuntimeException("Missing visibility modifier");
-						}
-						updateBytecode(qualifiedClassName, baseClassNode);
-						processed = true;
-//						break; // should only be one match?
-						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
-					} else if(methodNode.name.equals("<clinit>")){
 						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
@@ -395,11 +379,28 @@ public class Engine {
 							// should never happen
 							throw new RuntimeException("Missing visibility modifier");
 						}
-						updateBytecode(qualifiedClassName, baseClassNode);
-						processed = true;
+//						break; // should only be one match?
+						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+					} else if(methodNode.name.equals("<clinit>")){
+						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+							Log.info("Set " + methodNode.name + " static initializer to be public.");
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+							Log.info("Set " + methodNode.name + " static initializer to be protected.");
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+							Log.info("Set " + methodNode.name + " static initializer to be private.");
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
+						}
 //						break; // should only be one match?
 						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
 					}
+					updateBytecode(qualifiedClassName, baseClassNode);
+					processed = true;
 				} else if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
 					methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 					if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
