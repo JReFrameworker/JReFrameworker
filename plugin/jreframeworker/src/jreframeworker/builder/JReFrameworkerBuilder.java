@@ -75,8 +75,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			Log.info("Cleaning JReFrameworker project: " + jProject.getProject().getName());
 			try {
 				File buildDirectory = jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
-				File configFile = jProject.getProject().getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
-				configFile.delete();
 				clearProjectBuildDirectory(jProject, buildDirectory);
 				this.forgetLastBuiltState(); 
 			} catch (IOException e) {
@@ -147,17 +145,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					}
 				}
 				
-				// write config file
-				File configFile = jProject.getProject().getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
-				FileWriter config;
-				try {
-					config = new FileWriter(configFile);
-					config.write("merge-rename-prefix," + PreferencesPage.getMergeRenamingPrefix());
-				} catch (IOException e) {
-					Log.error("Could not write to config file.", e);
-					return;
-				}
-				
 				// add each class from classes in jars in raw directory
 				File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
 				if(rawDirectory.exists()){
@@ -181,8 +168,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				}
 				
 				// compute the source based jar modifications
-				buildProject(binDirectory, jProject, engineMap, allEngines, config);
-				config.close();
+				buildProject(binDirectory, jProject, engineMap, allEngines);
 				
 				// write out the modified jars
 				for(Engine engine : allEngines){
@@ -213,7 +199,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void buildProject(File binDirectory, IJavaProject jProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines, FileWriter config) throws IOException {
+	private void buildProject(File binDirectory, IJavaProject jProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines) throws IOException {
 		// make changes for each annotated class file in current directory
 		File[] files = binDirectory.listFiles();
 		for(File file : files){
@@ -286,7 +272,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					}
 				}
 			} else if(file.isDirectory()){
-				buildProject(file, jProject, engineMap, allEngines, config);
+				buildProject(file, jProject, engineMap, allEngines);
 			}
 		}
 	}
