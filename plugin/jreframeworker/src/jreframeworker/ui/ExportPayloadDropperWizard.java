@@ -85,20 +85,21 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 					IProject project = page1.getJReFrameworkerProject().getProject();
 					
 					// add config file
-					File configFile = project.getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
-					dropper.add("config", Files.readAllBytes(configFile.toPath()), true);
-					
-					// add payloads
-					Scanner scanner = new Scanner(configFile);
-					while(scanner.hasNextLine()){
-						String[] entry = scanner.nextLine().split(",");
-						if(entry[0].equals("class")){
-							File classFile = new File(project.getFile(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getAbsolutePath()
-									+ File.separatorChar + entry[1] + ".class");
-							dropper.add("payloads/" + entry[1], Files.readAllBytes(classFile.toPath()), true);
-						}
-					}
-					scanner.close();
+					// TODO: replace with JREF BUILD XML contents
+//					File configFile = project.getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
+//					dropper.add("config", Files.readAllBytes(configFile.toPath()), true);
+//					
+//					// add payloads
+//					Scanner scanner = new Scanner(configFile);
+//					while(scanner.hasNextLine()){
+//						String[] entry = scanner.nextLine().split(",");
+//						if(entry[0].equals("class")){
+//							File classFile = new File(project.getFile(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getAbsolutePath()
+//									+ File.separatorChar + entry[1] + ".class");
+//							dropper.add("payloads/" + entry[1], Files.readAllBytes(classFile.toPath()), true);
+//						}
+//					}
+//					scanner.close();
 					
 					// set manifest
 					byte[] manifest = "Manifest-Version: 1.0\nClass-Path: .\nMain-Class: Main\n\n\n".getBytes();

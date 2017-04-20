@@ -60,7 +60,6 @@ import jreframeworker.log.Log;
 public class JReFrameworker {
 
 	public static final String BUILD_DIRECTORY = "build";
-	public static final String BUILD_CONFIG = BUILD_DIRECTORY + "/" + "config";
 	public static final String JREF_PROJECT_RESOURCE_DIRECTORY = ".jref"; // hidden directory
 	public static final String EXPORT_DIRECTORY = "export";
 	public static final String SOURCE_DIRECTORY = "src";
