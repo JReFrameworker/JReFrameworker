@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarException;
@@ -16,6 +17,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import jreframeworker.engine.identifiers.BaseMethodsIdentifier;
@@ -200,6 +202,71 @@ public class Engine {
 		return processed;
 	}
 	
+	private static String getAccessModifiers(int access){
+		LinkedList<String> modifiers = new LinkedList<String>();
+		if((Opcodes.ACC_ABSTRACT & access) == Opcodes.ACC_ABSTRACT){
+			modifiers.add("abstract");
+		}
+		if((Opcodes.ACC_ANNOTATION & access) == Opcodes.ACC_ANNOTATION){
+			modifiers.add("annotation");
+		}
+		if((Opcodes.ACC_BRIDGE & access) == Opcodes.ACC_BRIDGE){
+			modifiers.add("bridge");
+		}
+		if((Opcodes.ACC_DEPRECATED & access) == Opcodes.ACC_DEPRECATED){
+			modifiers.add("deprecated");
+		}
+		if((Opcodes.ACC_ENUM & access) == Opcodes.ACC_ENUM){
+			modifiers.add("enum");
+		}
+		if((Opcodes.ACC_FINAL & access) == Opcodes.ACC_FINAL){
+			modifiers.add("final");
+		}
+		if((Opcodes.ACC_INTERFACE & access) == Opcodes.ACC_INTERFACE){
+			modifiers.add("interface");
+		}
+		if((Opcodes.ACC_MANDATED & access) == Opcodes.ACC_MANDATED){
+			modifiers.add("mandated");
+		}
+		if((Opcodes.ACC_NATIVE & access) == Opcodes.ACC_NATIVE){
+			modifiers.add("native");
+		}
+		if((Opcodes.ACC_PRIVATE & access) == Opcodes.ACC_PRIVATE){
+			modifiers.add("private");
+		}
+		if((Opcodes.ACC_PROTECTED & access) == Opcodes.ACC_PROTECTED){
+			modifiers.add("protected");
+		}
+		if((Opcodes.ACC_PUBLIC & access) == Opcodes.ACC_PUBLIC){
+			modifiers.add("public");
+		}
+		if((Opcodes.ACC_STATIC & access) == Opcodes.ACC_STATIC){
+			modifiers.add("static");
+		}
+		if((Opcodes.ACC_STRICT & access) == Opcodes.ACC_STRICT){
+			modifiers.add("strict");
+		}
+		if((Opcodes.ACC_SUPER & access) == Opcodes.ACC_SUPER){
+			modifiers.add("super");
+		}
+		if((Opcodes.ACC_SYNCHRONIZED & access) == Opcodes.ACC_SYNCHRONIZED){
+			modifiers.add("synchronized");
+		}
+		if((Opcodes.ACC_SYNTHETIC & access) == Opcodes.ACC_SYNTHETIC){
+			modifiers.add("synthetic");
+		}
+		if((Opcodes.ACC_TRANSIENT & access) == Opcodes.ACC_TRANSIENT){
+			modifiers.add("transient");
+		}
+		if((Opcodes.ACC_VARARGS & access) == Opcodes.ACC_VARARGS){
+			modifiers.add("varargs");
+		}
+		if((Opcodes.ACC_VOLATILE & access) == Opcodes.ACC_VOLATILE){
+			modifiers.add("volatile");
+		}
+		return modifiers.toString();
+	}
+	
 	/**
 	 * Sets the access (visibility) modifiers for types, methods, and fields as defined by the annotation system
 	 * @param defineVisibilityIdentifier
@@ -210,22 +277,80 @@ public class Engine {
 		boolean processed = false;
 		for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
 			String className = defineTypeVisibilityAnnotation.getClassName();
-			ClassNode baseClassNode = getBytecode(className);
-			baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-			if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
-				Log.info("Set " + baseClassNode.name + " class to be public.");
-			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
-				Log.info("Set " + baseClassNode.name + " class to be protected.");
-			} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-				baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
-				Log.info("Set " + baseClassNode.name + " class to be private.");
+
+			if(className.contains("$")){
+				// deal with outer class references to inner class files first
+				String baseClassName = className.substring(0, className.lastIndexOf("$"));
+				ClassNode baseClassNode = getBytecode(baseClassName);
+				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+					if(innerClassNode.name.equals(className)){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+						innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+						if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PUBLIC;
+							Log.info("Set outer class attributes for " + innerClassNode.name + " class to be public.");
+						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PROTECTED;
+							Log.info("Set outer class attributes for " + innerClassNode.name + " class to be protected.");
+						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PRIVATE;
+							Log.info("Set outer class attributes for " + innerClassNode.name + " class to be private.");
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+					}
+				}
+				updateBytecode(baseClassName, baseClassNode);
+				
+				// deal with the inner class file directly
+				String innerClassName = className;
+				baseClassNode = getBytecode(innerClassName);
+				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+					if(innerClassNode.name.equals(className)){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+						innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+						if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PUBLIC;
+							Log.info("Set " + innerClassNode.name + " inner class to be public.");
+						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PROTECTED;
+							Log.info("Set " + innerClassNode.name + " inner class to be protected.");
+						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PRIVATE;
+							Log.info("Set " + innerClassNode.name + " inner class to be private.");
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+					}
+				}
+				updateBytecode(innerClassName, baseClassNode);
+				
 			} else {
-				// should never happen
-				throw new RuntimeException("Missing visibility modifier");
+				// simple case no inner classes
+				ClassNode baseClassNode = getBytecode(className);
+//				Log.info("Pre Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+				if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
+					Log.info("Set " + baseClassNode.name + " class to be public.");
+				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
+					Log.info("Set " + baseClassNode.name + " class to be protected.");
+				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
+					Log.info("Set " + baseClassNode.name + " class to be private.");
+				} else {
+					// should never happen
+					throw new RuntimeException("Missing visibility modifier");
+				}
+//				Log.info("Post Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+				updateBytecode(className, baseClassNode);
 			}
-			updateBytecode(className, baseClassNode);
+			
 			processed = true;
 		}
 		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
@@ -332,6 +457,7 @@ public class Engine {
 	 * @param runtimeModifications
 	 * @throws IOException
 	 */
+	// TODO: address inner classes as was done in the setVisibility function
 	private boolean setFinality(DefineFinalityIdentifier defineFinalityIdentifier) throws IOException {
 		boolean processed = false;
 		for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
