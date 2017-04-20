@@ -121,6 +121,18 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 		return isMergeMethodAnnotation;
 	}
 	
+	public boolean isVisibilityAnnotation(){
+		return isDefineTypeVisibilityAnnotation
+			|| isDefineFieldVisibilityAnnotation
+			|| isDefineMethodVisibilityAnnotation;
+	}
+	
+	public boolean isFinalityAnnotation(){
+		return isDefineTypeFinalityAnnotation
+			|| isDefineFieldFinalityAnnotation
+			|| isDefineMethodFinalityAnnotation;
+	}
+	
 	public boolean isJREFAnnotation(){
 		return isDefineTypeAnnotation 
 			|| isDefineFieldAnnotation 

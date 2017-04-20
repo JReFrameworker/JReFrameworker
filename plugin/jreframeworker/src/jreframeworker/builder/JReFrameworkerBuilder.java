@@ -225,8 +225,9 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
 							boolean mergeModification = isMergeTypeModification(classNode);
 							boolean defineModification = isDefineTypeModification(classNode);
+							boolean attributeModification = isAttributeModification(classNode);
 							
-							if(mergeModification || defineModification){
+							if(attributeModification || mergeModification || defineModification){
 								// get the qualified modification class name
 								String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
 								String modificationClassName = file.getCanonicalPath().substring(base.length());
@@ -235,10 +236,22 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								}
 								modificationClassName = modificationClassName.replace(".class", "");
 								
+								if(attributeModification){
+									// update attributes in every target jar
+									for(Engine engine : allEngines){
+										if(isRuntimeJar(engine.getJarName())){
+											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+										} else {
+											URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+										}
+										engine.process(classBytes);
+									}
+								}
+								
 								if(mergeModification){
 									String mergeTarget = getMergeTarget(classNode);
 									// merge into each target jar that contains the merge target
-									boolean modified = false;
 									if(engineMap.containsKey(mergeTarget)){
 										for(Engine engine : engineMap.get(mergeTarget)){
 											if(isRuntimeJar(engine.getJarName())){
@@ -247,20 +260,15 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 												URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
 												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
 											}
-											if(engine.process(classBytes)){
-												modified = true;
-											}
-										}
-										if(modified){
-											config.write("\nclass," + modificationClassName);
-											config.flush();
+											engine.process(classBytes);
 										}
 									} else {
 										Log.warning("Class entry [" + mergeTarget + "] could not be found in any of the target jars.");
 									}
-								} else if(defineModification){
+								} 
+								
+								if(defineModification){
 									// define or replace in every target jar
-									boolean modified = false;
 									for(Engine engine : allEngines){
 										if(isRuntimeJar(engine.getJarName())){
 											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
@@ -268,13 +276,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 											URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
 											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
 										}
-										if(engine.process(classBytes)){
-											modified = true;
-										}
-									}
-									if(modified){
-										config.write("\nclass," + modificationClassName);
-										config.flush();
+										engine.process(classBytes);
 									}
 								}
 							}
@@ -457,6 +459,21 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotationNode.desc, false);
 				if(checker.isDefineTypeAnnotation()){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	private static boolean isAttributeModification(ClassNode classNode) throws IOException {
+		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
+		if(classNode.invisibleAnnotations != null){
+			for(Object annotationObject : classNode.invisibleAnnotations){
+				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
+				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
+				checker.visitAnnotation(annotationNode.desc, false);
+				if(checker.isVisibilityAnnotation() || checker.isFinalityAnnotation()){
 					return true;
 				}
 			}
