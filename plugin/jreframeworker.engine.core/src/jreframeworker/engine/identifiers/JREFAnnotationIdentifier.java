@@ -11,16 +11,23 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 	
 	private static final String DEFINE_TYPE_ANNOTATION = "Ljreframeworker/annotations/types/DefineType;";
 	private static final String DEFINE_TYPE_FINALITY_ANNOTATION = "Ljreframeworker/annotations/types/DefineTypeFinality;";
+	private static final String DEFINE_TYPE_FINALITIES_ANNOTATION = "Ljreframeworker/annotations/types/DefineTypeFinalities;";
 	private static final String DEFINE_TYPE_VISIBILITY_ANNOTATION = "Ljreframeworker/annotations/types/DefineTypeVisibility;";
-	private static final String MERGE_TYPE_ANNOTATION = "Ljreframeworker/annotations/types/MergeType;";
+	private static final String DEFINE_TYPE_VISIBILITIES_ANNOTATION = "Ljreframeworker/annotations/types/DefineTypeVisibilities;";
 	
 	private static final String DEFINE_FIELD_ANNOTATION = "Ljreframeworker/annotations/fields/DefineField;";
 	private static final String DEFINE_FIELD_FINALITY_ANNOTATION = "Ljreframeworker/annotations/fields/DefineFieldFinality;";
+	private static final String DEFINE_FIELD_FINALITIES_ANNOTATION = "Ljreframeworker/annotations/fields/DefineFieldFinalities;";
 	private static final String DEFINE_FIELD_VISIBILITY_ANNOTATION = "Ljreframeworker/annotations/fields/DefineFieldVisibility;";
+	private static final String DEFINE_FIELD_VISIBILITIES_ANNOTATION = "Ljreframeworker/annotations/fields/DefineFieldVisibilities;";
 	
 	private static final String DEFINE_METHOD_ANNOTATION = "Ljreframeworker/annotations/methods/DefineMethod;";
 	private static final String DEFINE_METHOD_FINALITY_ANNOTATION = "Ljreframeworker/annotations/methods/DefineMethodFinality;";
+	private static final String DEFINE_METHOD_FINALITIES_ANNOTATION = "Ljreframeworker/annotations/methods/DefineMethodFinalities;";
 	private static final String DEFINE_METHOD_VISIBILITY_ANNOTATION = "Ljreframeworker/annotations/methods/DefineMethodVisibility;";
+	private static final String DEFINE_METHOD_VISIBILITIES_ANNOTATION = "Ljreframeworker/annotations/methods/DefineMethodVisibilities;";
+	
+	private static final String MERGE_TYPE_ANNOTATION = "Ljreframeworker/annotations/types/MergeType;";
 	private static final String MERGE_METHOD_ANNOTATION = "Ljreframeworker/annotations/methods/MergeMethod;";
 	
 	private boolean isDefineTypeAnnotation = false;
@@ -28,12 +35,18 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 	private boolean isDefineMethodAnnotation = false;
 	
 	private boolean isDefineTypeFinalityAnnotation = false;
+	private boolean isDefineTypeFinalitiesAnnotation = false;
 	private boolean isDefineFieldFinalityAnnotation = false;
+	private boolean isDefineFieldFinalitiesAnnotation = false;
 	private boolean isDefineMethodFinalityAnnotation = false;
+	private boolean isDefineMethodFinalitiesAnnotation = false;
 	
 	private boolean isDefineTypeVisibilityAnnotation = false;
+	private boolean isDefineTypeVisibilitiesAnnotation = false;
 	private boolean isDefineFieldVisibilityAnnotation = false;
+	private boolean isDefineFieldVisibilitiesAnnotation = false;
 	private boolean isDefineMethodVisibilityAnnotation = false;
+	private boolean isDefineMethodVisibilitiesAnnotation = false;
 	
 	private boolean isMergeTypeAnnotation = false;
 	private boolean isMergeMethodAnnotation = false;
@@ -55,18 +68,30 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 		
 		else if (name.equals(DEFINE_TYPE_FINALITY_ANNOTATION)) {
 			isDefineTypeFinalityAnnotation = true;
+		} else if (name.equals(DEFINE_TYPE_FINALITIES_ANNOTATION)) {
+			isDefineTypeFinalitiesAnnotation = true;
 		} else if (name.equals(DEFINE_FIELD_FINALITY_ANNOTATION)) {
 			isDefineFieldFinalityAnnotation = true;
+		} else if (name.equals(DEFINE_FIELD_FINALITIES_ANNOTATION)) {
+			isDefineFieldFinalitiesAnnotation = true;
 		} else if (name.equals(DEFINE_METHOD_FINALITY_ANNOTATION)) {
 			isDefineMethodFinalityAnnotation = true;
+		} else if (name.equals(DEFINE_METHOD_FINALITIES_ANNOTATION)) {
+			isDefineMethodFinalitiesAnnotation = true;
 		}
 		
 		else if (name.equals(DEFINE_TYPE_VISIBILITY_ANNOTATION)) {
 			isDefineTypeVisibilityAnnotation = true;
+		} else if (name.equals(DEFINE_TYPE_VISIBILITIES_ANNOTATION)) {
+			isDefineTypeVisibilitiesAnnotation = true;
 		} else if (name.equals(DEFINE_FIELD_VISIBILITY_ANNOTATION)) {
 			isDefineFieldVisibilityAnnotation = true;
+		} else if (name.equals(DEFINE_FIELD_VISIBILITIES_ANNOTATION)) {
+			isDefineFieldVisibilitiesAnnotation = true;
 		} else if (name.equals(DEFINE_METHOD_VISIBILITY_ANNOTATION)) {
 			isDefineMethodVisibilityAnnotation = true;
+		} else if (name.equals(DEFINE_METHOD_VISIBILITIES_ANNOTATION)) {
+			isDefineMethodVisibilitiesAnnotation = true;
 		}
 		
 		else if (name.equals(MERGE_TYPE_ANNOTATION)) {
@@ -92,25 +117,49 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 	public boolean isDefineTypeFinalityAnnotation() {
 		return isDefineTypeFinalityAnnotation;
 	}
+	
+	public boolean isDefineTypeFinalitiesAnnotation() {
+		return isDefineTypeFinalitiesAnnotation;
+	}
 
 	public boolean isDefineFieldFinalityAnnotation() {
 		return isDefineFieldFinalityAnnotation;
 	}
 
+	public boolean isDefineFieldFinalitiesAnnotation() {
+		return isDefineFieldFinalitiesAnnotation;
+	}
+	
 	public boolean isDefineMethodFinalityAnnotation() {
 		return isDefineMethodFinalityAnnotation;
+	}
+	
+	public boolean isDefineMethodFinalitiesAnnotation() {
+		return isDefineMethodFinalitiesAnnotation;
 	}
 	
 	public boolean isDefineTypeVisibilityAnnotation() {
 		return isDefineTypeVisibilityAnnotation;
 	}
+	
+	public boolean isDefineTypeVisibilitiesAnnotation() {
+		return isDefineTypeVisibilitiesAnnotation;
+	}
 
 	public boolean isDefineFieldVisibilityAnnotation() {
 		return isDefineFieldVisibilityAnnotation;
 	}
+	
+	public boolean isDefineFieldVisibilitiesAnnotation() {
+		return isDefineFieldVisibilitiesAnnotation;
+	}
 
 	public boolean isDefineMethodVisibilityAnnotation() {
 		return isDefineMethodVisibilityAnnotation;
+	}
+	
+	public boolean isDefineMethodVisibilitiesAnnotation() {
+		return isDefineMethodVisibilitiesAnnotation;
 	}
 
 	public boolean isMergeTypeAnnotation() {
@@ -124,13 +173,19 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 	public boolean isVisibilityAnnotation(){
 		return isDefineTypeVisibilityAnnotation
 			|| isDefineFieldVisibilityAnnotation
-			|| isDefineMethodVisibilityAnnotation;
+			|| isDefineMethodVisibilityAnnotation
+			|| isDefineTypeVisibilitiesAnnotation
+			|| isDefineFieldVisibilitiesAnnotation
+			|| isDefineMethodVisibilitiesAnnotation;
 	}
 	
 	public boolean isFinalityAnnotation(){
 		return isDefineTypeFinalityAnnotation
 			|| isDefineFieldFinalityAnnotation
-			|| isDefineMethodFinalityAnnotation;
+			|| isDefineMethodFinalityAnnotation
+			|| isDefineTypeFinalitiesAnnotation
+			|| isDefineFieldFinalitiesAnnotation
+			|| isDefineMethodFinalitiesAnnotation;
 	}
 	
 	public boolean isJREFAnnotation(){
@@ -142,9 +197,17 @@ public class JREFAnnotationIdentifier extends ClassVisitor {
 			|| isDefineFieldFinalityAnnotation
 			|| isDefineMethodFinalityAnnotation
 			
+			|| isDefineTypeFinalitiesAnnotation
+			|| isDefineFieldFinalitiesAnnotation
+			|| isDefineMethodFinalitiesAnnotation
+			
 			|| isDefineTypeVisibilityAnnotation
 			|| isDefineFieldVisibilityAnnotation
 			|| isDefineMethodVisibilityAnnotation
+			
+			|| isDefineTypeVisibilitiesAnnotation
+			|| isDefineFieldVisibilitiesAnnotation
+			|| isDefineMethodVisibilitiesAnnotation
 			
 			|| isMergeTypeAnnotation 
 			|| isMergeMethodAnnotation;
