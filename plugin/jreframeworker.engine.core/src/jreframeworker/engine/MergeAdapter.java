@@ -48,13 +48,13 @@ public class MergeAdapter extends ClassVisitor {
 	private ClassNode classToMerge;
 	private String baseClassName;
 	private String mergeRenamePrefix;
-	private LinkedList<String> renamedMethods;
+	private LinkedList<String> qualifiedRenamedMethods;
 
-	public MergeAdapter(ClassVisitor baseClassVisitor, ClassNode classToMerge, String mergeReamePrefix, LinkedList<String> renamedMethods) {
+	public MergeAdapter(ClassVisitor baseClassVisitor, ClassNode classToMerge, String mergeReamePrefix, LinkedList<String> qualifiedRenamedMethods) {
 		super(Opcodes.ASM5, baseClassVisitor);
 		this.classToMerge = classToMerge;
 		this.mergeRenamePrefix = mergeReamePrefix;
-		this.renamedMethods = renamedMethods;
+		this.qualifiedRenamedMethods = qualifiedRenamedMethods;
 	}
 
 	@Override
@@ -126,7 +126,7 @@ public class MergeAdapter extends ClassVisitor {
 					// in any case, strip the jref annotations from the method
 					methodNode.invisibleAnnotations.removeAll(jrefAnnotations);
 					if(merge){
-						mergeMethod(methodNode, renamedMethods);
+						mergeMethod(methodNode, qualifiedRenamedMethods);
 						Log.info("Merged Method: " + methodNode.name);
 					} else {
 						addMethod(methodNode);
@@ -157,10 +157,10 @@ public class MergeAdapter extends ClassVisitor {
 	/**
 	 * Performs some merge changes to the method instructions then adds the method
 	 * @param methodNode
-	 * @param renamedMethods
+	 * @param qualifiedRenamedMethods
 	 */
 	@SuppressWarnings("unused")
-	private void mergeMethod(MethodNode methodNode, LinkedList<String> renamedMethods) {
+	private void mergeMethod(MethodNode methodNode, LinkedList<String> qualifiedRenamedMethods) {
 		// clean up method instructions
     	InsnList instructions = methodNode.instructions;
 		Iterator<AbstractInsnNode> instructionIterator = instructions.iterator();
@@ -193,10 +193,12 @@ public class MergeAdapter extends ClassVisitor {
 				// check if the method call needs to be changed to a renamed method name
 				// replace calls to super.x methods with prefix+x calls in the class to merge
 				// TODO: should check more than just the name, need to check whole method signature
-				for (String renamedMethod : renamedMethods) {
-					if (instruction.name.equals(renamedMethod)) {
+				for (String renamedMethod : qualifiedRenamedMethods) {
+					String qualifiedMethodName = instruction.owner + "." + instruction.name;
+					if ((qualifiedMethodName).equals(renamedMethod)) {
 						// this method has been renamed, we need to rename the call as well
 						instruction.name = mergeRenamePrefix + instruction.name;
+						
 						// if we renamed it, this call used super.x, so make
 						// it a virtual invocation instead of special invocation
 						if (instruction.getOpcode() == Opcodes.INVOKESPECIAL) {
