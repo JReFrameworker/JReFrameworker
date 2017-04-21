@@ -6,12 +6,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.Scanner;
-
-import jreframeworker.Activator;
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.engine.utils.JarModifier;
-import jreframeworker.log.Log;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -28,6 +22,11 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IExportWizard;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
+
+import jreframeworker.Activator;
+import jreframeworker.core.JReFrameworker;
+import jreframeworker.engine.utils.JarModifier;
+import jreframeworker.log.Log;
 
 public class ExportPayloadDropperWizard extends Wizard implements IExportWizard {
 
@@ -82,6 +81,8 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 
 					
 					JarModifier dropper = new JarModifier(dropperJar);
+					
+					@SuppressWarnings("unused")
 					IProject project = page1.getJReFrameworkerProject().getProject();
 					
 					// add config file

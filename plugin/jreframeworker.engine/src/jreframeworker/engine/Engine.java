@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarException;
@@ -202,6 +201,7 @@ public class Engine {
 		return processed;
 	}
 	
+	@SuppressWarnings("unused")
 	private static String getAccessModifiers(int access){
 		LinkedList<String> modifiers = new LinkedList<String>();
 		if((Opcodes.ACC_ABSTRACT & access) == Opcodes.ACC_ABSTRACT){
@@ -275,9 +275,9 @@ public class Engine {
 	 */
 	private boolean setVisibility(DefineVisibilityIdentifier defineVisibilityIdentifier) throws IOException {
 		boolean processed = false;
+		// update types
 		for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
 			String className = defineTypeVisibilityAnnotation.getClassName();
-
 			if(className.contains("$")){
 				// deal with outer class references to inner class files first
 				String baseClassName = className.substring(0, className.lastIndexOf("$"));
@@ -328,7 +328,6 @@ public class Engine {
 					}
 				}
 				updateBytecode(innerClassName, baseClassNode);
-				
 			} else {
 				// simple case no inner classes
 				ClassNode baseClassNode = getBytecode(className);
@@ -353,6 +352,7 @@ public class Engine {
 			
 			processed = true;
 		}
+		// update methods
 		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
 			String qualifiedClassName = defineMethodVisibilityAnnotation.getClassName();
 			String[] simpleClassNameParts = qualifiedClassName.split("/");
@@ -365,6 +365,7 @@ public class Engine {
 				MethodNode methodNode = (MethodNode) o;
 				if(defineMethodVisibilityAnnotation.getMethodName().equals(simpleClassName)){
 					if(methodNode.name.equals("<init>")){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
 						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
@@ -379,9 +380,9 @@ public class Engine {
 							// should never happen
 							throw new RuntimeException("Missing visibility modifier");
 						}
-//						break; // should only be one match?
-						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
 					} else if(methodNode.name.equals("<clinit>")){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
 						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
@@ -396,12 +397,12 @@ public class Engine {
 							// should never happen
 							throw new RuntimeException("Missing visibility modifier");
 						}
-//						break; // should only be one match?
-						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
 					}
 					updateBytecode(qualifiedClassName, baseClassNode);
 					processed = true;
 				} else if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
+//					Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
 					methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 					if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 						methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
@@ -416,6 +417,7 @@ public class Engine {
 						// should never happen
 						throw new RuntimeException("Missing visibility modifier");
 					}
+//					Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
 					updateBytecode(qualifiedClassName, baseClassNode);
 					processed = true;
 //					break; // should only be one match?
@@ -423,12 +425,14 @@ public class Engine {
 				}
 			}
 		}
+		// update fields
 		for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
 			String className = defineFieldVisibilityAnnotation.getClassName();
 			ClassNode baseClassNode = getBytecode(className);
 			for (Object o : baseClassNode.fields) {
 				FieldNode fieldNode = (FieldNode) o;
 				if(fieldNode.name.equals(defineFieldVisibilityAnnotation.getFieldName())){
+//					Log.info("Pre Access Modifiers: " + getAccessModifiers(fieldNode.access));
 					fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
 					if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
 						fieldNode.access = fieldNode.access | Opcodes.ACC_PUBLIC;
@@ -443,6 +447,7 @@ public class Engine {
 						// should never happen
 						throw new RuntimeException("Missing visibility modifier");
 					}
+//					Log.info("Post Access Modifiers: " + getAccessModifiers(fieldNode.access));
 					updateBytecode(className, baseClassNode);
 					processed = true;
 					break; // should only be one match
@@ -458,32 +463,77 @@ public class Engine {
 	 * @param runtimeModifications
 	 * @throws IOException
 	 */
-	// TODO: address inner classes as was done in the setVisibility function
 	private boolean setFinality(DefineFinalityIdentifier defineFinalityIdentifier) throws IOException {
 		boolean processed = false;
+		// update types
 		for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
 			String className = defineTypeFinalityAnnotation.getClassName();
-			ClassNode baseClassNode = getBytecode(className);
-			if(baseClassNode != null){
-				if(defineTypeFinalityAnnotation.getFinality()){
-					baseClassNode.access = baseClassNode.access | Opcodes.ACC_FINAL;
-					Log.info("Set " + baseClassNode.name + " class to be final.");
-				} else {
-					baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_FINAL);
-					Log.info("Set " + baseClassNode.name + " class to be non-final.");
+			if(className.contains("$")){
+				// deal with outer class references to inner class files first
+				String baseClassName = className.substring(0, className.lastIndexOf("$"));
+				ClassNode baseClassNode = getBytecode(baseClassName);
+				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+					if(innerClassNode.name.equals(className)){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+						if(defineTypeFinalityAnnotation.getFinality()){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_FINAL;
+							Log.info("Set " + innerClassNode.name + " class to be final.");
+						} else {
+							innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_FINAL);
+							Log.info("Set " + innerClassNode.name + " class to be non-final.");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+					}
 				}
-				updateBytecode(className, baseClassNode);
+				updateBytecode(baseClassName, baseClassNode);
+				
+				// deal with the inner class file directly
+				String innerClassName = className;
+				baseClassNode = getBytecode(innerClassName);
+				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+					if(innerClassNode.name.equals(className)){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+						if(defineTypeFinalityAnnotation.getFinality()){
+							innerClassNode.access = innerClassNode.access | Opcodes.ACC_FINAL;
+							Log.info("Set " + innerClassNode.name + " class to be final.");
+						} else {
+							innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_FINAL);
+							Log.info("Set " + innerClassNode.name + " class to be non-final.");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+					}
+				}
+				updateBytecode(innerClassName, baseClassNode);
 				processed = true;
 			} else {
-				Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+				// simple case no inner classes
+				ClassNode baseClassNode = getBytecode(className);
+				if(baseClassNode != null){
+//					Log.info("Pre Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+					if(defineTypeFinalityAnnotation.getFinality()){
+						baseClassNode.access = baseClassNode.access | Opcodes.ACC_FINAL;
+						Log.info("Set " + baseClassNode.name + " class to be final.");
+					} else {
+						baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_FINAL);
+						Log.info("Set " + baseClassNode.name + " class to be non-final.");
+					}
+//					Log.info("Post Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+					updateBytecode(className, baseClassNode);
+					processed = true;
+				} else {
+					Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+				}
 			}
 		}
+		// update methods
 		for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
+			// final is not a valid modifier for initializers so no need to consider that case
 			String className = defineMethodFinalityAnnotation.getClassName();
 			ClassNode baseClassNode = getBytecode(className);
 			for (Object o : baseClassNode.methods) {
 				MethodNode methodNode = (MethodNode) o;
 				if(methodNode.name.equals(defineMethodFinalityAnnotation.getMethodName())){
+//					Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
 					if(defineMethodFinalityAnnotation.getFinality()){
 						methodNode.access = methodNode.access | Opcodes.ACC_FINAL;
 						Log.info("Set " + methodNode.name + " method to be final.");
@@ -491,19 +541,20 @@ public class Engine {
 						methodNode.access = methodNode.access & (~Opcodes.ACC_FINAL);
 						Log.info("Set " + methodNode.name + " method to be non-final.");
 					}
+//					Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
 					updateBytecode(className, baseClassNode);
 					processed = true;
-//					break; // should only be one match?
-					// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
 				}
 			}
 		}
+		// update fields
 		for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
 			String className = defineFieldFinalityAnnotation.getClassName();
 			ClassNode baseClassNode = getBytecode(className);
 			for (Object o : baseClassNode.fields) {
 				FieldNode fieldNode = (FieldNode) o;
 				if(fieldNode.name.equals(defineFieldFinalityAnnotation.getFieldName())){
+//					Log.info("Pre Access Modifiers: " + getAccessModifiers(fieldNode.access));
 					if(defineFieldFinalityAnnotation.getFinality()){
 						fieldNode.access = fieldNode.access | Opcodes.ACC_FINAL;
 						Log.info("Set " + fieldNode.name + " field to be final.");
@@ -511,6 +562,7 @@ public class Engine {
 						fieldNode.access = fieldNode.access & (~Opcodes.ACC_FINAL);
 						Log.info("Set " + fieldNode.name + " field to be non-final.");
 					}
+//					Log.info("Post Access Modifiers: " + getAccessModifiers(fieldNode.access));
 					updateBytecode(className, baseClassNode);
 					processed = true;
 					break; // should only be one match

@@ -1,15 +1,11 @@
 package jreframeworker.engine.tests;
 
 import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.jar.JarException;
 
 import org.junit.Test;
 
