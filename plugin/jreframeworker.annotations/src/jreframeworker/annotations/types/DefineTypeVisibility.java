@@ -25,6 +25,6 @@ import java.lang.annotation.Target;
  */
 @Repeatable(DefineTypeVisibilities.class)
 public @interface DefineTypeVisibility {
-	String type() default "";
+	String type();
 	String visibility();
 }

@@ -27,7 +27,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(MethodVisibilities.class)
 public @interface DefineMethodVisibility {
-	String type() default "";
+	String type();
 	String method();
 	String visibility();
 }

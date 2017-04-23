@@ -19,5 +19,5 @@ import java.lang.annotation.Target;
  * @author Ben Holland
  */
 public @interface PurgeType {
-	String type() default "";
+	String type();
 }

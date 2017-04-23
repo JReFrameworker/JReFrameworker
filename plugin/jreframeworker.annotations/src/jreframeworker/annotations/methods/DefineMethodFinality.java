@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(MethodFinalities.class)
 public @interface DefineMethodFinality {
-	String type() default "";
+	String type();
 	String method();
 	boolean finality();
 }

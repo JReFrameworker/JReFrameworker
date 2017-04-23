@@ -6,7 +6,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-//this annotation is valid for types
+// this annotation is valid for types
 @Target({ ElementType.TYPE })
 
 // annotation will be recorded in the class file by the compiler,
@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(FieldFinalities.class)
 public @interface DefineFieldFinality {
-	String type() default "";
+	String type();
 	String field();
 	boolean finality();
 }

@@ -5,11 +5,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-//this annotation is valid for types
+// this annotation is valid for types
 @Target({ ElementType.TYPE })
 
-//annotation will be recorded in the class file by the compiler,
-//but won't be retained by the VM at run time (invisible annotation)
+// annotation will be recorded in the class file by the compiler,
+// but won't be retained by the VM at run time (invisible annotation)
 @Retention(RetentionPolicy.CLASS)
 
 public @interface FieldFinalities {
