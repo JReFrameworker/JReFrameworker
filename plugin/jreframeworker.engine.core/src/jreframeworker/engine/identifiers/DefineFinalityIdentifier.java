@@ -1,5 +1,6 @@
 package jreframeworker.engine.identifiers;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -90,10 +91,15 @@ public class DefineFinalityIdentifier {
 				// type finalities
 				if(checker.isDefineTypeFinalitiesAnnotation()){
 					for(Object value : annotation.values){
-						if(value instanceof AnnotationNode){
-							AnnotationNode annotationValue = (AnnotationNode) value;
-							extractDefineTypeFinalityAnnotationValues(classNode, annotationValue);
+						if(value instanceof List){
+							for(Object valueObject : (List) value){
+								if(valueObject instanceof AnnotationNode){
+									AnnotationNode annotationValue = (AnnotationNode) valueObject;
+									extractDefineTypeFinalityAnnotationValues(classNode, annotationValue);
+								}
+							}
 						}
+						
 					}
 				} else if(checker.isDefineTypeFinalityAnnotation()){
 					extractDefineTypeFinalityAnnotationValues(classNode, annotation);
@@ -102,9 +108,13 @@ public class DefineFinalityIdentifier {
 				// method finalities
 				else if(checker.isDefineMethodFinalitiesAnnotation()){
 					for(Object value : annotation.values){
-						if(value instanceof AnnotationNode){
-							AnnotationNode annotationValue = (AnnotationNode) value;
-							extractDefineMethodFinalityValues(classNode, annotationValue);
+						if(value instanceof List){
+							for(Object valueObject : (List) value){
+								if(valueObject instanceof AnnotationNode){
+									AnnotationNode annotationValue = (AnnotationNode) valueObject;
+									extractDefineMethodFinalityValues(classNode, annotationValue);
+								}
+							}
 						}
 					}
 				} else if(checker.isDefineMethodFinalityAnnotation()){
@@ -114,9 +124,13 @@ public class DefineFinalityIdentifier {
 				// field finalities
 				else if(checker.isDefineFieldFinalitiesAnnotation()){
 					for(Object value : annotation.values){
-						if(value instanceof AnnotationNode){
-							AnnotationNode annotationValue = (AnnotationNode) value;
-							extractDefineFieldFinalityValues(classNode, annotationValue);
+						if(value instanceof List){
+							for(Object valueObject : (List) value){
+								if(valueObject instanceof AnnotationNode){
+									AnnotationNode annotationValue = (AnnotationNode) valueObject;
+									extractDefineFieldFinalityValues(classNode, annotationValue);
+								}
+							}
 						}
 					}
 				}  else if(checker.isDefineFieldFinalityAnnotation()){
