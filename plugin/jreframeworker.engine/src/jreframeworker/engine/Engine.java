@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarException;
@@ -31,8 +32,12 @@ import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethod
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.Visibility;
 import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
-import jreframeworker.engine.identifiers.JREFAnnotationIdentifier.MergeTypeAnnotation;
-import jreframeworker.engine.identifiers.MergeMethodsIdentifier;
+import jreframeworker.engine.identifiers.MergeIdentifier;
+import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 import jreframeworker.engine.log.Log;
 import jreframeworker.engine.utils.AnnotationUtils;
 import jreframeworker.engine.utils.BytecodeUtils;
@@ -85,6 +90,7 @@ public class Engine {
 	}
 	
 	private HashMap<String,Bytecode> bytecodeCache = new HashMap<String,Bytecode>();
+	private Set<String> purgedEntries = new HashSet<String>();
 
 	public String getJarName(){
 		return jarName;
@@ -133,6 +139,11 @@ public class Engine {
 		}
 	}
 	
+	private void purgeBytecode(String entry){
+		bytecodeCache.remove(entry);
+		purgedEntries.add(entry);
+	}
+	
 	private void updateBytecode(String entry, ClassNode classNode) throws IOException {
 		updateBytecode(entry, BytecodeUtils.writeClass(classNode));
 	}
@@ -158,9 +169,12 @@ public class Engine {
 		ClassLoaders.setClassLoaders(classLoaders);
 		
 		boolean processed = false;
-		// check to see if the class is annotated with 
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
 		Log.info("Processing input class: " + classNode.name + "...");
+		
+		// make requested method and field purges
+		PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
+		processed |= purge(purgeIdentifier);
 		
 		// set finality
 		DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
@@ -188,13 +202,104 @@ public class Engine {
 					}
 					processed = true;
 				} else if(checker.isMergeTypeAnnotation()){
-					MergeTypeAnnotation mergeTypeAnnotation = JREFAnnotationIdentifier.getMergeTypeAnnotation(classNode, annotationNode);
+					MergeTypeAnnotation mergeTypeAnnotation = MergeIdentifier.getMergeTypeAnnotation(classNode, annotationNode);
 					String qualifiedParentClassName = mergeTypeAnnotation.getSupertype();
 					byte[] baseClass = getRawBytecode(qualifiedParentClassName);
 					byte[] mergedClass = mergeClasses(baseClass, inputClass);
 					updateBytecode(qualifiedParentClassName, mergedClass);
 					Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + jarModifier.getJarFile().getName());
 					processed = true;
+				}
+			}
+		}
+		
+		return processed;
+	}
+	
+	private boolean purge(PurgeIdentifier purgeIdentifier) throws IOException {
+		boolean processed = false;
+		// purge types
+		for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getTargetTypes()){
+			String className = purgeTypeAnnotation.getClassName();
+			if(className.contains("$")){
+				// deal with outer class references to inner class files first
+				String baseClassName = className.substring(0, className.lastIndexOf("$"));
+				ClassNode baseClassNode = getBytecode(baseClassName);
+				List<InnerClassNode> innerClassNodesToRemove = new LinkedList<InnerClassNode>();
+				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+					if(innerClassNode.name.equals(className)){
+						innerClassNodesToRemove.add(innerClassNode);
+					}
+				}
+				for(InnerClassNode innerClassNodeToRemove : innerClassNodesToRemove){
+					baseClassNode.innerClasses.remove(innerClassNodeToRemove);
+					Log.info("Purged " + baseClassName + " reference to " + innerClassNodeToRemove.name + " inner class.");
+				}
+				updateBytecode(baseClassName, BytecodeUtils.writeClass(baseClassNode));
+
+				// deal with the inner class file directly
+				String innerClassName = className;
+				purgeBytecode(innerClassName);
+				Log.info("Purged " + innerClassName + " inner class.");
+				processed = true;
+			} else {
+				// simple case no inner classes
+				ClassNode baseClassNode = getBytecode(className);
+				if(baseClassNode != null){
+					Log.info("Purged " + baseClassNode.name + " class.");
+					purgeBytecode(className);
+					processed = true;
+				} else {
+					Log.warning("Could not locate base class.", new RuntimeException("Missing base class"));
+				}
+			}
+		}
+		// purge methods
+		for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getTargetMethods()){
+			// final is not a valid modifier for initializers so no need to consider that case
+			String className = purgeMethodAnnotation.getClassName();
+			ClassNode classNode = getBytecode(className);
+			for (Object o : classNode.methods) {
+				MethodNode methodNode = (MethodNode) o;
+				if(methodNode.name.equals(purgeMethodAnnotation.getMethodName())){
+					ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+					PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, methodNode);
+					ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
+					purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
+					byte[] purgedClassBytes = classWriter.toByteArray();
+					classNode = BytecodeUtils.getClassNode(purgedClassBytes);
+					updateBytecode(classNode.name, purgedClassBytes);
+					processed = true;
+					
+					updateBytecode(className, classNode);
+					processed = true;
+					
+					Log.info("Purged " + classNode.name + "." + methodNode.name + " method.");
+					processed = true;
+				}
+			}
+		}
+		// purge fields
+		for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getTargetFields()){
+			String className = purgeFieldAnnotation.getClassName();
+			ClassNode classNode = getBytecode(className);
+			for (Object o : classNode.fields) {
+				FieldNode fieldNode = (FieldNode) o;
+				if(fieldNode.name.equals(purgeFieldAnnotation.getFieldName())){
+					ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+					PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, fieldNode);
+					ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
+					purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
+					byte[] purgedClassBytes = classWriter.toByteArray();
+					classNode = BytecodeUtils.getClassNode(purgedClassBytes);
+					updateBytecode(classNode.name, purgedClassBytes);
+					processed = true;
+					
+					updateBytecode(className, classNode);
+					processed = true;
+					
+					Log.info("Purged " + classNode.name + "." + fieldNode.name + " field.");
+					break; // should only be one match
 				}
 			}
 		}
@@ -521,7 +626,7 @@ public class Engine {
 					updateBytecode(className, baseClassNode);
 					processed = true;
 				} else {
-					Log.warning("Could not located base class.", new RuntimeException("Missing base class"));
+					Log.warning("Could not locate base class.", new RuntimeException("Missing base class"));
 				}
 			}
 		}
@@ -573,6 +678,9 @@ public class Engine {
 	}
 
 	public void save(File outputFile) throws IOException {
+		for(String entry : purgedEntries){
+			jarModifier.remove(entry + ".class");
+		}
 		for(Entry<String,Bytecode> entry : bytecodeCache.entrySet()){
 			jarModifier.add(entry.getKey() + ".class", entry.getValue().getBytecode(), true);
 		}
@@ -593,8 +701,8 @@ public class Engine {
 		LinkedList<MethodNode> methodsToDefine = defineMethodsIdentifier.getDefineMethods();
 		
 		// identify methods to merge
-		MergeMethodsIdentifier mergeMethodsIdentifier = new MergeMethodsIdentifier(classToMergeClassNode);
-		LinkedList<MethodNode> methodsToMerge = mergeMethodsIdentifier.getMergeMethods();
+		MergeIdentifier mergeIdentifier = new MergeIdentifier(classToMergeClassNode);
+		LinkedList<MethodNode> methodsToMerge = mergeIdentifier.getMergeMethods();
 		
 		// rename base methods that should be preserved
 		LinkedList<String> renamedMethods = new LinkedList<String>();

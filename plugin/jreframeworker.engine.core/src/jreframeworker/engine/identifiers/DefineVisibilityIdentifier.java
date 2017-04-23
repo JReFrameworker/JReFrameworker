@@ -1,9 +1,16 @@
 package jreframeworker.engine.identifiers;
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
+
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 
 public class DefineVisibilityIdentifier {
 
@@ -21,6 +28,21 @@ public class DefineVisibilityIdentifier {
 				throw new RuntimeException("Invalid visibility modifier");
 			}
 		}
+	}
+	
+	public static Set<String> getVisibilityTargets(ClassNode classNode) throws IOException {
+		DefineVisibilityIdentifier visibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+		Set<String> targets = new HashSet<String>();
+		for(DefineTypeVisibilityAnnotation annotation : visibilityIdentifier.getTargetTypes()){
+			targets.add(annotation.getClassName());
+		}
+		for(DefineMethodVisibilityAnnotation annotation : visibilityIdentifier.getTargetMethods()){
+			targets.add(annotation.getClassName());
+		}
+		for(DefineFieldVisibilityAnnotation annotation : visibilityIdentifier.getTargetFields()){
+			targets.add(annotation.getClassName());
+		}
+		return targets;
 	}
 	
 	private static final String TYPE = "type";
@@ -179,7 +201,7 @@ public class DefineVisibilityIdentifier {
 		    if(typeValue != null && fieldValue != null && visibilityValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
-		    		className = classNode.superName;;
+		    		className = classNode.superName;
 		    	}
 		    	targetFields.add(new DefineFieldVisibilityAnnotation(className, fieldValue, visibilityValue));
 		    }
@@ -206,7 +228,7 @@ public class DefineVisibilityIdentifier {
 		    if(typeValue != null && methodValue != null && visibilityValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
-		    		className = classNode.superName;;
+		    		className = classNode.superName;
 		    	}
 		    	targetMethods.add(new DefineMethodVisibilityAnnotation(className, methodValue, visibilityValue));
 		    }
@@ -230,7 +252,7 @@ public class DefineVisibilityIdentifier {
 		    if(typeValue != null && visibilityValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
-		    		className = classNode.superName;;
+		    		className = classNode.superName;
 		    	}
 		    	targetTypes.add(new DefineTypeVisibilityAnnotation(className, visibilityValue));
 		    }

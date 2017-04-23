@@ -1,5 +1,6 @@
 package jreframeworker.engine;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import org.objectweb.asm.ClassVisitor;
@@ -16,21 +17,49 @@ import jreframeworker.engine.log.Log;
  * 
  * Reference: http://asm.ow2.org/doc/faq.html#Q1
  * 
- * @author Ben Hollabd
+ * @author Ben Holland
  */
 public class PurgeAdapter extends ClassVisitor {
 	
 	private Set<MethodNode> methodsToPurge;
 	private Set<FieldNode> fieldsToPurge;
 	
-	public PurgeAdapter(ClassVisitor baseClassVisitor, Set<MethodNode> methodsToPurge, Set<FieldNode> fieldsToPurge) {
-		super(Opcodes.ASM5, baseClassVisitor);
+	public PurgeAdapter(ClassVisitor classVisitor, MethodNode... methodsToPurgeArray) {
+		super(Opcodes.ASM5, classVisitor);
+		this.methodsToPurge = new HashSet<MethodNode>();
+		this.fieldsToPurge = new HashSet<FieldNode>();
+		for(MethodNode methodNode : methodsToPurgeArray){
+			methodsToPurge.add(methodNode);
+		}
+	}
+	
+	public PurgeAdapter(ClassVisitor classVisitor, FieldNode... fieldsToPurgeArray) {
+		super(Opcodes.ASM5, classVisitor);
+		this.methodsToPurge = new HashSet<MethodNode>();
+		this.fieldsToPurge = new HashSet<FieldNode>();
+		for(FieldNode fieldNode : fieldsToPurgeArray){
+			fieldsToPurge.add(fieldNode);
+		}
+	}
+	
+	public PurgeAdapter(ClassVisitor classVisitor, Set<MethodNode> methodsToPurge, Set<FieldNode> fieldsToPurge) {
+		super(Opcodes.ASM5, classVisitor);
 		this.methodsToPurge = methodsToPurge;
 		this.fieldsToPurge = fieldsToPurge;
 	}
 	
+//	private Collection<PurgeMethodAnnotation> methodsToPurgeAnnotations;
+//	private Collection<PurgeFieldAnnotation> fieldsToPurgeAnnotations;
+//	
+//	public PurgeAdapter(ClassVisitor baseClassVisitor, Collection<PurgeMethodAnnotation> methodsToPurgeAnnotations, Collection<PurgeFieldAnnotation> fieldsToPurgeAnnotations) {
+//		super(Opcodes.ASM5, baseClassVisitor);
+//		this.methodsToPurgeAnnotations = methodsToPurgeAnnotations;
+//		this.fieldsToPurgeAnnotations = fieldsToPurgeAnnotations;
+//	}
+	
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
+		// purge based on FieldNode references
 		for (FieldNode fieldToPurge : fieldsToPurge) {
 			if (fieldToPurge.signature != null && signature != null) {
 				if (fieldToPurge.signature.equals(signature)) {
@@ -49,6 +78,7 @@ public class PurgeAdapter extends ClassVisitor {
 				}
 			}
 		}
+		
 		// make the next visitor visit this field, in order to keep it
 		return super.visitField(access, name, desc, signature, value);
 	}
@@ -73,6 +103,7 @@ public class PurgeAdapter extends ClassVisitor {
 				}
 			}
 		}
+		
 		// make the next visitor visit this field, in order to keep it
 		return super.visitMethod(access, name, desc, signature, exceptions);
 	}

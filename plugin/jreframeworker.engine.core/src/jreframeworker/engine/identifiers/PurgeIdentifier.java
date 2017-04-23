@@ -7,23 +7,24 @@ import java.util.Set;
 
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
 
-import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
-import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
-import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 
-public class DefineFinalityIdentifier {
-
-	public static Set<String> getFinalityTargets(ClassNode classNode) throws IOException {
-		DefineFinalityIdentifier finalityIdentifier = new DefineFinalityIdentifier(classNode);
+public class PurgeIdentifier {
+	
+	public static Set<String> getPurgeTargets(ClassNode classNode) throws IOException {
+		PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
 		Set<String> targets = new HashSet<String>();
-		for(DefineTypeFinalityAnnotation annotation : finalityIdentifier.getTargetTypes()){
+		for(PurgeTypeAnnotation annotation : purgeIdentifier.getTargetTypes()){
 			targets.add(annotation.getClassName());
 		}
-		for(DefineMethodFinalityAnnotation annotation : finalityIdentifier.getTargetMethods()){
+		for(PurgeMethodAnnotation annotation : purgeIdentifier.getTargetMethods()){
 			targets.add(annotation.getClassName());
 		}
-		for(DefineFieldFinalityAnnotation annotation : finalityIdentifier.getTargetFields()){
+		for(PurgeFieldAnnotation annotation : purgeIdentifier.getTargetFields()){
 			targets.add(annotation.getClassName());
 		}
 		return targets;
@@ -32,35 +33,26 @@ public class DefineFinalityIdentifier {
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";
 	private static final String METHOD = "method";
-	private static final String FINALITY = "finality";
 	
-	public static class DefineTypeFinalityAnnotation {
+	public static class PurgeTypeAnnotation {
 		private String className;
-		private boolean finality;
 		
-		public DefineTypeFinalityAnnotation(String className, boolean finality) {
+		public PurgeTypeAnnotation(String className) {
 			this.className = className;
-			this.finality = finality;
 		}
 		
 		public String getClassName(){
 			return className;
 		}
-		
-		public boolean getFinality(){
-			return finality;
-		}
 	}
 	
-	public static class DefineMethodFinalityAnnotation {
+	public static class PurgeMethodAnnotation {
 		private String className;
 		private String methodName;
-		private boolean finality;
 		
-		public DefineMethodFinalityAnnotation(String className, String methodName, boolean finality) {
+		public PurgeMethodAnnotation(String className, String methodName) {
 			this.className = className;
 			this.methodName = methodName;
-			this.finality = finality;
 		}
 		
 		public String getClassName(){
@@ -70,21 +62,15 @@ public class DefineFinalityIdentifier {
 		public String getMethodName(){
 			return methodName;
 		}
-		
-		public boolean getFinality(){
-			return finality;
-		}
 	}
 	
-	public static class DefineFieldFinalityAnnotation {
+	public static class PurgeFieldAnnotation {
 		private String className;
 		private String fieldName;
-		private boolean finality;
 		
-		public DefineFieldFinalityAnnotation(String className, String fieldName, boolean finality) {
+		public PurgeFieldAnnotation(String className, String fieldName) {
 			this.className = className;
 			this.fieldName = fieldName;
-			this.finality = finality;
 		}
 		
 		public String getClassName(){
@@ -94,79 +80,75 @@ public class DefineFinalityIdentifier {
 		public String getFieldName(){
 			return fieldName;
 		}
-		
-		public boolean getFinality(){
-			return finality;
-		}
 	}
 	
-	private LinkedList<DefineTypeFinalityAnnotation> targetTypes = new LinkedList<DefineTypeFinalityAnnotation>();
-	private LinkedList<DefineMethodFinalityAnnotation> targetMethods = new LinkedList<DefineMethodFinalityAnnotation>();
-	private LinkedList<DefineFieldFinalityAnnotation> targetFields = new LinkedList<DefineFieldFinalityAnnotation>();
+	private LinkedList<PurgeTypeAnnotation> targetTypes = new LinkedList<PurgeTypeAnnotation>();
+	private LinkedList<PurgeMethodAnnotation> targetMethods = new LinkedList<PurgeMethodAnnotation>();
+	private LinkedList<PurgeFieldAnnotation> targetFields = new LinkedList<PurgeFieldAnnotation>();
 
-	public DefineFinalityIdentifier(ClassNode classNode) {
+	public PurgeIdentifier(ClassNode classNode) {
 		if (classNode.invisibleAnnotations != null) {
 			for (Object annotationObject : classNode.invisibleAnnotations) {
 				AnnotationNode annotation = (AnnotationNode) annotationObject;
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotation.desc, false);
 				
-				// type finalities
-				if(checker.isDefineTypeFinalitiesAnnotation()){
+				// types
+				if(checker.isPurgeTypesAnnotation()){
 					for(Object value : annotation.values){
 						if(value instanceof List){
 							for(Object valueObject : (List) value){
 								if(valueObject instanceof AnnotationNode){
 									AnnotationNode annotationValue = (AnnotationNode) valueObject;
-									extractDefineTypeFinalityAnnotationValues(classNode, annotationValue);
+									extractPurgeTypeAnnotationValues(classNode, annotationValue);
 								}
 							}
 						}
 						
 					}
-				} else if(checker.isDefineTypeFinalityAnnotation()){
-					extractDefineTypeFinalityAnnotationValues(classNode, annotation);
+				} else if(checker.isPurgeTypeAnnotation()){
+					extractPurgeTypeAnnotationValues(classNode, annotation);
 				} 
 				
-				// method finalities
-				else if(checker.isDefineMethodFinalitiesAnnotation()){
+				// methods
+				else if(checker.isPurgeMethodsAnnotation()){
 					for(Object value : annotation.values){
 						if(value instanceof List){
 							for(Object valueObject : (List) value){
 								if(valueObject instanceof AnnotationNode){
 									AnnotationNode annotationValue = (AnnotationNode) valueObject;
-									extractDefineMethodFinalityValues(classNode, annotationValue);
+									extractPurgeMethodValues(classNode, annotationValue);
 								}
 							}
 						}
 					}
-				} else if(checker.isDefineMethodFinalityAnnotation()){
-					extractDefineMethodFinalityValues(classNode, annotation);
+				} else if(checker.isPurgeMethodAnnotation()){
+					extractPurgeMethodValues(classNode, annotation);
 				}  
 				
-				// field finalities
-				else if(checker.isDefineFieldFinalitiesAnnotation()){
+				// fields
+				else if(checker.isPurgeFieldsAnnotation()){
 					for(Object value : annotation.values){
 						if(value instanceof List){
 							for(Object valueObject : (List) value){
 								if(valueObject instanceof AnnotationNode){
 									AnnotationNode annotationValue = (AnnotationNode) valueObject;
-									extractDefineFieldFinalityValues(classNode, annotationValue);
+									extractPurgeFieldValues(classNode, annotationValue);
 								}
 							}
 						}
 					}
-				}  else if(checker.isDefineFieldFinalityAnnotation()){
-					extractDefineFieldFinalityValues(classNode, annotation);
+				}  else if(checker.isPurgeFieldAnnotation()){
+					extractPurgeFieldValues(classNode, annotation);
 				} 	
 			}
 		}
     }
 
-	private void extractDefineFieldFinalityValues(ClassNode classNode, AnnotationNode annotation) {
+	private void extractPurgeFieldValues(ClassNode classNode, AnnotationNode annotation) {
 		String typeValue = null;
 		String fieldValue = null;
-		Boolean finalityValue = null;
+		
 		if (annotation.values != null) {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
@@ -175,24 +157,22 @@ public class DefineFinalityIdentifier {
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(FIELD)){
 		        	fieldValue = (String) value;
-		        } else if(name.equals(FINALITY)){
-		        	finalityValue = (boolean) value;
 		        }
 		    }
-		    if(typeValue != null && fieldValue != null && finalityValue != null){
+		    if(typeValue != null && fieldValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetFields.add(new DefineFieldFinalityAnnotation(className, fieldValue, finalityValue));
+		    	targetFields.add(new PurgeFieldAnnotation(className, fieldValue));
 		    }
 		}
 	}
 
-	private void extractDefineMethodFinalityValues(ClassNode classNode, AnnotationNode annotation) {
+	private void extractPurgeMethodValues(ClassNode classNode, AnnotationNode annotation) {
 		String typeValue = null;
 		String methodValue = null;
-		Boolean finalityValue = null;
+		
 		if (annotation.values != null) {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
@@ -201,52 +181,49 @@ public class DefineFinalityIdentifier {
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(METHOD)){
 		        	methodValue = (String) value;
-		        } else if(name.equals(FINALITY)){
-		        	finalityValue = (boolean) value;
 		        }
 		    }
-		    if(typeValue != null && methodValue != null && finalityValue != null){
+		    if(typeValue != null && methodValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetMethods.add(new DefineMethodFinalityAnnotation(className, methodValue, finalityValue));
+		    	targetMethods.add(new PurgeMethodAnnotation(className, methodValue));
 		    }
 		}
 	}
 
-	private void extractDefineTypeFinalityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+	private void extractPurgeTypeAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
 		String typeValue = null;
-		Boolean finalityValue = null;
+		
 		if (annotation.values != null) {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
 		        if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
-		        } else if(name.equals(FINALITY)){
-		        	finalityValue = (boolean) value;
 		        }
 		    }
-		    if(typeValue != null && finalityValue != null){
+		    if(typeValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetTypes.add(new DefineTypeFinalityAnnotation(className, finalityValue));
+		    	targetTypes.add(new PurgeTypeAnnotation(className));
 		    }
 		}
 	}
 	
-	public LinkedList<DefineTypeFinalityAnnotation> getTargetTypes() {
+	public LinkedList<PurgeTypeAnnotation> getTargetTypes() {
 		return targetTypes;
 	}
 	
-    public LinkedList<DefineMethodFinalityAnnotation> getTargetMethods() {
+    public LinkedList<PurgeMethodAnnotation> getTargetMethods() {
 		return targetMethods;
 	}
     
-    public LinkedList<DefineFieldFinalityAnnotation> getTargetFields() {
+    public LinkedList<PurgeFieldAnnotation> getTargetFields() {
 		return targetFields;
 	}
+    
 }

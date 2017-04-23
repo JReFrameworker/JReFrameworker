@@ -1,12 +1,34 @@
 package jreframeworker.engine.identifiers;
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
+
 public class DefineFinalityIdentifier {
 
+	public static Set<String> getFinalityTargets(ClassNode classNode) throws IOException {
+		DefineFinalityIdentifier finalityIdentifier = new DefineFinalityIdentifier(classNode);
+		Set<String> targets = new HashSet<String>();
+		for(DefineTypeFinalityAnnotation annotation : finalityIdentifier.getTargetTypes()){
+			targets.add(annotation.getClassName());
+		}
+		for(DefineMethodFinalityAnnotation annotation : finalityIdentifier.getTargetMethods()){
+			targets.add(annotation.getClassName());
+		}
+		for(DefineFieldFinalityAnnotation annotation : finalityIdentifier.getTargetFields()){
+			targets.add(annotation.getClassName());
+		}
+		return targets;
+	}
+	
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";
 	private static final String METHOD = "method";
@@ -160,7 +182,7 @@ public class DefineFinalityIdentifier {
 		    if(typeValue != null && fieldValue != null && finalityValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
-		    		className = classNode.superName;;
+		    		className = classNode.superName;
 		    	}
 		    	targetFields.add(new DefineFieldFinalityAnnotation(className, fieldValue, finalityValue));
 		    }
@@ -186,7 +208,7 @@ public class DefineFinalityIdentifier {
 		    if(typeValue != null && methodValue != null && finalityValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
-		    		className = classNode.superName;;
+		    		className = classNode.superName;
 		    	}
 		    	targetMethods.add(new DefineMethodFinalityAnnotation(className, methodValue, finalityValue));
 		    }
@@ -209,7 +231,7 @@ public class DefineFinalityIdentifier {
 		    if(typeValue != null && finalityValue != null){
 		    	String className = typeValue;
 		    	if(className.equals("")){
-		    		className = classNode.superName;;
+		    		className = classNode.superName;
 		    	}
 		    	targetTypes.add(new DefineTypeFinalityAnnotation(className, finalityValue));
 		    }
