@@ -1,5 +1,6 @@
 package jreframeworker.engine.identifiers;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -103,82 +104,138 @@ public class DefineVisibilityIdentifier {
 				AnnotationNode annotation = (AnnotationNode) annotationObject;
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotation.desc, false);
-				if(checker.isDefineTypeVisibilityAnnotation()){
-					String typeValue = null;
-					Visibility visibilityValue = null;
-					if (annotation.values != null) {
-				        for (int i = 0; i < annotation.values.size(); i += 2) {
-				            String name = (String) annotation.values.get(i);
-				            Object value = annotation.values.get(i + 1);
-				            if(name.equals(TYPE)){
-				            	typeValue = ((String)value).replaceAll("\\.", "/");
-				            } else if(name.equals(VISIBILITY)){
-				            	String valueString = (String) value;
-				            	visibilityValue = Visibility.getVisibilityFromString(valueString);
-				            }
-				        }
-				        if(typeValue != null && visibilityValue != null){
-				        	String className = typeValue;
-				        	if(className.equals("")){
-				        		className = classNode.superName;;
-				        	}
-				        	targetTypes.add(new DefineTypeVisibilityAnnotation(className, visibilityValue));
-				        }
-				    }
+				
+				// type visibilities
+				if(checker.isDefineTypeVisibilitiesAnnotation()){
+					for(Object value : annotation.values){
+						if(value instanceof List){
+							for(Object valueObject : (List) value){
+								if(valueObject instanceof AnnotationNode){
+									AnnotationNode annotationValue = (AnnotationNode) valueObject;
+									extractDefineTypeVisibilityAnnotationValues(classNode, annotationValue);
+								}
+							}
+						}
+						
+					}
+				} else if(checker.isDefineTypeVisibilityAnnotation()){
+					extractDefineTypeVisibilityAnnotationValues(classNode, annotation);
+				} 
+				
+				// method visibilities
+				else if(checker.isDefineMethodVisibilitiesAnnotation()){
+					for(Object value : annotation.values){
+						if(value instanceof List){
+							for(Object valueObject : (List) value){
+								if(valueObject instanceof AnnotationNode){
+									AnnotationNode annotationValue = (AnnotationNode) valueObject;
+									extractDefineMethodVisibilityAnnotationValues(classNode, annotationValue);
+								}
+							}
+						}
+						
+					}
 				} else if(checker.isDefineMethodVisibilityAnnotation()){
-					String typeValue = null;
-					String methodValue = null;
-					Visibility visibilityValue = null;
-					if (annotation.values != null) {
-				        for (int i = 0; i < annotation.values.size(); i += 2) {
-				            String name = (String) annotation.values.get(i);
-				            Object value = annotation.values.get(i + 1);
-				            if(name.equals(TYPE)){
-				            	typeValue = ((String)value).replaceAll("\\.", "/");
-				            } else if(name.equals(METHOD)){
-				            	methodValue = (String) value;
-				            } else if(name.equals(VISIBILITY)){
-				            	String valueString = (String) value;
-				            	visibilityValue = Visibility.getVisibilityFromString(valueString);
-				            }
-				        }
-				        if(typeValue != null && methodValue != null && visibilityValue != null){
-				        	String className = typeValue;
-				        	if(className.equals("")){
-				        		className = classNode.superName;;
-				        	}
-				        	targetMethods.add(new DefineMethodVisibilityAnnotation(className, methodValue, visibilityValue));
-				        }
-				    }
+					extractDefineMethodVisibilityAnnotationValues(classNode, annotation);
+				} 
+				
+				// field visibilities
+				else if(checker.isDefineFieldVisibilitiesAnnotation()){
+					for(Object value : annotation.values){
+						if(value instanceof List){
+							for(Object valueObject : (List) value){
+								if(valueObject instanceof AnnotationNode){
+									AnnotationNode annotationValue = (AnnotationNode) valueObject;
+									extractDefineFieldVisibilityAnnotationValues(classNode, annotationValue);
+								}
+							}
+						}
+						
+					}
 				} else if(checker.isDefineFieldVisibilityAnnotation()){
-					String typeValue = null;
-					String fieldValue = null;
-					Visibility visibilityValue = null;
-					if (annotation.values != null) {
-				        for (int i = 0; i < annotation.values.size(); i += 2) {
-				            String name = (String) annotation.values.get(i);
-				            Object value = annotation.values.get(i + 1);
-				            if(name.equals(TYPE)){
-				            	typeValue = ((String)value).replaceAll("\\.", "/");
-				            } else if(name.equals(FIELD)){
-				            	fieldValue = (String) value;
-				            } else if(name.equals(VISIBILITY)){
-				            	String valueString = (String) value;
-				            	visibilityValue = Visibility.getVisibilityFromString(valueString);
-				            }
-				        }
-				        if(typeValue != null && fieldValue != null && visibilityValue != null){
-				        	String className = typeValue;
-				        	if(className.equals("")){
-				        		className = classNode.superName;;
-				        	}
-				        	targetFields.add(new DefineFieldVisibilityAnnotation(className, fieldValue, visibilityValue));
-				        }
-				    }
+					extractDefineFieldVisibilityAnnotationValues(classNode, annotation);
 				} 	
 			}
 		}
     }
+
+	private void extractDefineFieldVisibilityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		String typeValue = null;
+		String fieldValue = null;
+		Visibility visibilityValue = null;
+		if (annotation.values != null) {
+		    for (int i = 0; i < annotation.values.size(); i += 2) {
+		        String name = (String) annotation.values.get(i);
+		        Object value = annotation.values.get(i + 1);
+		        if(name.equals(TYPE)){
+		        	typeValue = ((String)value).replaceAll("\\.", "/");
+		        } else if(name.equals(FIELD)){
+		        	fieldValue = (String) value;
+		        } else if(name.equals(VISIBILITY)){
+		        	String valueString = (String) value;
+		        	visibilityValue = Visibility.getVisibilityFromString(valueString);
+		        }
+		    }
+		    if(typeValue != null && fieldValue != null && visibilityValue != null){
+		    	String className = typeValue;
+		    	if(className.equals("")){
+		    		className = classNode.superName;;
+		    	}
+		    	targetFields.add(new DefineFieldVisibilityAnnotation(className, fieldValue, visibilityValue));
+		    }
+		}
+	}
+
+	private void extractDefineMethodVisibilityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		String typeValue = null;
+		String methodValue = null;
+		Visibility visibilityValue = null;
+		if (annotation.values != null) {
+		    for (int i = 0; i < annotation.values.size(); i += 2) {
+		        String name = (String) annotation.values.get(i);
+		        Object value = annotation.values.get(i + 1);
+		        if(name.equals(TYPE)){
+		        	typeValue = ((String)value).replaceAll("\\.", "/");
+		        } else if(name.equals(METHOD)){
+		        	methodValue = (String) value;
+		        } else if(name.equals(VISIBILITY)){
+		        	String valueString = (String) value;
+		        	visibilityValue = Visibility.getVisibilityFromString(valueString);
+		        }
+		    }
+		    if(typeValue != null && methodValue != null && visibilityValue != null){
+		    	String className = typeValue;
+		    	if(className.equals("")){
+		    		className = classNode.superName;;
+		    	}
+		    	targetMethods.add(new DefineMethodVisibilityAnnotation(className, methodValue, visibilityValue));
+		    }
+		}
+	}
+
+	private void extractDefineTypeVisibilityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		String typeValue = null;
+		Visibility visibilityValue = null;
+		if (annotation.values != null) {
+		    for (int i = 0; i < annotation.values.size(); i += 2) {
+		        String name = (String) annotation.values.get(i);
+		        Object value = annotation.values.get(i + 1);
+		        if(name.equals(TYPE)){
+		        	typeValue = ((String)value).replaceAll("\\.", "/");
+		        } else if(name.equals(VISIBILITY)){
+		        	String valueString = (String) value;
+		        	visibilityValue = Visibility.getVisibilityFromString(valueString);
+		        }
+		    }
+		    if(typeValue != null && visibilityValue != null){
+		    	String className = typeValue;
+		    	if(className.equals("")){
+		    		className = classNode.superName;;
+		    	}
+		    	targetTypes.add(new DefineTypeVisibilityAnnotation(className, visibilityValue));
+		    }
+		}
+	}
 	
 	public LinkedList<DefineTypeVisibilityAnnotation> getTargetTypes() {
 		return targetTypes;

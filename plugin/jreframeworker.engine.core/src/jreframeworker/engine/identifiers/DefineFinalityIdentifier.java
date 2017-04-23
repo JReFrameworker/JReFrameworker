@@ -88,6 +88,7 @@ public class DefineFinalityIdentifier {
 				AnnotationNode annotation = (AnnotationNode) annotationObject;
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotation.desc, false);
+				
 				// type finalities
 				if(checker.isDefineTypeFinalitiesAnnotation()){
 					for(Object value : annotation.values){
