@@ -8,10 +8,6 @@ import java.util.Set;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
-
 public class DefineVisibilityIdentifier {
 
 	public static enum Visibility {
@@ -120,6 +116,7 @@ public class DefineVisibilityIdentifier {
 	private LinkedList<DefineMethodVisibilityAnnotation> targetMethods = new LinkedList<DefineMethodVisibilityAnnotation>();
 	private LinkedList<DefineFieldVisibilityAnnotation> targetFields = new LinkedList<DefineFieldVisibilityAnnotation>();
 
+	@SuppressWarnings("rawtypes")
 	public DefineVisibilityIdentifier(ClassNode classNode) {
 		if (classNode.invisibleAnnotations != null) {
 			for (Object annotationObject : classNode.invisibleAnnotations) {

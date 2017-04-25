@@ -2,8 +2,6 @@ package jreframeworker.engine.identifiers;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.ClassNode;
 
 public class JREFAnnotationIdentifier extends ClassVisitor {
 

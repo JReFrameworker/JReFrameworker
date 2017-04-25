@@ -7,11 +7,6 @@ import java.util.Set;
 
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.MethodNode;
-
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 
 public class PurgeIdentifier {
 	
@@ -86,6 +81,7 @@ public class PurgeIdentifier {
 	private LinkedList<PurgeMethodAnnotation> targetMethods = new LinkedList<PurgeMethodAnnotation>();
 	private LinkedList<PurgeFieldAnnotation> targetFields = new LinkedList<PurgeFieldAnnotation>();
 
+	@SuppressWarnings("rawtypes")
 	public PurgeIdentifier(ClassNode classNode) {
 		if (classNode.invisibleAnnotations != null) {
 			for (Object annotationObject : classNode.invisibleAnnotations) {

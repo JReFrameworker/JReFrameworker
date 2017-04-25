@@ -8,10 +8,6 @@ import java.util.Set;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 
-import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
-import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
-import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
-
 public class DefineFinalityIdentifier {
 
 	public static Set<String> getFinalityTargets(ClassNode classNode) throws IOException {
@@ -104,6 +100,7 @@ public class DefineFinalityIdentifier {
 	private LinkedList<DefineMethodFinalityAnnotation> targetMethods = new LinkedList<DefineMethodFinalityAnnotation>();
 	private LinkedList<DefineFieldFinalityAnnotation> targetFields = new LinkedList<DefineFieldFinalityAnnotation>();
 
+	@SuppressWarnings("rawtypes")
 	public DefineFinalityIdentifier(ClassNode classNode) {
 		if (classNode.invisibleAnnotations != null) {
 			for (Object annotationObject : classNode.invisibleAnnotations) {

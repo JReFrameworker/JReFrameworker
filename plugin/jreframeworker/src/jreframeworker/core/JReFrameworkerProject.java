@@ -24,6 +24,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.internal.core.ClasspathEntry;
 import org.xml.sax.SAXException;
 
+@SuppressWarnings("restriction")
 public class JReFrameworkerProject {
 
 	private IProject project;
@@ -59,7 +60,8 @@ public class JReFrameworkerProject {
 	 * @throws URISyntaxException 
 	 */
 	public void addTarget(File targetLibrary) throws TransformerException, ParserConfigurationException, SAXException, IOException, URISyntaxException, CoreException {
-		addTarget(targetLibrary, null);
+		addProjectLibrary(jProject, targetLibrary);
+		BuildFile.getOrCreateBuildFile(project).addTarget(targetLibrary.getName());
 	}
 	
 	public void addTarget(File targetLibrary, String relativeLibraryDirectory) throws TransformerException, ParserConfigurationException, SAXException, IOException, URISyntaxException, CoreException {
