@@ -31,7 +31,7 @@ public class JREF {
 	 * @throws ParserConfigurationException
 	 * @throws SAXException
 	 */
-	public static JReFrameworkerProject create(String projectName) throws CoreException, IOException, URISyntaxException, TransformerException, ParserConfigurationException, SAXException {
+	public static JReFrameworkerAtlasProject create(String projectName) throws CoreException, IOException, URISyntaxException, TransformerException, ParserConfigurationException, SAXException {
 		try {
 			return open(projectName);
 		} catch (Exception e) {
@@ -55,7 +55,7 @@ public class JREF {
 	 * @throws ParserConfigurationException
 	 * @throws SAXException
 	 */
-	public static JReFrameworkerProject open(String projectName) throws CoreException, IOException, URISyntaxException, TransformerException, ParserConfigurationException, SAXException {
+	public static JReFrameworkerAtlasProject open(String projectName) throws CoreException, IOException, URISyntaxException, TransformerException, ParserConfigurationException, SAXException {
 		IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 		if(project.exists()){
 			try {
@@ -65,7 +65,7 @@ public class JREF {
 				}
 				// if the project is a JReFrameworker project
 				if(project.hasNature(JReFrameworkerNature.NATURE_ID) && project.hasNature(JavaCore.NATURE_ID)){
-					return new JReFrameworkerProject(project);
+					return new JReFrameworkerAtlasProject(new JReFrameworkerProject(project));
 				} else {
 					throw new IllegalArgumentException("Project is not a valid JReFrameworker project.");
 				}

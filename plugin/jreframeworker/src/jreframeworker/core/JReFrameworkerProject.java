@@ -64,6 +64,17 @@ public class JReFrameworkerProject {
 		BuildFile.getOrCreateBuildFile(project).addTarget(targetLibrary.getName());
 	}
 	
+	/**
+	 * Adds a target with the given relative library directory
+	 * @param targetLibrary
+	 * @param relativeLibraryDirectory
+	 * @throws TransformerException
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 * @throws URISyntaxException
+	 * @throws CoreException
+	 */
 	public void addTarget(File targetLibrary, String relativeLibraryDirectory) throws TransformerException, ParserConfigurationException, SAXException, IOException, URISyntaxException, CoreException {
 		addProjectLibrary(jProject, targetLibrary, relativeLibraryDirectory);
 		BuildFile.getOrCreateBuildFile(project).addTarget(targetLibrary.getName());
