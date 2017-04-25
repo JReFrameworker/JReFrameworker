@@ -286,6 +286,7 @@ public class JReFrameworkerAtlasProject {
 			addPostExecutionMethodHook(method);
 		}
 	}
+	
 	/**
 	 * Creates logic to inject code after the given method is executed
 	 * @param method
