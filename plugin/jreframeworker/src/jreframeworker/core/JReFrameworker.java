@@ -9,20 +9,11 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.internal.events.BuildCommand;
@@ -46,9 +37,6 @@ import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.core.ClasspathEntry;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import jreframeworker.Activator;
@@ -60,6 +48,7 @@ import jreframeworker.log.Log;
 public class JReFrameworker {
 
 	public static final String BUILD_DIRECTORY = "build";
+	public static final String BUILD_CONFIG = BUILD_DIRECTORY + "/" + "config";
 	public static final String JREF_PROJECT_RESOURCE_DIRECTORY = ".jref"; // hidden directory
 	public static final String EXPORT_DIRECTORY = "export";
 	public static final String SOURCE_DIRECTORY = "src";
@@ -67,7 +56,6 @@ public class JReFrameworker {
 	public static final String RAW_DIRECTORY = "raw";
 	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "jreframeworker-annotations.jar";
 	public static final String ANNOTATIONS_JAR_PATH = "annotations" + "/" + JRE_FRAMEWORKER_ANNOTATIONS_JAR;
-	public static final String XML_BUILD_FILENAME = "jreframeworker.xml";
 	
 	public static LinkedList<IJavaProject> getJReFrameworkerProjects(){
 		LinkedList<IJavaProject> projects = new LinkedList<IJavaProject>();
@@ -99,7 +87,7 @@ public class JReFrameworker {
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
 	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
-	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor, String targetJar) throws CoreException, IOException, URISyntaxException {
+	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor, String... targets) throws CoreException, IOException, URISyntaxException, TransformerException, ParserConfigurationException, SAXException {
 		IProject project = null;
 		
 		try {
@@ -113,13 +101,16 @@ public class JReFrameworker {
 			File runtimesDirectory = new File(projectDirectory.getCanonicalPath() + File.separatorChar + BUILD_DIRECTORY);
 			runtimesDirectory.mkdirs();
 			
-			IJavaProject jProject = createProject(projectName, projectPath, monitor, project);
+			IJavaProject jProject = createProject(projectName, projectPath, project, monitor);
 			monitor.worked(1);
 			if (monitor.isCanceled()){
 				return Status.CANCEL_STATUS;
 			}
 			
-			createBuildFile(projectDirectory, targetJar);
+			BuildFile buildFile = BuildFile.createBuildFile(project);
+			for(String target : targets){
+				buildFile.addTarget(target);
+			}
 			
 			// copy runtimes and configure project classpath
 			monitor.setTaskName("Configuring project classpath...");
@@ -136,39 +127,6 @@ public class JReFrameworker {
 			}
 			monitor.done();
 		}
-	}
-
-	private static File createBuildFile(File projectDirectory, String targetJar) throws IOException {
-		File buildXMLFile = new File(projectDirectory + File.separator + XML_BUILD_FILENAME);
-		Log.info("Created Build XML File: " + buildXMLFile.getAbsolutePath());
-		try {
-			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-
-			// root elements
-			Document doc = docBuilder.newDocument();
-			Element rootElement = doc.createElement("build");
-			doc.appendChild(rootElement);
-
-			Element target = doc.createElement("target");
-			rootElement.appendChild(target);
-
-			target.setAttribute("name", targetJar);
-
-			// write the content into xml file
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-			Transformer transformer = transformerFactory.newTransformer();
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(buildXMLFile);
-			transformer.transform(source, result);
-		} catch (ParserConfigurationException pce) {
-			Log.error("ParserConfigurationException", pce);
-		} catch (TransformerException tfe) {
-			Log.error("TransformerException", tfe);
-		}
-		return buildXMLFile;
 	}
 
 	private static void configureProjectClasspath(IJavaProject jProject) throws CoreException, JavaModelException, IOException, URISyntaxException {
@@ -210,10 +168,10 @@ public class JReFrameworker {
 		// set the class path
 		jProject.setRawClasspath(entries.toArray(new IClasspathEntry[entries.size()]), null);
 		
-		Log.info("Successfully created JReFrameworker project [" + jProject.getProject().getName() + "]");
+		Log.info("Successfully created JReFrameworker project: " + jProject.getProject().getName());
 	}
 
-	private static IJavaProject createProject(String projectName, IPath projectPath, IProgressMonitor monitor, IProject project) throws CoreException {
+	private static IJavaProject createProject(String projectName, IPath projectPath, IProject project, IProgressMonitor monitor) throws CoreException {
 		IProjectDescription projectDescription = project.getWorkspace().newProjectDescription(project.getName());
 		URI location = getProjectLocation(projectName, projectPath);
 		projectDescription.setLocationURI(location);
@@ -298,21 +256,6 @@ public class JReFrameworker {
 			location = URIUtil.toURI(URIUtil.toPath(location) + File.separator + projectName);
 		}
 		return location;
-	}
-
-	public static Set<String> getTargetJars(IProject project) throws SAXException, IOException, ParserConfigurationException {
-		File buildXMLFile = project.getFile(XML_BUILD_FILENAME).getLocation().toFile();
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-		Document doc = dBuilder.parse(buildXMLFile);
-		doc.getDocumentElement().normalize();
-		NodeList targets = doc.getElementsByTagName("target");
-		Set<String> results = new HashSet<String>();
-		for (int i = 0; i < targets.getLength(); i++) {
-			Element target = (Element) targets.item(i);
-			results.add(target.getAttribute("name"));
-		}
-		return results;
 	}
 
 }

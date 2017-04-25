@@ -32,6 +32,7 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.xml.sax.SAXException;
 
+import jreframeworker.core.BuildFile;
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.engine.Engine;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
@@ -73,8 +74,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	protected void clean(IProgressMonitor monitor) throws CoreException {
 		IJavaProject jProject = getJReFrameworkerProject();
 		if(jProject != null){
-			monitor.beginTask("Cleaning JReFrameworker project: " + jProject.getProject().getName(), 1);
-			Log.info("Cleaning JReFrameworker project: " + jProject.getProject().getName());
+			monitor.beginTask("Cleaning: " + jProject.getProject().getName(), 1);
+			Log.info("Cleaning: " + jProject.getProject().getName());
 			try {
 				File buildDirectory = jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
 				clearProjectBuildDirectory(jProject, buildDirectory);
@@ -84,8 +85,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			}
 			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 			monitor.worked(1);
-			
-			Log.info("Finished cleaning JReFrameworker project: " + jProject.getProject().getName());
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
@@ -118,18 +117,17 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			}
 
 			// build each jref project fresh
-			monitor.beginTask("Building JReFrameworker project: " + jProject.getProject().getName(), 1);
-			Log.info("Building JReFrameworker project [" + jProject.getProject().getName() + "]");
+			monitor.beginTask("Building: " + jProject.getProject().getName(), 1);
+			Log.info("Building: " + jProject.getProject().getName());
 
-			
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			try {
 				// map class entries to and initial modification engine sets
 				Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
 				Set<Engine> allEngines = new HashSet<Engine>();
-				for (String targetJar : JReFrameworker.getTargetJars(jProject.getProject())) {
+				for (String targetJar : BuildFile.getOrCreateBuildFile(jProject.getProject()).getTargets()) {
 					File originalJar = getOriginalJar(targetJar, jProject);
-					if (originalJar.exists()) {
+					if (originalJar !=null && originalJar.exists()) {
 						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
 						allEngines.add(engine);
 						for(String entry : engine.getOriginalEntries()){
@@ -143,7 +141,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							}
 						}
 					} else {
-						Log.warning("Jar not found: " + originalJar.getAbsolutePath());
+						Log.warning("Jar not found: " + targetJar);
 					}
 				}
 				
@@ -193,8 +191,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 
 			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 			monitor.worked(1);
-
-			Log.info("Finished building JReFrameworker project [" + jProject.getProject().getName() + "]");
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
