@@ -75,24 +75,187 @@ public class JReFrameworkerAtlasProject {
 	public void removeTarget(String target) throws TransformerException, ParserConfigurationException, SAXException, IOException {
 		project.removeTarget(target);
 	}
+
+	/**
+	 * Creates logic to define a new class
+	 * @param packageName
+	 * @param className
+	 */
+	public void defineType(String packageName, String className){
+		// TODO: implement
+	}
 	
 	/**
-	 * Creates logic to inject code before the given methods are executed
+	 * Creates logic to replace a class in the given class target
+	 * @param targetClass
+	 */
+	public void replaceType(Node targetClass){
+		// TODO: implement
+	}
+	
+	/**
+	 * Creates logic to merge code into the given class target
+	 * @param targetClass
+	 */
+	public void mergeType(Node targetClass){
+		// TODO: implement
+	}
+	
+	/**
+	 * Creates logic to define a new field in the given target classes
+	 * @param fields
+	 */
+	public void defineFields(Q targetClasses){
+		defineFields(targetClasses.nodesTaggedWithAny(XCSG.Java.Class).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to define a new field in the given target classes
+	 * @param field
+	 */
+	public void defineFields(AtlasSet<Node> targetClasses){
+		for(Node field : targetClasses){
+			defineField(field);
+		}
+	}
+	
+	/**
+	 * Creates logic to define a new field in the given target class
+	 * @param field
+	 */
+	public void defineField(Node targetClass){
+		if(targetClass.taggedWith(XCSG.Java.Class)){
+			// TODO: implement
+		}
+	}
+	
+	/**
+	 * Creates logic to replace code in the given fields
+	 * @param fields
+	 */
+	public void replaceFields(Q fields){
+		replaceFields(fields.nodesTaggedWithAny(XCSG.Field).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to replace code in the given fields
+	 * @param fields
+	 */
+	public void replaceFields(AtlasSet<Node> fields){
+		for(Node field : fields){
+			replaceField(field);
+		}
+	}
+	
+	/**
+	 * Creates logic to replace code in the given field
+	 * @param field
+	 */
+	public void replaceField(Node field){
+		if(field.taggedWith(XCSG.Field)){
+			// TODO: implement
+		}
+	}
+	
+	/**
+	 * Creates logic to define a new method in the given target classes
+	 * @param methods
+	 */
+	public void defineMethods(Q targetClasses){
+		defineMethods(targetClasses.nodesTaggedWithAny(XCSG.Java.Class).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to define a new method in the given target classes
 	 * @param method
 	 */
-	public void addPreExecutionFunctionHooks(Q functions){
-		addPreExecutionFunctionHooks(functions.nodesTaggedWithAny(XCSG.Function).eval().nodes());
+	public void defineMethods(AtlasSet<Node> targetClasses){
+		for(Node method : targetClasses){
+			defineMethod(method);
+		}
+	}
+	
+	/**
+	 * Creates logic to define a new method in the given target class
+	 * @param method
+	 */
+	public void defineMethod(Node targetClass){
+		if(targetClass.taggedWith(XCSG.Java.Class)){
+			// TODO: implement
+		}
+	}
+	
+	/**
+	 * Creates logic to replace code in the given methods
+	 * @param methods
+	 */
+	public void replaceMethods(Q methods){
+		replaceMethods(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to replace code in the given methods
+	 * @param methods
+	 */
+	public void replaceMethods(AtlasSet<Node> methods){
+		for(Node method : methods){
+			replaceMethod(method);
+		}
+	}
+	
+	/**
+	 * Creates logic to replace code in the given method
+	 * @param method
+	 */
+	public void replaceMethod(Node method){
+		if(method.taggedWith(XCSG.Method)){
+			// TODO: implement
+		}
+	}
+	
+	/**
+	 * Creates logic to preserve and replace accessible code in the given methods
+	 * @param methods
+	 */
+	public void mergeMethods(Q methods){
+		mergeMethods(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to preserve and replace accessible code in the given methods
+	 * @param method
+	 */
+	public void mergeMethods(AtlasSet<Node> methods){
+		for(Node method : methods){
+			mergeMethod(method);
+		}
+	}
+	
+	/**
+	 * Creates logic to preserve and replace accessible code in the given method
+	 * @param method
+	 */
+	public void mergeMethod(Node method){
+		if(method.taggedWith(XCSG.Method)){
+			// TODO: implement
+		}
 	}
 	
 	/**
 	 * Creates logic to inject code before the given methods are executed
 	 * @param method
 	 */
-	public void addPreExecutionFunctionHooks(AtlasSet<Node> functions){
-		for(Node function : functions){
-			if(function.taggedWith(XCSG.Function)){
-				addPreExecutionFunctionHook(function);
-			}
+	public void addPreExecutionMethodHooks(Q methods){
+		addPreExecutionMethodHooks(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to inject code before the given methods are executed
+	 * @param method
+	 */
+	public void addPreExecutionMethodHooks(AtlasSet<Node> methods){
+		for(Node method : methods){
+			addPreExecutionMethodHook(method);
 		}
 	}
 	
@@ -100,35 +263,36 @@ public class JReFrameworkerAtlasProject {
 	 * Creates logic to inject code before the given method is executed
 	 * @param method
 	 */
-	public void addPreExecutionFunctionHook(Node function){
-		// TODO: implement
-	}
-	
-	/**
-	 * Creates logic to inject code after the given methods are executed
-	 * @param method
-	 */
-	public void addPostExecutionFunctionHooks(Q functions){
-		addPostExecutionFunctionHooks(functions.nodesTaggedWithAny(XCSG.Function).eval().nodes());
-	}
-	
-	/**
-	 * Creates logic to inject code after the given methods are executed
-	 * @param method
-	 */
-	public void addPostExecutionFunctionHooks(AtlasSet<Node> functions){
-		for(Node function : functions){
-			if(function.taggedWith(XCSG.Function)){
-				addPostExecutionFunctionHook(function);
-			}
+	public void addPreExecutionMethodHook(Node method){
+		if(method.taggedWith(XCSG.Method)){
+			// TODO: implement
 		}
 	}
 	
 	/**
+	 * Creates logic to inject code after the given methods are executed
+	 * @param method
+	 */
+	public void addPostExecutionMethodHooks(Q methods){
+		addPostExecutionMethodHooks(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to inject code after the given methods are executed
+	 * @param method
+	 */
+	public void addPostExecutionMethodHooks(AtlasSet<Node> methods){
+		for(Node method : methods){
+			addPostExecutionMethodHook(method);
+		}
+	}
+	/**
 	 * Creates logic to inject code after the given method is executed
 	 * @param method
 	 */
-	public void addPostExecutionFunctionHook(Node method){
-		// TODO: implement
+	public void addPostExecutionMethodHook(Node method){
+		if(method.taggedWith(XCSG.Method)){
+			// TODO: implement
+		}
 	}
 }
