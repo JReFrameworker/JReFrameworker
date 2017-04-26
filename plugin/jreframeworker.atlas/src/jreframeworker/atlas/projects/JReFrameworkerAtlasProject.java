@@ -1,10 +1,12 @@
-package jreframeworker.atlas;
+package jreframeworker.atlas.projects;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Set;
 
+import javax.lang.model.element.Modifier;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
@@ -13,9 +15,13 @@ import org.xml.sax.SAXException;
 
 import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
+import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.TypeSpec;
 
+import jreframeworker.annotations.types.DefineType;
 import jreframeworker.core.JReFrameworkerProject;
 
 public class JReFrameworkerAtlasProject {
@@ -32,6 +38,10 @@ public class JReFrameworkerAtlasProject {
 	 */
 	public JReFrameworkerProject getProject(){
 		return project;
+	}
+	
+	public void refresh() throws CoreException {
+		project.refresh();
 	}
 	
 	/**
@@ -78,11 +88,53 @@ public class JReFrameworkerAtlasProject {
 
 	/**
 	 * Creates logic to define a new class
+	 * 
+	 * Example: defineType("com.test", "HelloWorld")
 	 * @param packageName
 	 * @param className
+	 * @throws IOException  
+	 * @throws CoreException 
 	 */
-	public void defineType(String packageName, String className){
-		// TODO: implement
+	public void defineType(String packageName, String className) {
+		packageName = packageName.trim();
+		// just some really weak input sanitization to catch potentially common mistakes
+		if(packageName.contains("/") 
+			|| packageName.contains("\\") 
+			|| packageName.contains(" ") 
+			|| packageName.endsWith(".")){
+			throw new IllegalArgumentException("Invalid package name.");
+		}
+		
+		try {
+			TypeSpec type = TypeSpec.classBuilder(className)
+				    .addModifiers(Modifier.PUBLIC)
+				    .addAnnotation(DefineType.class)
+				    .addJavadoc("TODO: Implement class body"
+							  + "\n\nThe entire contents of this class's bytecode will"
+							  + "\nbe injected into the target's \"" + packageName + "\" package.\n")
+				    .build();
+			
+			JavaFile javaFile = JavaFile.builder(packageName, type)
+					.build();
+	
+			// figure out where to put the source file
+			String relativePackageDirectory = packageName.replace(".", "/");
+			File sourceFile = new File(project.getProject().getFolder("/src/" + relativePackageDirectory).getLocation().toFile().getAbsolutePath() 
+									+ File.separator + className +  ".java");
+			
+			// make the package directory if its not there already
+			sourceFile.getParentFile().mkdirs();
+			
+			// write source file out to src folder
+			FileWriter fileWriter = new FileWriter(sourceFile);
+			javaFile.writeTo(fileWriter);
+			fileWriter.close();
+			
+			// refresh the project
+			refresh();
+		} catch (Throwable t){
+			Log.error("Error creating define type logic", t);
+		}
 	}
 	
 	/**

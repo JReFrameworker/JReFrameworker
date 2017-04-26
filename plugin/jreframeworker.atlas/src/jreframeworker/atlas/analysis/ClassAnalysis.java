@@ -1,4 +1,4 @@
-package jreframeworker.atlas;
+package jreframeworker.atlas.analysis;
 
 import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;

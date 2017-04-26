@@ -87,6 +87,10 @@ public class JReFrameworkerProject {
 		BuildFile.getOrCreateBuildFile(project).removeTarget(target);
 	}
 	
+	public void refresh() throws CoreException {
+		jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+	}
+	
 	/**
 	 * Copies a library into the project root directory and updates the classpath
 	 * @param jProject

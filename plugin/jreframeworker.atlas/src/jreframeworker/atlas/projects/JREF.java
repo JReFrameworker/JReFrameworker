@@ -1,4 +1,4 @@
-package jreframeworker.atlas;
+package jreframeworker.atlas.projects;
 
 import java.io.IOException;
 import java.net.URISyntaxException;

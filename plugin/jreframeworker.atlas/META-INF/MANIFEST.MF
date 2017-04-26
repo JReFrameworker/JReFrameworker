@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: JReFrameworker Atlas Integrations
-Bundle-SymbolicName: jreframeworker.atlas
+Bundle-SymbolicName: jreframeworker.atlas;singleton:=true
 Bundle-Version: 1.3.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: 
@@ -14,6 +14,11 @@ Require-Bundle:
  org.eclipse.jdt.core,
  com.ensoftcorp.atlas.core;bundle-version="3.1.0";visibility:=reexport,
  com.ensoftcorp.atlas.ui;bundle-version="3.1.0";visibility:=reexport,
- jreframeworker;bundle-version="1.3.0",
- jreframeworker.engine;bundle-version="1.3.0",
- com.squareup.javapoet;bundle-version="1.8.0"
+ jreframeworker;bundle-version="1.3.0";visibility:=reexport,
+ jreframeworker.engine;bundle-version="1.3.0";visibility:=reexport,
+ jreframeworker.annotations;bundle-version="1.3.0";visibility:=reexport,
+ com.squareup.javapoet;bundle-version="1.8.0";visibility:=reexport
+Bundle-ActivationPolicy: lazy
+Bundle-Activator: jreframeworker.atlas.Activator
+Export-Package: jreframeworker.atlas.analysis,
+ jreframeworker.atlas.projects

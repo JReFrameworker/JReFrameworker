@@ -9,3 +9,4 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.squareup.javapoet.Activator
+Export-Package: com.squareup.javapoet

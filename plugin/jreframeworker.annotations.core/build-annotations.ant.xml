@@ -10,4 +10,10 @@
             <fileset dir="${dir.buildfile}/bin"/>
         </jar>
     </target>
+	<target name="copy_annotations">
+		<copy todir="../jreframeworker.annotations/src/">
+			<fileset dir="./src">
+			</fileset>
+		</copy>
+	</target>
 </project>
