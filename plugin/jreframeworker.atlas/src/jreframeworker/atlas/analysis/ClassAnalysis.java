@@ -26,6 +26,15 @@ public class ClassAnalysis {
 	}
 	
 	/**
+	 * Returns the name of the given class
+	 * @param clazz
+	 * @return
+	 */
+	public static String getName(Node clazz){
+		return clazz.getAttr(XCSG.name).toString();
+	}
+	
+	/**
 	 * Returns the package name that contains the given class 
 	 * @param clazz
 	 * @return

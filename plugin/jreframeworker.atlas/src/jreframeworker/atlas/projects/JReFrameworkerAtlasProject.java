@@ -18,10 +18,15 @@ import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
 
 import jreframeworker.annotations.types.DefineType;
+import jreframeworker.annotations.types.DefineTypeFinality;
+import jreframeworker.annotations.types.DefineTypeVisibility;
+import jreframeworker.annotations.types.MergeType;
+import jreframeworker.atlas.analysis.ClassAnalysis;
 import jreframeworker.core.JReFrameworkerProject;
 
 public class JReFrameworkerAtlasProject {
@@ -85,7 +90,36 @@ public class JReFrameworkerAtlasProject {
 	public void removeTarget(String target) throws TransformerException, ParserConfigurationException, SAXException, IOException {
 		project.removeTarget(target);
 	}
-
+	
+	/**
+	 * Creates logic to define a new class with the specified javadoc comment
+	 * 
+	 * Example: defineType("com.test", "HelloWorld")
+	 * @param packageName
+	 * @param className
+	 * @throws IOException  
+	 * @throws CoreException 
+	 */
+	public void defineType(String packageName, String className, String javadoc) {
+		packageName = packageName.trim();
+		checkPackageName(packageName);
+		
+		try {
+			TypeSpec type = TypeSpec.classBuilder(className)
+				    .addModifiers(Modifier.PUBLIC)
+				    .addAnnotation(DefineType.class)
+				    .addJavadoc(javadoc)
+				    .build();
+			
+			JavaFile javaFile = JavaFile.builder(packageName, type)
+					.build();
+	
+			writeSourceFile(packageName, className, javaFile);
+		} catch (Throwable t){
+			Log.error("Error creating define type logic", t);
+		}
+	}
+	
 	/**
 	 * Creates logic to define a new class
 	 * 
@@ -96,44 +130,38 @@ public class JReFrameworkerAtlasProject {
 	 * @throws CoreException 
 	 */
 	public void defineType(String packageName, String className) {
-		packageName = packageName.trim();
-		// just some really weak input sanitization to catch potentially common mistakes
-		if(packageName.contains("/") 
-			|| packageName.contains("\\") 
-			|| packageName.contains(" ") 
-			|| packageName.endsWith(".")){
-			throw new IllegalArgumentException("Invalid package name.");
-		}
-		
-		try {
-			TypeSpec type = TypeSpec.classBuilder(className)
-				    .addModifiers(Modifier.PUBLIC)
-				    .addAnnotation(DefineType.class)
-				    .addJavadoc("TODO: Implement class body"
-							  + "\n\nThe entire contents of this class's bytecode will"
-							  + "\nbe injected into the target's \"" + packageName + "\" package.\n")
-				    .build();
-			
-			JavaFile javaFile = JavaFile.builder(packageName, type)
-					.build();
+		String javadoc = "TODO: Implement class body"
+				  + "\n\nThe entire contents of this class's bytecode will"
+				  + "\nbe injected into the target's \"" + packageName + "\" package.\n";
+		defineType(packageName, className, javadoc);
+	}
 	
-			// figure out where to put the source file
-			String relativePackageDirectory = packageName.replace(".", "/");
-			File sourceFile = new File(project.getProject().getFolder("/src/" + relativePackageDirectory).getLocation().toFile().getAbsolutePath() 
-									+ File.separator + className +  ".java");
-			
-			// make the package directory if its not there already
-			sourceFile.getParentFile().mkdirs();
-			
-			// write source file out to src folder
-			FileWriter fileWriter = new FileWriter(sourceFile);
-			javaFile.writeTo(fileWriter);
-			fileWriter.close();
-			
-			// refresh the project
-			refresh();
-		} catch (Throwable t){
-			Log.error("Error creating define type logic", t);
+	/**
+	 * Creates logic to replace a class in the given class target
+	 * @param targetClass
+	 */
+	public void replaceType(String packageName, String className){
+		String javadoc = "TODO: Implement class body"
+				  + "\n\nThe entire contents of this class's bytecode will"
+				  + "\nbe used to replace " + packageName + "." + className + " in the target.\n";
+		defineType(packageName, className, javadoc);
+	}
+	
+	/**
+	 * Creates logic to replace a class in the given class targets
+	 * @param targetClass
+	 */
+	public void replaceTypes(Q targetClasses){
+		replaceTypes(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to replace a class in the given class targets
+	 * @param targetClass
+	 */
+	public void replaceTypes(AtlasSet<Node> targetClasses){
+		for(Node targetClass : targetClasses){
+			replaceType(targetClass);
 		}
 	}
 	
@@ -142,7 +170,113 @@ public class JReFrameworkerAtlasProject {
 	 * @param targetClass
 	 */
 	public void replaceType(Node targetClass){
-		// TODO: implement
+		if(targetClass.taggedWith(XCSG.Java.Class)){
+			String className = ClassAnalysis.getName(targetClass);
+			String packageName = ClassAnalysis.getPackage(targetClass);
+			replaceType(packageName, className);
+		}
+	}
+	
+	/**
+	 * Creates a new class with that contains a DefineTypeFinality annotation
+	 * set to the type specified by the given packageName and className values
+	 * with the given finality
+	 * 
+	 * @param packageName
+	 * @param className
+	 * @param finality
+	 */
+	public void setTypeFinality(String packageName, String className, String targetClassPackageName, String targetClassName, boolean finality){
+		packageName = packageName.trim();
+		checkPackageName(packageName);
+		checkPackageName(targetClassPackageName);
+		try {
+			String javadoc = "Runs as a first pass to set type finality.\n";
+			
+			TypeSpec type = TypeSpec.classBuilder(className)
+				    .addModifiers(Modifier.PUBLIC)
+				    .addAnnotation(AnnotationSpec.builder(DefineTypeFinality.class)
+		                    .addMember("type", ("\"" + targetClassPackageName + "." + targetClassName + "\""))
+		                    .addMember("finality", new Boolean(finality).toString())
+		                    .build())
+				    .addJavadoc(javadoc)
+				    .build();
+			
+			JavaFile javaFile = JavaFile.builder(packageName, type)
+					.build();
+	
+			writeSourceFile(packageName, className, javaFile);
+		} catch (Throwable t){
+			Log.error("Error creating define type finality logic", t);
+		}
+	}
+	
+	/**
+	 * Creates a new class with that contains a DefineTypeVisibility annotation
+	 * set to the type specified by the given packageName and className values
+	 * with the given finality
+	 * 
+	 * @param packageName
+	 * @param className
+	 * @param finality
+	 */
+	public void setTypeVisibility(String packageName, String className, String targetClassPackageName, String targetClassName, String visibility){
+		packageName = packageName.trim();
+		checkPackageName(packageName);
+		checkPackageName(targetClassPackageName);
+		try {
+			String javadoc = "Runs as a first pass to set type visibility.\n";
+			
+			TypeSpec type = TypeSpec.classBuilder(className)
+				    .addModifiers(Modifier.PUBLIC)
+				    .addAnnotation(AnnotationSpec.builder(DefineTypeVisibility.class)
+		                    .addMember("type", ("\"" + targetClassPackageName + "." + targetClassName + "\""))
+		                    .addMember("visibility", ("\"" + visibility + "\""))
+		                    .build())
+				    .addJavadoc(javadoc)
+				    .build();
+			
+			JavaFile javaFile = JavaFile.builder(packageName, type)
+					.build();
+	
+			writeSourceFile(packageName, className, javaFile);
+		} catch (Throwable t){
+			Log.error("Error creating define type visibility logic", t);
+		}
+	}
+	
+	/**
+	 * Creates logic to merge code into the given class target
+	 * Note: Does not consider prebuild options
+	 * @param targetClass
+	 */
+	public void mergeType(String packageName, String className, String targetClassPackageName, String targetClassName){
+		packageName = packageName.trim();
+		checkPackageName(packageName);
+		
+		try {
+			String qualifiedTargetClass = targetClassPackageName + "." + targetClassName;
+			
+			String javadoc = "TODO: Implement class body"
+					  + "\n\nThe contents of this class's bytecode will be used to define, replace, and/or"
+					  + "\nmerge (preserve and replace) with " + packageName + "." + className + " in the target.\n"
+					  + "\nUse the @DefineField and @DefineMethod annotations to insert or replace\n"
+					  + "\nfields and methods. Use the @MergeMethod annotation to preserve and hide the\n"
+					  + "\noriginal method and replace the accessible method.\n";
+
+			TypeSpec type = TypeSpec.classBuilder(className).superclass(Class.forName(qualifiedTargetClass))
+				    .addModifiers(Modifier.PUBLIC)
+				    .addAnnotation(MergeType.class)
+				    .addJavadoc(javadoc)
+				    .build();
+			
+			JavaFile javaFile = JavaFile.builder(packageName, type)
+					.build();
+	
+			writeSourceFile(packageName, className, javaFile);
+		} catch (Throwable t){
+			Log.error("Error creating merge type logic", t);
+		}
 	}
 	
 	/**
@@ -150,7 +284,35 @@ public class JReFrameworkerAtlasProject {
 	 * @param targetClass
 	 */
 	public void mergeType(Node targetClass){
-		// TODO: implement
+		if(targetClass.taggedWith(XCSG.Java.Class)){
+			String targetClassPackage = ClassAnalysis.getPackage(targetClass);
+			String targetClassName = ClassAnalysis.getName(targetClass);
+			if(ClassAnalysis.isFinal(targetClass)){
+				setTypeFinality(targetClassPackage, (targetClassName + "FinalityPrebuild"), targetClassPackage, targetClassName, false);
+			}
+			if(ClassAnalysis.isFinal(targetClass)){
+				setTypeVisibility(targetClassPackage, (targetClassName + "VisibilityPrebuild"), targetClassPackage, targetClassName, "public");
+			}
+			mergeType(targetClassPackage, "Merge" + targetClassName , targetClassPackage, targetClassName);
+		}
+	}
+	
+	/**
+	 * Creates logic to replace a class in the given class targets
+	 * @param targetClass
+	 */
+	public void mergeTypes(Q targetClasses){
+		mergeTypes(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
+	}
+	
+	/**
+	 * Creates logic to replace a class in the given class targets
+	 * @param targetClass
+	 */
+	public void mergeTypes(AtlasSet<Node> targetClasses){
+		for(Node targetClass : targetClasses){
+			mergeType(targetClass);
+		}
 	}
 	
 	/**
@@ -158,7 +320,7 @@ public class JReFrameworkerAtlasProject {
 	 * @param fields
 	 */
 	public void defineFields(Q targetClasses){
-		defineFields(targetClasses.nodesTaggedWithAny(XCSG.Java.Class).eval().nodes());
+		defineFields(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
 	}
 	
 	/**
@@ -186,7 +348,7 @@ public class JReFrameworkerAtlasProject {
 	 * @param fields
 	 */
 	public void replaceFields(Q fields){
-		replaceFields(fields.nodesTaggedWithAny(XCSG.Field).eval().nodes());
+		replaceFields(fields.nodes(XCSG.Field).eval().nodes());
 	}
 	
 	/**
@@ -214,7 +376,7 @@ public class JReFrameworkerAtlasProject {
 	 * @param methods
 	 */
 	public void defineMethods(Q targetClasses){
-		defineMethods(targetClasses.nodesTaggedWithAny(XCSG.Java.Class).eval().nodes());
+		defineMethods(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
 	}
 	
 	/**
@@ -242,7 +404,7 @@ public class JReFrameworkerAtlasProject {
 	 * @param methods
 	 */
 	public void replaceMethods(Q methods){
-		replaceMethods(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+		replaceMethods(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
@@ -270,7 +432,7 @@ public class JReFrameworkerAtlasProject {
 	 * @param methods
 	 */
 	public void mergeMethods(Q methods){
-		mergeMethods(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+		mergeMethods(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
@@ -298,7 +460,7 @@ public class JReFrameworkerAtlasProject {
 	 * @param method
 	 */
 	public void addPreExecutionMethodHooks(Q methods){
-		addPreExecutionMethodHooks(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+		addPreExecutionMethodHooks(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
@@ -326,7 +488,7 @@ public class JReFrameworkerAtlasProject {
 	 * @param method
 	 */
 	public void addPostExecutionMethodHooks(Q methods){
-		addPostExecutionMethodHooks(methods.nodesTaggedWithAny(XCSG.Method).eval().nodes());
+		addPostExecutionMethodHooks(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
@@ -347,5 +509,44 @@ public class JReFrameworkerAtlasProject {
 		if(method.taggedWith(XCSG.Method)){
 			// TODO: implement
 		}
+	}
+	
+	/**
+	 * Just some really weak input sanitization to catch potentially common mistakes
+	 * @param packageName
+	 */
+	private void checkPackageName(String packageName) {
+		if(packageName.contains("/") 
+			|| packageName.contains("\\") 
+			|| packageName.contains(" ") 
+			|| packageName.endsWith(".")){
+			throw new IllegalArgumentException("Invalid package name.");
+		}
+	}
+	
+	/**
+	 * Creates the new source file in the project
+	 * @param packageName
+	 * @param className
+	 * @param javaFile
+	 * @throws IOException
+	 * @throws CoreException
+	 */
+	private void writeSourceFile(String packageName, String className, JavaFile javaFile) throws IOException, CoreException {
+		// figure out where to put the source file
+		String relativePackageDirectory = packageName.replace(".", "/");
+		File sourceFile = new File(project.getProject().getFolder("/src/" + relativePackageDirectory).getLocation().toFile().getAbsolutePath() 
+								+ File.separator + className +  ".java");
+		
+		// make the package directory if its not there already
+		sourceFile.getParentFile().mkdirs();
+		
+		// write source file out to src folder
+		FileWriter fileWriter = new FileWriter(sourceFile);
+		javaFile.writeTo(fileWriter);
+		fileWriter.close();
+		
+		// refresh the project
+		refresh();
 	}
 }
