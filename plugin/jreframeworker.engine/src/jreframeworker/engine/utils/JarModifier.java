@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarException;
@@ -98,23 +99,28 @@ public class JarModifier {
 		}
 		
 		String manifestPath = META_INF + SEPERATOR + "MANIFEST.MF";
-		JarEntry jarEntry = jar.getJarEntry(manifestPath);
-		if (jarEntry != null) {
+		JarEntry jarManifestEntry = jar.getJarEntry(manifestPath);
+		// if manifest not found then search manually
+		if (jarManifestEntry == null) {
 			Enumeration<JarEntry> entries = jar.entries();
 			while (entries.hasMoreElements()) {
-				jarEntry = (JarEntry) entries.nextElement();
-				if (manifestPath.equalsIgnoreCase(jarEntry.getName())){
+				jarManifestEntry = (JarEntry) entries.nextElement();
+				if (manifestPath.equalsIgnoreCase(jarManifestEntry.getName())){
 					break;
 				} else {
-					jarEntry = null;
+					jarManifestEntry = null;
 				}
 			}
 		}
-		Manifest manifest = new Manifest();
-		if (jarEntry != null){
-			manifest.read(jar.getInputStream(jarEntry));
+		
+		// if we've found a manifest then parse it
+		if(jarManifestEntry != null){
+			Manifest manifest = new Manifest();
+			if (jarManifestEntry != null){
+				manifest.read(jar.getInputStream(jarManifestEntry));
+			}
+			this.manifest = manifest;
 		}
-		this.manifest = manifest;
 		
 		jar.close();
 	}
@@ -146,6 +152,10 @@ public class JarModifier {
 		return null;
 	}
 	
+	/**
+	 * Returns the parsed manifest or null if there is no manifest
+	 * @return
+	 */
 	public Manifest getManifest(){
 		return manifest;
 	}
@@ -320,6 +330,19 @@ public class JarModifier {
 	 * @throws IOException  
 	 */
 	public void save(File outputArchiveFile) throws IOException {
+		// update the manifest if needed
+		if(manifest != null){
+			// unsign the manifest, signatures have changed
+			unsign();
+			
+			// sanitize the manifest
+			String manifestPath = META_INF + SEPERATOR + "MANIFEST.MF";
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			Manifest sanitizedManifest = sanitizeManifest(manifest);
+			sanitizedManifest.write(baos);
+			add(manifestPath, baos.toByteArray(), true);
+		}
+		
 		JarInputStream zin = null;
 	    JarOutputStream zout = null;
 	    try {
@@ -374,6 +397,28 @@ public class JarModifier {
 	    } 
 	}
 	
+	/**
+	 * Returns a copy of the manifest without any seals or signatures
+	 * @param manifest
+	 * @return
+	 */
+	private Manifest sanitizeManifest(Manifest manifest) {
+		Manifest sanitizedManifest = new Manifest();
+		Attributes sanitizedAttributes = sanitizedManifest.getMainAttributes();
+		
+		for(Entry<Object,Object> attributes : manifest.getMainAttributes().entrySet()){
+			if(attributes.getKey().equals(Attributes.Name.SEALED)){
+				continue;
+			}
+			if(attributes.getKey().equals(Attributes.Name.SIGNATURE_VERSION)){
+				continue;
+			}
+			sanitizedAttributes.put(attributes.getKey(), attributes.getValue());
+		}
+		
+		return sanitizedManifest;
+	}
+
 	/**
 	 * Prints the contents of the archive file if it were written to disk
 	 */

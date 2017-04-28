@@ -761,8 +761,9 @@ public class Engine {
 		methodToRename.name = renamedMethodName;
 		
 		// make the method private to hide it from the end user
-		methodToRename.access = Opcodes.ACC_PRIVATE;
-		
+		methodToRename.access = methodToRename.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+		methodToRename.access = methodToRename.access | Opcodes.ACC_PRIVATE;
+
 		Log.info("Renamed " + originalMethodName + " to " + renamedMethodName);
 		
 		return originalMethodName; // return the original name

@@ -91,20 +91,20 @@ public class MergeAdapter extends ClassVisitor {
 		// copy each method of the class to merge that is annotated
 		// with a jref annotation to the original class
 		for (Object methodObject : classToMerge.methods) {
-			MethodNode methodNode = (MethodNode) methodObject;
+			MethodNode methodNodeToMerge = (MethodNode) methodObject;
 
 			// static initializers need to be handled specially
-			if(methodNode.name.equals("<clinit>")){
+			if(methodNodeToMerge.name.equals("<clinit>")){
 				// TODO: merge static initializers
-			} else if(methodNode.name.equals("<init>")){
+			} else if(methodNodeToMerge.name.equals("<init>")){
 				// TODO: merge initializers
 			} else {
 				boolean define = false;
 				boolean merge = false;
 				// check if method is annotated with a jref annotation
 				LinkedList<AnnotationNode> jrefAnnotations = new LinkedList<AnnotationNode>();
-				if (methodNode.invisibleAnnotations != null) {
-					for (Object annotationObject : methodNode.invisibleAnnotations) {
+				if (methodNodeToMerge.invisibleAnnotations != null) {
+					for (Object annotationObject : methodNodeToMerge.invisibleAnnotations) {
 						AnnotationNode annotation = (AnnotationNode) annotationObject;
 						// check if the annotation is a jref annotation
 						JREFAnnotationIdentifier jrefChecker = new JREFAnnotationIdentifier();
@@ -124,13 +124,13 @@ public class MergeAdapter extends ClassVisitor {
 				// if the method is annotated with @DefineMethod or @MergeMethod, add the method
 				if(define || merge){
 					// in any case, strip the jref annotations from the method
-					methodNode.invisibleAnnotations.removeAll(jrefAnnotations);
+					methodNodeToMerge.invisibleAnnotations.removeAll(jrefAnnotations);
 					if(merge){
-						mergeMethod(methodNode, qualifiedRenamedMethods);
-						Log.info("Merged Method: " + methodNode.name);
+						mergeMethod(methodNodeToMerge, qualifiedRenamedMethods);
+						Log.info("Merged Method: " + methodNodeToMerge.name);
 					} else {
-						addMethod(methodNode);
-						Log.info("Added Method: " + methodNode.name);
+						addMethod(methodNodeToMerge);
+						Log.info("Added Method: " + methodNodeToMerge.name);
 					}
 				}
 			}
@@ -199,10 +199,20 @@ public class MergeAdapter extends ClassVisitor {
 						// this method has been renamed, we need to rename the call as well
 						instruction.name = mergeRenamePrefix + instruction.name;
 						
-						// if we renamed it, this call used super.x, so make
-						// it a virtual invocation instead of special invocation
+						// if the renamed method was a special invocation then we were
+						// calling the preserved method using super.foo(), so we need
+						// to make it a virtual invocation instead of special invocation
 						if (instruction.getOpcode() == Opcodes.INVOKESPECIAL) {
 							instruction.setOpcode(Opcodes.INVOKEVIRTUAL);
+						}
+					}
+					
+					// if the renamed method was a static invocation
+					// and the static invocation is to the class being merged in
+					// then we are calling the new static method so we need to change the owner
+					if (instruction.getOpcode() == Opcodes.INVOKESTATIC) {
+						if(classToMerge.name.equals(instruction.owner) && instruction.name.equals(renamedMethod)){
+							instruction.owner = baseClassName;
 						}
 					}
 				}
