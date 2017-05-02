@@ -412,7 +412,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-	private File getOriginalJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
+	public static File getOriginalJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
 		for(IClasspathEntry classpathEntry : jProject.getRawClasspath()){
 			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
 				File jar = classpathEntry.getPath().toFile().getCanonicalFile();
@@ -448,7 +448,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return false;
 	}
 	
-	private File getOriginalRuntimeJar(String targetJar) throws IOException {
+	private static File getOriginalRuntimeJar(String targetJar) throws IOException {
 		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
 		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
 		for (LibraryLocation library : locations) {

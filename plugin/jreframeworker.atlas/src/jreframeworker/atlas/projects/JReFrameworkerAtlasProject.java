@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,6 +16,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.xml.sax.SAXException;
 
 import com.ensoftcorp.atlas.core.db.graph.Node;
@@ -34,10 +38,30 @@ import jreframeworker.annotations.types.DefineTypeVisibility;
 import jreframeworker.annotations.types.MergeType;
 import jreframeworker.atlas.analysis.ClassAnalysis;
 import jreframeworker.atlas.analysis.MethodAnalysis;
+import jreframeworker.builder.JReFrameworkerBuilder;
 import jreframeworker.core.JReFrameworkerProject;
 
 public class JReFrameworkerAtlasProject {
 
+	@SuppressWarnings("rawtypes")
+	private Class searchClasspathForClass(String className) throws SAXException, IOException, ParserConfigurationException, JavaModelException {
+		ArrayList<ClassLoader> classLoaders = new ArrayList<ClassLoader>();
+		classLoaders.add(getClass().getClassLoader());
+		for (String targetJar : listTargets()) {
+			File originalJar = JReFrameworkerBuilder.getOriginalJar(targetJar, JavaCore.create(project.getProject()));
+			URL[] jarURL = { new URL("jar:file:" + originalJar.getCanonicalPath() + "!/") };
+			classLoaders.add(URLClassLoader.newInstance(jarURL));
+		}
+		for(ClassLoader classLoader : classLoaders){
+			try{
+				return classLoader.loadClass(className);
+			} catch (Exception e){
+				continue;
+			}
+		}
+		throw new RuntimeException("Class not found");
+	}
+	
 	private JReFrameworkerProject project;
 	
 	public JReFrameworkerAtlasProject(JReFrameworkerProject project) {
@@ -303,7 +327,7 @@ public class JReFrameworkerAtlasProject {
 					  + "\nfields and methods. Use the @MergeMethod annotation to preserve and hide the\n"
 					  + "\noriginal method and replace the accessible method.\n";
 
-			TypeSpec type = TypeSpec.classBuilder(sourceClassName).superclass(Class.forName(qualifiedTargetClass))
+			TypeSpec type = TypeSpec.classBuilder(sourceClassName).superclass(searchClasspathForClass(qualifiedTargetClass))
 				    .addModifiers(Modifier.PUBLIC)
 				    .addAnnotation(MergeType.class)
 				    .addJavadoc(javadoc)
@@ -536,7 +560,7 @@ public class JReFrameworkerAtlasProject {
 				
 				// TODO: consider using addStatement to add a return statement of the original implementation result if not void return
 				
-				TypeSpec type = TypeSpec.classBuilder(sourceClassName).superclass(Class.forName(qualifiedTargetClass))
+				TypeSpec type = TypeSpec.classBuilder(sourceClassName).superclass(searchClasspathForClass(qualifiedTargetClass))
 					    .addModifiers(Modifier.PUBLIC)
 					    .addAnnotation(MergeType.class)
 					    .addMethod(method)
