@@ -26,9 +26,11 @@ import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.squareup.javapoet.AnnotationSpec;
+import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
 import jreframeworker.annotations.methods.MergeMethod;
@@ -38,6 +40,7 @@ import jreframeworker.annotations.types.DefineTypeVisibility;
 import jreframeworker.annotations.types.MergeType;
 import jreframeworker.atlas.analysis.ClassAnalysis;
 import jreframeworker.atlas.analysis.MethodAnalysis;
+import jreframeworker.atlas.analysis.MethodAnalysis.Return;
 import jreframeworker.builder.JReFrameworkerBuilder;
 import jreframeworker.core.JReFrameworkerProject;
 
@@ -520,57 +523,79 @@ public class JReFrameworkerAtlasProject {
 				// figure out the merge method modifiers
 				ArrayList<Modifier> modifierSet = new ArrayList<Modifier>();
 				modifierSet.add(Modifier.PUBLIC); // it will be public after it gets set as public...
-				if(MethodAnalysis.isStatic(targetMethod)){
+				if (MethodAnalysis.isStatic(targetMethod)) {
 					modifierSet.add(Modifier.STATIC);
 				}
 				Modifier[] modifiers = new Modifier[modifierSet.size()];
 				modifierSet.toArray(modifiers);
-				
+
 				List<ParameterSpec> parameters = new LinkedList<ParameterSpec>();
-				for(MethodAnalysis.Parameter parameter : MethodAnalysis.getParameters(targetMethod)){
-					parameters.add(ParameterSpec.builder(parameter.getType(), parameter.getName(), parameter.getModifiers()).build());
+				for (MethodAnalysis.Parameter parameter : MethodAnalysis.getParameters(targetMethod)) {
+					Class parameterClassType;
+					if (parameter.isPrimitive()) {
+						parameterClassType = parameter.getPrimitive();
+					} else {
+						parameterClassType = searchClasspathForClass(parameter.getType());
+						if (parameter.isArray()) {
+							// TODO: how to consider dimension
+							ArrayTypeName array = ArrayTypeName.of(parameterClassType);
+							parameters.add(ParameterSpec.builder(array, parameter.getName(), parameter.getModifiers())
+									.build());
+						} else {
+							parameters.add(ParameterSpec
+									.builder(parameterClassType, parameter.getName(), parameter.getModifiers())
+									.build());
+						}
+					}
 				}
-				
-				@SuppressWarnings("rawtypes")
-				Class returnType = MethodAnalysis.getReturnType(targetMethod);
-				
-				MethodSpec method;
-				if(modifierSet.contains(Modifier.STATIC)){
-					method = MethodSpec.methodBuilder(methodName)
-						    .addModifiers(modifiers)
-						    .returns(returnType)
-						    .addParameters(parameters)
-						    .addAnnotation(MergeMethod.class)
-						    .addJavadoc("Use " + targetClassName + "." + methodName + " to access the preserved original " + methodName + " implementation.\n"
-						    		  + "Use " + sourceClassName + "." + methodName + " to access this modified " + methodName + " implementation.\n")
-						    .addComment("TODO: Implement")
-						    .build();
+
+				Return ret = MethodAnalysis.getReturnType(targetMethod);
+				TypeName returnTypeName;
+				Class returnClassType;
+				if (ret.isPrimitive()) {
+					returnClassType = ret.getPrimitive();
 				} else {
-					method = MethodSpec.methodBuilder(methodName)
-						    .addModifiers(modifiers)
-						    .returns(returnType)
-						    .addParameters(parameters)
-						    .addAnnotation(MergeMethod.class)
-						    .addAnnotation(Override.class) // only add override annotation if the target method is not static
-						    .addJavadoc("Use super." + methodName + " to access the preserved original " + methodName + " implementation.\n"
-						    		  + "Use this." + methodName + " to access this modified " + methodName + " implementation.\n")
-						    .addComment("TODO: Implement")
-						    .build();
+					returnClassType = searchClasspathForClass(ret.getType());
 				}
-				
-				// TODO: consider using addStatement to add a return statement of the original implementation result if not void return
-				
-				TypeSpec type = TypeSpec.classBuilder(sourceClassName).superclass(searchClasspathForClass(qualifiedTargetClass))
-					    .addModifiers(Modifier.PUBLIC)
-					    .addAnnotation(MergeType.class)
-					    .addMethod(method)
-					    .build();
-				
-				JavaFile javaFile = JavaFile.builder(sourcePackageName, type)
-						.build();
-		
+				if (ret.isArray()) {
+					// TODO: how to consider dimension
+					returnTypeName = ArrayTypeName.of(returnClassType); 
+				} else {
+					returnTypeName = TypeName.get(returnClassType);
+				}
+
+				MethodSpec method;
+				if (modifierSet.contains(Modifier.STATIC)) {
+					method = MethodSpec.methodBuilder(methodName).addModifiers(modifiers).returns(returnTypeName)
+							.addParameters(parameters).addAnnotation(MergeMethod.class)
+							.addJavadoc("Use " + targetClassName + "." + methodName
+									+ " to access the preserved original " + methodName + " implementation.\n" + "Use "
+									+ sourceClassName + "." + methodName + " to access this modified " + methodName
+									+ " implementation.\n")
+							.addComment("TODO: Implement").build();
+				} else {
+					// only add override annotation if the target method is not static
+					method = MethodSpec.methodBuilder(methodName).addModifiers(modifiers).returns(returnTypeName)
+							.addParameters(parameters).addAnnotation(MergeMethod.class).addAnnotation(Override.class)
+							.addJavadoc("Use super." + methodName + " to access the preserved original " + methodName
+									+ " implementation.\n" + "Use this." + methodName + " to access this modified "
+									+ methodName + " implementation.\n")
+							.addComment("TODO: Implement").build();
+				}
+
+				// TODO: consider using addStatement to add a return
+				// statement of the original implementation result if not
+				// void return
+
+				TypeSpec type = TypeSpec.classBuilder(sourceClassName)
+						.superclass(searchClasspathForClass(qualifiedTargetClass)).addModifiers(Modifier.PUBLIC)
+						.addAnnotation(MergeType.class).addMethod(method).build();
+
+				JavaFile javaFile = JavaFile.builder(sourcePackageName, type).build();
+
 				writeSourceFile(sourcePackageName, sourceClassName, javaFile);
-			} catch (Throwable t){
+
+			} catch (Throwable t) {
 				Log.error("Error creating merge method logic", t);
 			}
 		}
