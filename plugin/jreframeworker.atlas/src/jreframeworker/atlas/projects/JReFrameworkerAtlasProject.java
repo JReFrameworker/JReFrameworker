@@ -576,7 +576,10 @@ public class JReFrameworkerAtlasProject {
 	 */
 	public void mergeMethod(Node method){
 		if(method.taggedWith(XCSG.Method)){
-			// TODO: implement
+			Node targetClass = MethodAnalysis.getOwnerClass(method);
+			String packageName = ClassAnalysis.getPackage(targetClass);
+			String className = ClassAnalysis.getName(targetClass);
+			mergeMethod(packageName, ("MergeMethod" + className), method);
 		}
 	}
 	
