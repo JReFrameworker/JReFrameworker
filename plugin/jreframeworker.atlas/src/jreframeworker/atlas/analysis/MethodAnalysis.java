@@ -163,6 +163,7 @@ public class MethodAnalysis {
 		throw new IllegalArgumentException("Not a primitive type");
 	}
 	
+	@SuppressWarnings("rawtypes")
 	public static class Parameter {
 		private Modifier[] modifiers;
 		private String type;
@@ -228,6 +229,7 @@ public class MethodAnalysis {
 		
 	}
 
+	@SuppressWarnings("rawtypes")
 	public static class Return {
 		private String type;
 		private int arrayDimension = 0;

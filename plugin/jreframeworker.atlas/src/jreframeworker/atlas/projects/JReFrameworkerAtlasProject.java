@@ -531,6 +531,7 @@ public class JReFrameworkerAtlasProject {
 
 				List<ParameterSpec> parameters = new LinkedList<ParameterSpec>();
 				for (MethodAnalysis.Parameter parameter : MethodAnalysis.getParameters(targetMethod)) {
+					@SuppressWarnings("rawtypes")
 					Class parameterClassType;
 					if (parameter.isPrimitive()) {
 						parameterClassType = parameter.getPrimitive();
@@ -551,6 +552,7 @@ public class JReFrameworkerAtlasProject {
 
 				Return ret = MethodAnalysis.getReturnType(targetMethod);
 				TypeName returnTypeName;
+				@SuppressWarnings("rawtypes")
 				Class returnClassType;
 				if (ret.isPrimitive()) {
 					returnClassType = ret.getPrimitive();
