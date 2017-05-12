@@ -3,10 +3,6 @@ package jreframeworker.ui;
 import java.io.File;
 import java.io.IOException;
 
-import jreframeworker.Activator;
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.log.Log;
-
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
@@ -20,6 +16,10 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.UIJob;
 import org.osgi.framework.Bundle;
+
+import jreframeworker.Activator;
+import jreframeworker.core.JReFrameworker;
+import jreframeworker.log.Log;
 
 public class WizardErrorDialog extends UIJob {
 

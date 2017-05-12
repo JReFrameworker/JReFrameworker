@@ -15,14 +15,15 @@
  */
 package com.squareup.javapoet;
 
+import static com.squareup.javapoet.Util.checkNotNull;
+
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.lang.model.SourceVersion;
 
-import static com.squareup.javapoet.Util.checkNotNull;
+import javax.lang.model.SourceVersion;
 
 /**
  * Assigns Java identifier names to avoid collisions, keywords, and invalid characters. To use,

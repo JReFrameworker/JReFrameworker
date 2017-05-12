@@ -5,12 +5,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedList;
 
-import jreframeworker.log.Log;
-
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
+
+import jreframeworker.log.Log;
 
 public class RuntimeUtils {
 

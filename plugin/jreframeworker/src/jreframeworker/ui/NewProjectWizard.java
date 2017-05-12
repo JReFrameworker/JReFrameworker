@@ -3,9 +3,6 @@ package jreframeworker.ui;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.log.Log;
-
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
@@ -21,6 +18,9 @@ import org.eclipse.ui.INewWizard;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.UIJob;
+
+import jreframeworker.core.JReFrameworker;
+import jreframeworker.log.Log;
 
 public class NewProjectWizard extends Wizard implements INewWizard {
 

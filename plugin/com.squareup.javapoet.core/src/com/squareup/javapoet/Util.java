@@ -15,6 +15,8 @@
  */
 package com.squareup.javapoet;
 
+import static java.lang.Character.isISOControl;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,9 +26,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.lang.model.element.Modifier;
 
-import static java.lang.Character.isISOControl;
+import javax.lang.model.element.Modifier;
 
 /**
  * Like Guava, but worse and standalone. This makes it easier to mix JavaPoet with libraries that

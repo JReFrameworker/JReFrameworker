@@ -3,15 +3,15 @@ package jreframeworker.launcher;
 import java.io.File;
 import java.util.Arrays;
 
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.log.Log;
-
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.launching.JavaLaunchDelegate;
+
+import jreframeworker.core.JReFrameworker;
+import jreframeworker.log.Log;
 
 /**
  * A basic Java application launcher that adds in a boot classpath to the modified runtime

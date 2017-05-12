@@ -2,8 +2,6 @@ package jreframeworker.ui;
 
 import java.util.LinkedList;
 
-import jreframeworker.core.JReFrameworker;
-
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.SWT;
@@ -17,6 +15,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.wb.swt.SWTResourceManager;
+
+import jreframeworker.core.JReFrameworker;
 
 public class SelectJReFrameworkerProjectPage extends WizardPage {
 	

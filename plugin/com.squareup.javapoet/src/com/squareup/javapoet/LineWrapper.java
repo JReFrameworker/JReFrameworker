@@ -15,9 +15,9 @@
  */
 package com.squareup.javapoet;
 
-import java.io.IOException;
-
 import static com.squareup.javapoet.Util.checkNotNull;
+
+import java.io.IOException;
 
 /**
  * Implements soft line wrapping on an appendable. To use, append characters using {@link #append}
