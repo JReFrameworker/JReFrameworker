@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
-@Repeatable(MethodVisibilities.class)
+@Repeatable(DefineMethodVisibilities.class)
 public @interface DefineMethodVisibility {
 	String type();
 	String method();

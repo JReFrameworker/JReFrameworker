@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
-@Repeatable(MethodFinalities.class)
+@Repeatable(DefineMethodFinalities.class)
 public @interface DefineMethodFinality {
 	String type();
 	String method();

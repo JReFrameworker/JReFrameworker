@@ -12,6 +12,6 @@ import java.lang.annotation.Target;
 // but won't be retained by the VM at run time (invisible annotation)
 @Retention(RetentionPolicy.CLASS)
 
-public @interface FieldFinalities {
-	DefineFieldFinality[] value();
+public @interface DefineFieldVisibilities {
+	DefineFieldVisibility[] value();
 }

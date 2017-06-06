@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
-@Repeatable(FieldFinalities.class)
+@Repeatable(DefineFieldFinalities.class)
 public @interface DefineFieldFinality {
 	String type();
 	String field();

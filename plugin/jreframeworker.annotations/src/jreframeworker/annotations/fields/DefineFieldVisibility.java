@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
-@Repeatable(FieldVisibilities.class)
+@Repeatable(DefineFieldVisibilities.class)
 public @interface DefineFieldVisibility {
 	String type();
 	String field();
