@@ -25,15 +25,22 @@ public class PurgeIdentifier {
 		return targets;
 	}
 	
+	private static final String PHASE = "phase";
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";
 	private static final String METHOD = "method";
 	
 	public static class PurgeTypeAnnotation {
+		private int phase;
 		private String className;
 		
-		public PurgeTypeAnnotation(String className) {
+		public PurgeTypeAnnotation(int phase, String className) {
+			this.phase = phase;
 			this.className = className;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -42,12 +49,18 @@ public class PurgeIdentifier {
 	}
 	
 	public static class PurgeMethodAnnotation {
+		private int phase;
 		private String className;
 		private String methodName;
 		
-		public PurgeMethodAnnotation(String className, String methodName) {
+		public PurgeMethodAnnotation(int phase, String className, String methodName) {
+			this.phase = phase;
 			this.className = className;
 			this.methodName = methodName;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -60,12 +73,18 @@ public class PurgeIdentifier {
 	}
 	
 	public static class PurgeFieldAnnotation {
+		private int phase;
 		private String className;
 		private String fieldName;
 		
-		public PurgeFieldAnnotation(String className, String fieldName) {
+		public PurgeFieldAnnotation(int phase, String className, String fieldName) {
+			this.phase = phase;
 			this.className = className;
 			this.fieldName = fieldName;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -142,6 +161,7 @@ public class PurgeIdentifier {
     }
 
 	private void extractPurgeFieldValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		String fieldValue = null;
 		
@@ -149,7 +169,9 @@ public class PurgeIdentifier {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(FIELD)){
 		        	fieldValue = (String) value;
@@ -160,12 +182,13 @@ public class PurgeIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetFields.add(new PurgeFieldAnnotation(className, fieldValue));
+		    	targetFields.add(new PurgeFieldAnnotation(phaseValue, className, fieldValue));
 		    }
 		}
 	}
 
 	private void extractPurgeMethodValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		String methodValue = null;
 		
@@ -173,7 +196,9 @@ public class PurgeIdentifier {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(METHOD)){
 		        	methodValue = (String) value;
@@ -184,19 +209,22 @@ public class PurgeIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetMethods.add(new PurgeMethodAnnotation(className, methodValue));
+		    	targetMethods.add(new PurgeMethodAnnotation(phaseValue, className, methodValue));
 		    }
 		}
 	}
 
 	private void extractPurgeTypeAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		
 		if (annotation.values != null) {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        }
 		    }
@@ -205,7 +233,7 @@ public class PurgeIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetTypes.add(new PurgeTypeAnnotation(className));
+		    	targetTypes.add(new PurgeTypeAnnotation(phaseValue, className));
 		    }
 		}
 	}

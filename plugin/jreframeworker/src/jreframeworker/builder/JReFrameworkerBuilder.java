@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -36,10 +38,20 @@ import jreframeworker.core.BuildFile;
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.engine.Engine;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
+import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
+import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
+import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
 import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier;
+import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 import jreframeworker.engine.utils.BytecodeUtils;
 import jreframeworker.engine.utils.JarModifier;
 import jreframeworker.log.Log;
@@ -127,7 +139,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				Set<Engine> allEngines = new HashSet<Engine>();
 				for (String targetJar : BuildFile.getOrCreateBuildFile(jProject.getProject()).getTargets()) {
 					File originalJar = getOriginalJar(targetJar, jProject);
-					if (originalJar !=null && originalJar.exists()) {
+					if (originalJar != null && originalJar.exists()) {
 						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
 						allEngines.add(engine);
 						for(String entry : engine.getOriginalEntries()){
@@ -144,6 +156,11 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 						Log.warning("Jar not found: " + targetJar);
 					}
 				}
+				
+				// discover the build phases
+				Map<Integer,Integer> phases = getNormalizedBuildPhases(binDirectory, jProject);
+				String phasePurality = phases.size() > 1 ? "s" : "";
+				Log.info("Discovered " + phases.size() + " build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
 				
 				// add each class from classes in jars in raw directory
 				File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
@@ -194,6 +211,106 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
+	}
+	
+	private Map<Integer,Integer> getNormalizedBuildPhases(File binDirectory, IJavaProject jProject) throws IOException {
+		Integer[] phases = getBuildPhases(binDirectory, jProject);
+		Map<Integer,Integer> normalizedPhases = new HashMap<Integer,Integer>();
+		Integer normalizedPhase = 1;
+		for(Integer phase : phases){
+			normalizedPhases.put(normalizedPhase++, phase);
+		}
+		return normalizedPhases;
+	}
+	
+	private Integer[] getBuildPhases(File binDirectory, IJavaProject jProject) throws IOException {
+		Set<Integer> phases = getBuildPhases(binDirectory, jProject, new HashSet<Integer>());
+		ArrayList<Integer> phasesSorted = new ArrayList<Integer>(phases);
+		Collections.sort(phasesSorted);
+		Integer[] result = new Integer[phasesSorted.size()];
+		phases.toArray(result);
+		return result;
+	}
+	
+	private Set<Integer> getBuildPhases(File binDirectory, IJavaProject jProject, Set<Integer> phases) throws IOException {
+		File[] files = binDirectory.listFiles();
+		for(File file : files){
+			if(file.isFile()){
+				if(file.getName().endsWith(".class")){
+					byte[] classBytes = Files.readAllBytes(file.toPath());
+					if(classBytes.length > 0){
+						try {
+							ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
+							
+							boolean purgeModification = hasPurgeModification(classNode);
+							if(purgeModification){
+								PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
+								for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getTargetTypes()){
+									phases.add(purgeTypeAnnotation.getPhase());
+								}
+								for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getTargetFields()){
+									phases.add(purgeFieldAnnotation.getPhase());
+								}
+								for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getTargetMethods()){
+									phases.add(purgeMethodAnnotation.getPhase());
+								}
+							}
+							
+							boolean finalityModification = hasFinalityModification(classNode);
+							if(finalityModification){
+								DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
+								for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
+									phases.add(defineTypeFinalityAnnotation.getPhase());
+								}
+								for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
+									phases.add(defineFieldFinalityAnnotation.getPhase());
+								}
+								for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
+									phases.add(defineMethodFinalityAnnotation.getPhase());
+								}
+							}
+							
+							boolean visibilityModification = hasVisibilityModification(classNode);
+							if(visibilityModification){
+								DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+								for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
+									phases.add(defineTypeVisibilityAnnotation.getPhase());
+								}
+								for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
+									phases.add(defineFieldVisibilityAnnotation.getPhase());
+								}
+								for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
+									phases.add(defineMethodVisibilityAnnotation.getPhase());
+								}
+							}
+							
+							boolean mergeModification = hasMergeTypeModification(classNode);
+							if(mergeModification){
+								MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
+								// TODO: implement
+//								for(MergeTypeAnnotation mergeTypeAnnotation : mergeIdentifier.getTargetTypes()){
+//									phases.add(defineTypeVisibilityAnnotation.getPhase());
+//								}
+//								// no such thing as merge field
+//								for(MergeMethodAnnotation mergeMethodAnnotation : mergeIdentifier.getTargetMethods()){
+//									phases.add(mergeMethodAnnotation.getPhase());
+//								}
+							}
+							
+							boolean defineModification = hasDefineTypeModification(classNode);
+							if(defineModification){
+								// TODO: implement	
+							}
+						} catch (RuntimeException e){
+							Log.error("Error discovering build phases...", e);
+						}
+					}
+				}
+			} else if(file.isDirectory()){
+				getBuildPhases(file, jProject, phases);
+			}
+		}
+		return phases;
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
@@ -327,8 +444,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-
-
 	// TODO: see http://help.eclipse.org/mars/index.jsp?topic=%2Forg.eclipse.platform.doc.isv%2Fguide%2FresAdv_builders.htm
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
 

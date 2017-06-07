@@ -25,18 +25,25 @@ public class DefineFinalityIdentifier {
 		return targets;
 	}
 	
+	private static final String PHASE = "phase";
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";
 	private static final String METHOD = "method";
 	private static final String FINALITY = "finality";
 	
 	public static class DefineTypeFinalityAnnotation {
+		private int phase;
 		private String className;
 		private boolean finality;
 		
-		public DefineTypeFinalityAnnotation(String className, boolean finality) {
+		public DefineTypeFinalityAnnotation(int phase, String className, boolean finality) {
+			this.phase = phase;
 			this.className = className;
 			this.finality = finality;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -49,14 +56,20 @@ public class DefineFinalityIdentifier {
 	}
 	
 	public static class DefineMethodFinalityAnnotation {
+		private int phase;
 		private String className;
 		private String methodName;
 		private boolean finality;
 		
-		public DefineMethodFinalityAnnotation(String className, String methodName, boolean finality) {
+		public DefineMethodFinalityAnnotation(int phase, String className, String methodName, boolean finality) {
+			this.phase = phase;
 			this.className = className;
 			this.methodName = methodName;
 			this.finality = finality;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -73,14 +86,20 @@ public class DefineFinalityIdentifier {
 	}
 	
 	public static class DefineFieldFinalityAnnotation {
+		private int phase;
 		private String className;
 		private String fieldName;
 		private boolean finality;
 		
-		public DefineFieldFinalityAnnotation(String className, String fieldName, boolean finality) {
+		public DefineFieldFinalityAnnotation(int phase, String className, String fieldName, boolean finality) {
+			this.phase = phase;
 			this.className = className;
 			this.fieldName = fieldName;
 			this.finality = finality;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -161,6 +180,7 @@ public class DefineFinalityIdentifier {
     }
 
 	private void extractDefineFieldFinalityValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		String fieldValue = null;
 		Boolean finalityValue = null;
@@ -168,7 +188,9 @@ public class DefineFinalityIdentifier {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(FIELD)){
 		        	fieldValue = (String) value;
@@ -181,12 +203,13 @@ public class DefineFinalityIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetFields.add(new DefineFieldFinalityAnnotation(className, fieldValue, finalityValue));
+		    	targetFields.add(new DefineFieldFinalityAnnotation(phaseValue, className, fieldValue, finalityValue));
 		    }
 		}
 	}
 
 	private void extractDefineMethodFinalityValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		String methodValue = null;
 		Boolean finalityValue = null;
@@ -194,7 +217,9 @@ public class DefineFinalityIdentifier {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(METHOD)){
 		        	methodValue = (String) value;
@@ -207,19 +232,22 @@ public class DefineFinalityIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetMethods.add(new DefineMethodFinalityAnnotation(className, methodValue, finalityValue));
+		    	targetMethods.add(new DefineMethodFinalityAnnotation(phaseValue, className, methodValue, finalityValue));
 		    }
 		}
 	}
 
 	private void extractDefineTypeFinalityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		Boolean finalityValue = null;
 		if (annotation.values != null) {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(FINALITY)){
 		        	finalityValue = (boolean) value;
@@ -230,7 +258,7 @@ public class DefineFinalityIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetTypes.add(new DefineTypeFinalityAnnotation(className, finalityValue));
+		    	targetTypes.add(new DefineTypeFinalityAnnotation(phaseValue, className, finalityValue));
 		    }
 		}
 	}

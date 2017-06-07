@@ -26,6 +26,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(DefineTypeFinalities.class)
 public @interface DefineTypeFinality {
+	int phase() default 1;
 	String type();
 	boolean finality();
 }

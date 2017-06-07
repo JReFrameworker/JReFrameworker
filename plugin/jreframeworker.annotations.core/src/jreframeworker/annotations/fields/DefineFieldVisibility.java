@@ -27,6 +27,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(DefineFieldVisibilities.class)
 public @interface DefineFieldVisibility {
+	int phase() default 1;
 	String type();
 	String field();
 	String visibility();

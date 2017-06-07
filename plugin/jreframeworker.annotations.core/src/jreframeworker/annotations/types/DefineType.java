@@ -20,5 +20,5 @@ import java.lang.annotation.Target;
  * @author Ben Holland
  */
 public @interface DefineType {
-
+	int phase() default 1;
 }

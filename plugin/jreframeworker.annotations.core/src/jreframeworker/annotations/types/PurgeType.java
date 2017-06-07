@@ -19,5 +19,6 @@ import java.lang.annotation.Target;
  * @author Ben Holland
  */
 public @interface PurgeType {
+	int phase() default 1;
 	String type();
 }

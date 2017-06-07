@@ -24,5 +24,6 @@ import java.lang.annotation.Target;
  * @author Ben Holland
  */
 public @interface MergeType {
+	int phase() default 1;
 	String supertype() default "";
 }

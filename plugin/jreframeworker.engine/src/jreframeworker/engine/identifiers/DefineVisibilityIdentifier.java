@@ -41,18 +41,25 @@ public class DefineVisibilityIdentifier {
 		return targets;
 	}
 	
+	private static final String PHASE = "phase";
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";
 	private static final String METHOD = "method";
 	private static final String VISIBILITY = "visibility";
 	
 	public static class DefineTypeVisibilityAnnotation {
+		private int phase;
 		private String className;
 		private Visibility visibility;
 		
-		public DefineTypeVisibilityAnnotation(String className, Visibility visibility) {
+		public DefineTypeVisibilityAnnotation(int phase, String className, Visibility visibility) {
+			this.phase = phase;
 			this.className = className;
 			this.visibility = visibility;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -65,14 +72,20 @@ public class DefineVisibilityIdentifier {
 	}
 	
 	public static class DefineMethodVisibilityAnnotation {
+		private int phase;
 		private String className;
 		private String methodName;
 		private Visibility visibility;
 		
-		public DefineMethodVisibilityAnnotation(String className, String methodName, Visibility visibility) {
+		public DefineMethodVisibilityAnnotation(int phase, String className, String methodName, Visibility visibility) {
+			this.phase = phase;
 			this.className = className;
 			this.methodName = methodName;
 			this.visibility = visibility;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -89,14 +102,20 @@ public class DefineVisibilityIdentifier {
 	}
 	
 	public static class DefineFieldVisibilityAnnotation {
+		private int phase;
 		private String className;
 		private String fieldName;
 		private Visibility visibility;
 		
-		public DefineFieldVisibilityAnnotation(String className, String fieldName, Visibility visibility) {
+		public DefineFieldVisibilityAnnotation(int phase, String className, String fieldName, Visibility visibility) {
+			this.phase = phase;
 			this.className = className;
 			this.fieldName = fieldName;
 			this.visibility = visibility;
+		}
+		
+		public int getPhase(){
+			return phase;
 		}
 		
 		public String getClassName(){
@@ -179,6 +198,7 @@ public class DefineVisibilityIdentifier {
     }
 
 	private void extractDefineFieldVisibilityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		String fieldValue = null;
 		Visibility visibilityValue = null;
@@ -186,7 +206,9 @@ public class DefineVisibilityIdentifier {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(FIELD)){
 		        	fieldValue = (String) value;
@@ -200,12 +222,13 @@ public class DefineVisibilityIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetFields.add(new DefineFieldVisibilityAnnotation(className, fieldValue, visibilityValue));
+		    	targetFields.add(new DefineFieldVisibilityAnnotation(phaseValue, className, fieldValue, visibilityValue));
 		    }
 		}
 	}
 
 	private void extractDefineMethodVisibilityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		String methodValue = null;
 		Visibility visibilityValue = null;
@@ -213,7 +236,9 @@ public class DefineVisibilityIdentifier {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(METHOD)){
 		        	methodValue = (String) value;
@@ -227,19 +252,22 @@ public class DefineVisibilityIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetMethods.add(new DefineMethodVisibilityAnnotation(className, methodValue, visibilityValue));
+		    	targetMethods.add(new DefineMethodVisibilityAnnotation(phaseValue, className, methodValue, visibilityValue));
 		    }
 		}
 	}
 
 	private void extractDefineTypeVisibilityAnnotationValues(ClassNode classNode, AnnotationNode annotation) {
+		int phaseValue = 1; // default to 1
 		String typeValue = null;
 		Visibility visibilityValue = null;
 		if (annotation.values != null) {
 		    for (int i = 0; i < annotation.values.size(); i += 2) {
 		        String name = (String) annotation.values.get(i);
 		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(TYPE)){
+		        if(name.equals(PHASE)){
+		        	phaseValue = (int) value;
+		        } else if(name.equals(TYPE)){
 		        	typeValue = ((String)value).replaceAll("\\.", "/");
 		        } else if(name.equals(VISIBILITY)){
 		        	String valueString = (String) value;
@@ -251,7 +279,7 @@ public class DefineVisibilityIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetTypes.add(new DefineTypeVisibilityAnnotation(className, visibilityValue));
+		    	targetTypes.add(new DefineTypeVisibilityAnnotation(phaseValue, className, visibilityValue));
 		    }
 		}
 	}

@@ -28,6 +28,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(DefineFieldFinalities.class)
 public @interface DefineFieldFinality {
+	int phase() default 1;
 	String type();
 	String field();
 	boolean finality();

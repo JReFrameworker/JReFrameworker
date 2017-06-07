@@ -48,6 +48,7 @@ import jreframeworker.log.Log;
 public class JReFrameworker {
 
 	public static final String BUILD_DIRECTORY = "build";
+	public static final String BUILD_PHASE_DIRECTORY_PREFIX = ".phase";
 	public static final String BUILD_CONFIG = BUILD_DIRECTORY + "/" + "config";
 	public static final String JREF_PROJECT_RESOURCE_DIRECTORY = ".jref"; // hidden directory
 	public static final String EXPORT_DIRECTORY = "export";
@@ -56,6 +57,10 @@ public class JReFrameworker {
 	public static final String RAW_DIRECTORY = "raw";
 	public static final String JRE_FRAMEWORKER_ANNOTATIONS_JAR = "jreframeworker-annotations.jar";
 	public static final String ANNOTATIONS_JAR_PATH = "annotations" + "/" + JRE_FRAMEWORKER_ANNOTATIONS_JAR;
+	
+	public static String getBuildPhaseDirectory(int phase){
+		return BUILD_DIRECTORY + "/" + BUILD_PHASE_DIRECTORY_PREFIX + phase;
+	}
 	
 	public static LinkedList<IJavaProject> getJReFrameworkerProjects(){
 		LinkedList<IJavaProject> projects = new LinkedList<IJavaProject>();

@@ -28,6 +28,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(DefineMethodFinalities.class)
 public @interface DefineMethodFinality {
+	int phase() default 1;
 	String type();
 	String method();
 	boolean finality();

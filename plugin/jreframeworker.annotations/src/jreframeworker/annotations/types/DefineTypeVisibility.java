@@ -25,6 +25,7 @@ import java.lang.annotation.Target;
  */
 @Repeatable(DefineTypeVisibilities.class)
 public @interface DefineTypeVisibility {
+	int phase() default 1;
 	String type();
 	String visibility();
 }
