@@ -128,7 +128,12 @@ public class BuildFile {
 	public static BuildFile createBuildFile(IProject project) {
 		try {
 			File buildXMLFile = new File(project.getLocation().toFile().getAbsolutePath() + File.separator + XML_BUILD_FILENAME);
-			Log.info("Created Build XML File: " + buildXMLFile.getAbsolutePath());
+			String base = project.getLocation().toFile().getCanonicalPath();
+			String relativeBuildFilePath = buildXMLFile.getCanonicalPath().substring(base.length());
+			if(relativeBuildFilePath.charAt(0) == File.separatorChar){
+				relativeBuildFilePath = relativeBuildFilePath.substring(1);
+			}
+			Log.info("Created Build XML File: " + relativeBuildFilePath);
 			
 			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
@@ -146,6 +151,8 @@ public class BuildFile {
 			Log.error("ParserConfigurationException", pce);
 		} catch (TransformerException tfe) {
 			Log.error("TransformerException", tfe);
+		} catch (IOException ioe) {
+			Log.error("IOException", ioe);
 		}
 		throw new RuntimeException("Unable to create build file.");
 	}
