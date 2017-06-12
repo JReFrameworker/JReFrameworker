@@ -159,7 +159,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				
 				// discover the build phases
 				Map<Integer,Integer> phases = getNormalizedBuildPhases(binDirectory, jProject);
-				String phasePurality = phases.size() > 1 ? "s" : "";
+				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
 				Log.info("Discovered " + phases.size() + " build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
 				
 				// add each class from classes in jars in raw directory
