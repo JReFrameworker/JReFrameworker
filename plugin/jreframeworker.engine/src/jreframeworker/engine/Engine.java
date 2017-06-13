@@ -25,7 +25,8 @@ import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
-import jreframeworker.engine.identifiers.DefineMethodsIdentifier;
+import jreframeworker.engine.identifiers.DefineIdentifier;
+import jreframeworker.engine.identifiers.DefineIdentifier.DefineMethodAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
@@ -33,6 +34,7 @@ import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVi
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.Visibility;
 import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier;
+import jreframeworker.engine.identifiers.MergeIdentifier.MergeMethodAnnotation;
 import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
@@ -202,7 +204,9 @@ public class Engine {
 					}
 					processed = true;
 				} else if(checker.isMergeTypeAnnotation()){
-					MergeTypeAnnotation mergeTypeAnnotation = MergeIdentifier.getMergeTypeAnnotation(classNode, annotationNode);
+					MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
+					
+					MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
 					String qualifiedParentClassName = mergeTypeAnnotation.getSupertype();
 					byte[] baseClass = getRawBytecode(qualifiedParentClassName);
 					byte[] mergedClass = mergeClasses(baseClass, inputClass);
@@ -219,7 +223,7 @@ public class Engine {
 	private boolean purge(PurgeIdentifier purgeIdentifier) throws IOException {
 		boolean processed = false;
 		// purge types
-		for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getTargetTypes()){
+		for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
 			String className = purgeTypeAnnotation.getClassName();
 			if(className.contains("$")){
 				// deal with outer class references to inner class files first
@@ -255,7 +259,7 @@ public class Engine {
 			}
 		}
 		// purge methods
-		for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getTargetMethods()){
+		for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
 			// final is not a valid modifier for initializers so no need to consider that case
 			String className = purgeMethodAnnotation.getClassName();
 			ClassNode classNode = getBytecode(className);
@@ -280,7 +284,7 @@ public class Engine {
 			}
 		}
 		// purge fields
-		for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getTargetFields()){
+		for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
 			String className = purgeFieldAnnotation.getClassName();
 			ClassNode classNode = getBytecode(className);
 			for (Object o : classNode.fields) {
@@ -697,16 +701,17 @@ public class Engine {
 		LinkedList<MethodNode> baseMethods = baseMethodsIdentifier.getBaseMethods();
 		
 		// identify methods to insert or replace
-		DefineMethodsIdentifier defineMethodsIdentifier = new DefineMethodsIdentifier(classToMergeClassNode);
-		LinkedList<MethodNode> methodsToDefine = defineMethodsIdentifier.getDefineMethods();
+		DefineIdentifier defineMethodsIdentifier = new DefineIdentifier(classToMergeClassNode);
+		LinkedList<DefineMethodAnnotation> methodsToDefine = defineMethodsIdentifier.getDefinedMethods();
 		
 		// identify methods to merge
 		MergeIdentifier mergeIdentifier = new MergeIdentifier(classToMergeClassNode);
-		LinkedList<MethodNode> methodsToMerge = mergeIdentifier.getMergeMethods();
+		LinkedList<MergeMethodAnnotation> methodToMergeAnnotations = mergeIdentifier.getMergeMethodAnnotations();
 		
 		// rename base methods that should be preserved
 		LinkedList<String> renamedMethods = new LinkedList<String>();
-		for(MethodNode methodToMerge : methodsToMerge){
+		for(MergeMethodAnnotation methodToMergeAnnotation : methodToMergeAnnotations){
+			MethodNode methodToMerge = methodToMergeAnnotation.getMethodNode();
 			boolean foundTargetMethod = false;
 			for(MethodNode baseMethod : baseMethods){
 				if(methodToMerge.signature != null && baseMethod.signature != null){
@@ -734,7 +739,10 @@ public class Engine {
 		// purge defined methods that were already there
 		// adapt a ClassWriter with the PurgeAdapter
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-		Set<MethodNode> methodsToPurge = new HashSet<MethodNode>(methodsToDefine);
+		Set<MethodNode> methodsToPurge = new HashSet<MethodNode>();
+		for(DefineMethodAnnotation methodToDefine : methodsToDefine){
+			methodsToPurge.add(methodToDefine.getMethodNode());
+		}
 		Set<FieldNode> fieldsToPurge = new HashSet<FieldNode>();
 		PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, methodsToPurge, fieldsToPurge);
 		ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(baseClassNode));

@@ -10,16 +10,23 @@ import org.objectweb.asm.tree.ClassNode;
 
 public class PurgeIdentifier {
 	
+	/**
+	 * Returns a collection of qualified classes that are marked to be purged or contain
+	 * classes, fields, or methods marked to be purged
+	 * @param classNode
+	 * @return
+	 * @throws IOException
+	 */
 	public static Set<String> getPurgeTargets(ClassNode classNode) throws IOException {
 		PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
 		Set<String> targets = new HashSet<String>();
-		for(PurgeTypeAnnotation annotation : purgeIdentifier.getTargetTypes()){
+		for(PurgeTypeAnnotation annotation : purgeIdentifier.getPurgeTypeAnnotations()){
 			targets.add(annotation.getClassName());
 		}
-		for(PurgeMethodAnnotation annotation : purgeIdentifier.getTargetMethods()){
+		for(PurgeMethodAnnotation annotation : purgeIdentifier.getPurgeMethodAnnotations()){
 			targets.add(annotation.getClassName());
 		}
-		for(PurgeFieldAnnotation annotation : purgeIdentifier.getTargetFields()){
+		for(PurgeFieldAnnotation annotation : purgeIdentifier.getPurgeFieldAnnotations()){
 			targets.add(annotation.getClassName());
 		}
 		return targets;
@@ -96,12 +103,14 @@ public class PurgeIdentifier {
 		}
 	}
 	
-	private LinkedList<PurgeTypeAnnotation> targetTypes = new LinkedList<PurgeTypeAnnotation>();
-	private LinkedList<PurgeMethodAnnotation> targetMethods = new LinkedList<PurgeMethodAnnotation>();
-	private LinkedList<PurgeFieldAnnotation> targetFields = new LinkedList<PurgeFieldAnnotation>();
+	private LinkedList<PurgeTypeAnnotation> purgeTypeAnnotations = new LinkedList<PurgeTypeAnnotation>();
+	private LinkedList<PurgeMethodAnnotation> purgeMethodAnnotations = new LinkedList<PurgeMethodAnnotation>();
+	private LinkedList<PurgeFieldAnnotation> purgeFieldAnnotations = new LinkedList<PurgeFieldAnnotation>();
 
 	@SuppressWarnings("rawtypes")
 	public PurgeIdentifier(ClassNode classNode) {
+		// a purge annotation must be on a type, putting it on a field or a
+		// method is silly since you created it just to purge it
 		if (classNode.invisibleAnnotations != null) {
 			for (Object annotationObject : classNode.invisibleAnnotations) {
 				AnnotationNode annotation = (AnnotationNode) annotationObject;
@@ -182,7 +191,7 @@ public class PurgeIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetFields.add(new PurgeFieldAnnotation(phaseValue, className, fieldValue));
+		    	purgeFieldAnnotations.add(new PurgeFieldAnnotation(phaseValue, className, fieldValue));
 		    }
 		}
 	}
@@ -209,7 +218,7 @@ public class PurgeIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetMethods.add(new PurgeMethodAnnotation(phaseValue, className, methodValue));
+		    	purgeMethodAnnotations.add(new PurgeMethodAnnotation(phaseValue, className, methodValue));
 		    }
 		}
 	}
@@ -233,21 +242,21 @@ public class PurgeIdentifier {
 		    	if(className.equals("")){
 		    		className = classNode.superName;
 		    	}
-		    	targetTypes.add(new PurgeTypeAnnotation(phaseValue, className));
+		    	purgeTypeAnnotations.add(new PurgeTypeAnnotation(phaseValue, className));
 		    }
 		}
 	}
 	
-	public LinkedList<PurgeTypeAnnotation> getTargetTypes() {
-		return targetTypes;
+	public LinkedList<PurgeTypeAnnotation> getPurgeTypeAnnotations() {
+		return purgeTypeAnnotations;
 	}
 	
-    public LinkedList<PurgeMethodAnnotation> getTargetMethods() {
-		return targetMethods;
+    public LinkedList<PurgeMethodAnnotation> getPurgeMethodAnnotations() {
+		return purgeMethodAnnotations;
 	}
     
-    public LinkedList<PurgeFieldAnnotation> getTargetFields() {
-		return targetFields;
+    public LinkedList<PurgeFieldAnnotation> getPurgeFieldAnnotations() {
+		return purgeFieldAnnotations;
 	}
     
 }

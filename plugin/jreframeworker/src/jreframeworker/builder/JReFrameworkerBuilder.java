@@ -160,7 +160,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				// discover the build phases
 				Map<Integer,Integer> phases = getNormalizedBuildPhases(binDirectory, jProject);
 				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
-				Log.info("Discovered " + phases.size() + " build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
+				Log.info("Discovered " + phases.size() + " explicit build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
 				
 				// add each class from classes in jars in raw directory
 				File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
@@ -245,13 +245,13 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							boolean purgeModification = hasPurgeModification(classNode);
 							if(purgeModification){
 								PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
-								for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getTargetTypes()){
+								for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
 									phases.add(purgeTypeAnnotation.getPhase());
 								}
-								for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getTargetFields()){
+								for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
 									phases.add(purgeFieldAnnotation.getPhase());
 								}
-								for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getTargetMethods()){
+								for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
 									phases.add(purgeMethodAnnotation.getPhase());
 								}
 							}
@@ -401,22 +401,21 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								}
 								
 								if(mergeModification){
-									Set<String> targets = MergeIdentifier.getMergeTargets(classNode);
-									for(String target : targets){
-										// merge into each target jar that contains the merge target
-										if(engineMap.containsKey(target)){
-											for(Engine engine : engineMap.get(target)){
-												if(isRuntimeJar(engine.getJarName())){
-													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-												} else {
-													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-												}
-												engine.process(classBytes);
+									MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
+									String target = mergeIdentifier.getMergeTypeAnnotation().getSupertype();
+									// merge into each target jar that contains the merge target
+									if(engineMap.containsKey(target)){
+										for(Engine engine : engineMap.get(target)){
+											if(isRuntimeJar(engine.getJarName())){
+												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+											} else {
+												URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
 											}
-										} else {
-											Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+											engine.process(classBytes);
 										}
+									} else {
+										Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
 									}
 								} 
 								
