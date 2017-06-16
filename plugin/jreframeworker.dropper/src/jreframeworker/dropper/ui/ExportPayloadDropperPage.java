@@ -1,4 +1,4 @@
-package jreframeworker.ui;
+package jreframeworker.dropper.ui;
 
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.SWT;

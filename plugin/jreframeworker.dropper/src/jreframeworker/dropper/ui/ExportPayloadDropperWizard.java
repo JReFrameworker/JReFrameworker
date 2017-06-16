@@ -1,4 +1,4 @@
-package jreframeworker.ui;
+package jreframeworker.dropper.ui;
 
 import java.io.File;
 import java.io.InputStream;
@@ -23,10 +23,12 @@ import org.eclipse.ui.IExportWizard;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
 
-import jreframeworker.Activator;
 import jreframeworker.core.JReFrameworker;
+import jreframeworker.dropper.Activator;
+import jreframeworker.dropper.log.Log;
 import jreframeworker.engine.utils.JarModifier;
-import jreframeworker.log.Log;
+import jreframeworker.dropper.ui.ExportPayloadDropperPage;
+import jreframeworker.dropper.ui.SelectJReFrameworkerProjectPage;
 
 public class ExportPayloadDropperWizard extends Wizard implements IExportWizard {
 

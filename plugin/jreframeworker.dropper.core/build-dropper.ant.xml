@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project default="create_dropper_jar" name="Create jreframeworker.dropper">
     <property name="dir.buildfile" value="."/>
-    <property name="dir.jarfile" value="../jreframeworker/export"/>
+    <property name="dir.jarfile" value="../jreframeworker.dropper/export"/>
     <target name="create_dropper_jar">
         <jar destfile="${dir.jarfile}/dropper.jar" filesetmanifest="mergewithoutmain">
             <manifest>
