@@ -1,16 +1,9 @@
 package jreframeworker.engine.identifiers;
-import java.io.IOException;
-import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Set;
 
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
-
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
-import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 
 public class MergeIdentifier {
 	

@@ -702,7 +702,7 @@ public class Engine {
 		
 		// identify methods to insert or replace
 		DefineIdentifier defineMethodsIdentifier = new DefineIdentifier(classToMergeClassNode);
-		LinkedList<DefineMethodAnnotation> methodsToDefine = defineMethodsIdentifier.getDefinedMethods();
+		LinkedList<DefineMethodAnnotation> methodsToDefine = defineMethodsIdentifier.getDefineMethodAnnotations();
 		
 		// identify methods to merge
 		MergeIdentifier mergeIdentifier = new MergeIdentifier(classToMergeClassNode);

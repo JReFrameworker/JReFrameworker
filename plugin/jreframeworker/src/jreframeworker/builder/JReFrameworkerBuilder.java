@@ -41,12 +41,17 @@ import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
+import jreframeworker.engine.identifiers.DefineIdentifier;
+import jreframeworker.engine.identifiers.DefineIdentifier.DefineFieldAnnotation;
+import jreframeworker.engine.identifiers.DefineIdentifier.DefineMethodAnnotation;
+import jreframeworker.engine.identifiers.DefineIdentifier.DefineTypeAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
 import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier;
+import jreframeworker.engine.identifiers.MergeIdentifier.MergeMethodAnnotation;
 import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
@@ -287,19 +292,25 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							boolean mergeModification = hasMergeTypeModification(classNode);
 							if(mergeModification){
 								MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
-								// TODO: implement
-//								for(MergeTypeAnnotation mergeTypeAnnotation : mergeIdentifier.getTargetTypes()){
-//									phases.add(defineTypeVisibilityAnnotation.getPhase());
-//								}
-//								// no such thing as merge field
-//								for(MergeMethodAnnotation mergeMethodAnnotation : mergeIdentifier.getTargetMethods()){
-//									phases.add(mergeMethodAnnotation.getPhase());
-//								}
+								MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
+								phases.add(mergeTypeAnnotation.getPhase());
+								// no such thing as merge field, so skipping fields
+								for(MergeMethodAnnotation mergeMethodAnnotation : mergeIdentifier.getMergeMethodAnnotations()){
+									phases.add(mergeMethodAnnotation.getPhase());
+								}
 							}
 							
 							boolean defineModification = hasDefineTypeModification(classNode);
 							if(defineModification){
-								// TODO: implement	
+								DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
+								DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
+								phases.add(defineTypeAnnotation.getPhase());
+								for(DefineFieldAnnotation defineFieldAnnotation : defineIdentifier.getDefineFieldAnnotations()){
+									phases.add(defineFieldAnnotation.getPhase());
+								}
+								for(DefineMethodAnnotation defineMethodAnnotation : defineIdentifier.getDefineMethodAnnotations()){
+									phases.add(defineMethodAnnotation.getPhase());
+								}	
 							}
 						} catch (RuntimeException e){
 							Log.error("Error discovering build phases...", e);

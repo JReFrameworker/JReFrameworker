@@ -68,7 +68,6 @@ public class DefineIdentifier {
 	private LinkedList<DefineMethodAnnotation> targetMethods = new LinkedList<DefineMethodAnnotation>();
 	private LinkedList<DefineFieldAnnotation> targetFields = new LinkedList<DefineFieldAnnotation>();
 
-	@SuppressWarnings("rawtypes")
 	public DefineIdentifier(ClassNode classNode) {
 		if (classNode.invisibleAnnotations != null) {
 			for (Object annotationObject : classNode.invisibleAnnotations) {
@@ -162,15 +161,15 @@ public class DefineIdentifier {
 		}
 	}
 
-	public DefineTypeAnnotation getDefinedType() {
+	public DefineTypeAnnotation getDefineTypeAnnotation() {
 		return targetType;
 	}
 
-	public LinkedList<DefineMethodAnnotation> getDefinedMethods() {
+	public LinkedList<DefineMethodAnnotation> getDefineMethodAnnotations() {
 		return targetMethods;
 	}
 
-	public LinkedList<DefineFieldAnnotation> getDefinedFields() {
+	public LinkedList<DefineFieldAnnotation> getDefineFieldAnnotations() {
 		return targetFields;
 	}
     
