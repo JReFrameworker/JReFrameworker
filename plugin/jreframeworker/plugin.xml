@@ -133,4 +133,25 @@
       </shortcut>
    </extension>
    
+   <!-- defines command handlers -->
+   <extension point="org.eclipse.ui.handlers">
+		<handler commandId="jreframeworker.addTargetCommand"
+				 class="jreframeworker.handlers.AddTargetHandler">
+		</handler>
+	</extension>
+	
+	<!-- add some menu items for the command handlers -->
+	<extension point="org.eclipse.ui.menus">
+		<menuContribution locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=additions">
+			<menu id="jreframeworker.explorer.menu" 
+				  label="JReFrameworker" />
+		</menuContribution>
+		<menuContribution locationURI="popup:jreframeworker.explorer.menu?after=additions">
+			<command commandId="jreframeworker.addTargetCommand" 
+					 icon="icons/JReFrameworker-toolbar.gif" 
+					 label="Add Library as Target" 
+					 style="push" />
+		</menuContribution>
+	</extension>
+   
 </plugin>

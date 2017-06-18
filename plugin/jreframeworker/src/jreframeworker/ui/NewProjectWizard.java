@@ -68,7 +68,8 @@ public class NewProjectWizard extends Wizard implements INewWizard {
 			public void run(IProgressMonitor monitor) {
 				IStatus result = null;
 				try {
-					result = JReFrameworker.createProject(projectName, projectLocation, monitor, "rt.jar");
+					String [] targets = new String[]{};
+					result = JReFrameworker.createProject(projectName, projectLocation, monitor, targets);
 				} catch (Throwable t) {
 					String message = "Could not create JReFrameworker runtime project. " + t.getMessage();
 					UIJob uiJob = new WizardErrorDialog("Error creating project...", message, projectName);

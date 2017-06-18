@@ -112,7 +112,7 @@ public class JReFrameworker {
 				return Status.CANCEL_STATUS;
 			}
 			
-			BuildFile buildFile = BuildFile.createBuildFile(project);
+			BuildFile buildFile = BuildFile.createBuildFile(jProject);
 			for(String target : targets){
 				buildFile.addTarget(target);
 			}

@@ -16,7 +16,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.xml.sax.SAXException;
 
@@ -51,7 +50,7 @@ public class JReFrameworkerAtlasProject {
 		ArrayList<ClassLoader> classLoaders = new ArrayList<ClassLoader>();
 		classLoaders.add(getClass().getClassLoader());
 		for (String targetJar : listTargets()) {
-			File originalJar = JReFrameworkerBuilder.getOriginalJar(targetJar, JavaCore.create(project.getProject()));
+			File originalJar = JReFrameworkerBuilder.getClasspathJar(targetJar, project);
 			URL[] jarURL = { new URL("jar:file:" + originalJar.getCanonicalPath() + "!/") };
 			classLoaders.add(URLClassLoader.newInstance(jarURL));
 		}

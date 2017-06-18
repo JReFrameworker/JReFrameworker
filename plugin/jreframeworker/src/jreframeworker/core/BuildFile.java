@@ -17,7 +17,10 @@ import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.eclipse.core.resources.IProject;
+import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaModelException;
+import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -72,14 +75,16 @@ public class BuildFile {
 		Document doc = dBuilder.parse(jrefXMLFile);
 		doc.getDocumentElement().normalize();
 		
-		// add target
-		Element rootElement = doc.getDocumentElement();
-		Element target = doc.createElement("target");
-		rootElement.appendChild(target);
-		target.setAttribute("name", targetJarName);
+		if(!getTargets().contains(targetJarName)){
+			// add target
+			Element rootElement = doc.getDocumentElement();
+			Element target = doc.createElement("target");
+			rootElement.appendChild(target);
+			target.setAttribute("name", targetJarName);
 
-		// write the content into xml file
-		writeBuildFile(jrefXMLFile, doc);
+			// write the content into xml file
+			writeBuildFile(jrefXMLFile, doc);
+		}
 	}
 	
 	/**
@@ -107,16 +112,97 @@ public class BuildFile {
 	}
 	
 	/**
+	 * Adds an original classpath entry jar to the build file
+	 * @param buildFile
+	 * @param jarName
+	 * @throws TransformerException
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 */
+	public void addOriginalClasspathEntry(String jarName) throws TransformerException, ParserConfigurationException, SAXException, IOException {
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(jrefXMLFile);
+		doc.getDocumentElement().normalize();
+		
+		if(!getOriginalClasspathEntries().contains(jarName)){
+			Element originalClasspath = (Element) doc.getElementsByTagName("original-classpath").item(0);
+			
+			if(originalClasspath == null){
+				Element rootElement = doc.getDocumentElement();
+				originalClasspath = doc.createElement("original-classpath");
+				rootElement.appendChild(originalClasspath);
+			}
+			
+			// add classpath entry
+			Element entry = doc.createElement("entry");
+			originalClasspath.appendChild(entry);
+			entry.setAttribute("library", jarName);
+
+			// write the content into xml file
+			writeBuildFile(jrefXMLFile, doc);
+		}
+	}
+	
+	/**
+	 * Removes an original jar classpath entry from the build file
+	 * @param project
+	 * @param jarName
+	 */
+	public void removeOriginalClasspathEntry(String jarName) throws TransformerException, ParserConfigurationException, SAXException, IOException {
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(jrefXMLFile);
+		doc.getDocumentElement().normalize();
+		
+		// remove target
+		NodeList targets = doc.getElementsByTagName("entry");
+		for (int i = 0; i < targets.getLength(); i++) {
+			Element target = (Element) targets.item(i);
+			if(target.getAttribute("library").equals(jarName)){
+				target.getParentNode().removeChild(target);
+			}
+		}
+
+		// write the content into xml file
+		writeBuildFile(jrefXMLFile, doc);
+	}
+	
+	/**
+	 * Returns a set of all the original classpath library entries
+	 * @param buildFile
+	 * @return
+	 * @throws SAXException
+	 * @throws IOException
+	 * @throws ParserConfigurationException
+	 */
+	public Set<String> getOriginalClasspathEntries() throws SAXException, IOException, ParserConfigurationException {
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(jrefXMLFile);
+		doc.getDocumentElement().normalize();
+		NodeList targets = doc.getElementsByTagName("entry");
+		Set<String> results = new HashSet<String>();
+		for (int i = 0; i < targets.getLength(); i++) {
+			Element target = (Element) targets.item(i);
+			results.add(target.getAttribute("library"));
+		}
+		return results;
+	}
+	
+	/**
 	 * Returns the existing build file or creates one if one does not exist
 	 * @param project
 	 * @return
+	 * @throws JavaModelException 
 	 */
-	public static BuildFile getOrCreateBuildFile(IProject project) {
-		File buildXMLFile = new File(project.getLocation().toFile().getAbsolutePath() + File.separator + XML_BUILD_FILENAME);
+	public static BuildFile getOrCreateBuildFile(IJavaProject jProject) {
+		File buildXMLFile = new File(jProject.getProject().getLocation().toFile().getAbsolutePath() + File.separator + XML_BUILD_FILENAME);
 		if(buildXMLFile.exists()){
 			return new BuildFile(buildXMLFile);
 		} else {
-			return createBuildFile(project);
+			return createBuildFile(jProject);
 		}
 	}
 	
@@ -124,11 +210,12 @@ public class BuildFile {
 	 * Creates a new build file
 	 * @param project
 	 * @return
+	 * @throws JavaModelException 
 	 */
-	public static BuildFile createBuildFile(IProject project) {
+	public static BuildFile createBuildFile(IJavaProject jProject) {
 		try {
-			File buildXMLFile = new File(project.getLocation().toFile().getAbsolutePath() + File.separator + XML_BUILD_FILENAME);
-			String base = project.getLocation().toFile().getCanonicalPath();
+			File buildXMLFile = new File(jProject.getProject().getLocation().toFile().getAbsolutePath() + File.separator + XML_BUILD_FILENAME);
+			String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
 			String relativeBuildFilePath = buildXMLFile.getCanonicalPath().substring(base.length());
 			if(relativeBuildFilePath.charAt(0) == File.separatorChar){
 				relativeBuildFilePath = relativeBuildFilePath.substring(1);
@@ -142,6 +229,14 @@ public class BuildFile {
 			Document doc = docBuilder.newDocument();
 			Element rootElement = doc.createElement("build");
 			doc.appendChild(rootElement);
+			
+			// save the original classpath
+			Element originalClasspath = doc.createElement("original-classpath");
+			for(IClasspathEntry entry : jProject.getRawClasspath()){
+				Element originalClasspathEntry = doc.createElement("entry");
+				originalClasspathEntry.setAttribute("library", entry.getPath().toString());
+			}
+			rootElement.appendChild(originalClasspath);
 
 			// write the content into xml file
 			writeBuildFile(buildXMLFile, doc);
@@ -153,6 +248,10 @@ public class BuildFile {
 			Log.error("TransformerException", tfe);
 		} catch (IOException ioe) {
 			Log.error("IOException", ioe);
+		} catch (JavaModelException jme) {
+			Log.error("IOException", jme);
+		} catch (DOMException dome) {
+			Log.error("DOMException", dome);
 		}
 		throw new RuntimeException("Unable to create build file.");
 	}

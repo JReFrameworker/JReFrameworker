@@ -16,7 +16,6 @@ import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.apache.commons.io.FileDeleteStrategy;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceDelta;
@@ -25,7 +24,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
@@ -35,8 +33,10 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.xml.sax.SAXException;
 
+import jreframeworker.common.RuntimeUtils;
 import jreframeworker.core.BuildFile;
 import jreframeworker.core.JReFrameworker;
+import jreframeworker.core.JReFrameworkerProject;
 import jreframeworker.engine.Engine;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
@@ -86,57 +86,45 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	protected void clean(IProgressMonitor monitor) throws CoreException {
-		IJavaProject jProject = getJReFrameworkerProject();
-		if(jProject != null){
-			monitor.beginTask("Cleaning: " + jProject.getProject().getName(), 1);
-			Log.info("Cleaning: " + jProject.getProject().getName());
+		JReFrameworkerProject jrefProject = getJReFrameworkerProject();
+		if(jrefProject != null){
+			monitor.beginTask("Cleaning: " + jrefProject.getProject().getName(), 1);
+			Log.info("Cleaning: " + jrefProject.getProject().getName());
+			
+			// clear the Java compiler error markers (these will be fixed and restored if they remain after building phases)
+			jrefProject.getProject().deleteMarkers(JavaCore.ERROR, true, IProject.DEPTH_INFINITE);
+
 			try {
-				File buildDirectory = jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
-				clearProjectBuildDirectory(jProject, buildDirectory);
+				jrefProject.clean();
 				this.forgetLastBuiltState(); 
-			} catch (IOException e) {
-				Log.error("Error cleaning " + jProject.getProject().getName(), e);
+			} catch (Exception e) {
+				Log.error("Error cleaning " + jrefProject.getProject().getName(), e);
 			}
-			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+			jrefProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 			monitor.worked(1);
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
 	}
-
-	private void clearProjectBuildDirectory(IJavaProject jProject, File projectBuildDirectory) throws IOException {
-		for(File runtime : projectBuildDirectory.listFiles()){
-			FileDeleteStrategy.FORCE.delete(runtime);
-		}
-	}
 	
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
-
 		Log.info("JReFrameworker Build Number: " + buildNumber++);
 
-		IJavaProject jProject = getJReFrameworkerProject();
-		if (jProject != null) {
+		JReFrameworkerProject jrefProject = getJReFrameworkerProject();
+		if (jrefProject != null) {
 			// make sure the build directory exists
-			File projectBuildDirectory = jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
+			File projectBuildDirectory = jrefProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
 			if (!projectBuildDirectory.exists()) {
 				projectBuildDirectory.mkdirs();
 			}
-			// first delete the modified runtime
-			try {
-				clearProjectBuildDirectory(jProject, projectBuildDirectory);
-			} catch (IOException e) {
-				Log.error("Error building " + jProject.getProject().getName()
-						+ ", could not purge runtimes.  Project may be in an invalid state.", e);
-				return;
-			}
-
+			
 			// build each jref project fresh
-			monitor.beginTask("Building: " + jProject.getProject().getName(), 1);
-			Log.info("Building: " + jProject.getProject().getName());
+			monitor.beginTask("Building: " + jrefProject.getProject().getName(), 1);
+			Log.info("Building: " + jrefProject.getProject().getName());
 
 //			// add each class from classes in jars in raw directory
 //			// this happens before any build phases
-//			File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
+//			File rawDirectory = jrefProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
 //			if(rawDirectory.exists()){
 //				for(File jarFile : rawDirectory.listFiles()){
 //					if(jarFile.getName().endsWith(".jar")){
@@ -157,14 +145,16 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 //				}
 //			}
 			
-			
 			// discover the build phases
-			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
+			File binDirectory = jrefProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			Map<Integer,Integer> phases = null;
 			try {
-				phases = getNormalizedBuildPhases(binDirectory, jProject);
+				phases = getNormalizedBuildPhases(binDirectory, jrefProject);
 				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
 				Log.info("Discovered " + phases.size() + " explicit build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
+				if(phases.isEmpty()){
+					phases.put(1, 1); // added implicit build phase
+				}
 			} catch (Exception e){
 				Log.error("Error determining project build phases", e);
 				return;
@@ -175,6 +165,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				Collections.sort(sortedPhases);
 				int lastPhase = -1;
 				int lastNamedPhase = -1;
+				
 				for(int currentPhase : sortedPhases){
 					int currentNamedPhase = phases.get(currentPhase);
 					boolean isFirstPhase = false;
@@ -193,9 +184,10 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					// initialize the modification engines
 					// if its the first phase then we are just initializing with the original jars
 					// if its after the first phase then we are initializing with the last build phase jars
+					BuildFile buildFile = jrefProject.getBuildFile();
 					if(isFirstPhase){
-						for(String targetJar : BuildFile.getOrCreateBuildFile(jProject.getProject()).getTargets()) {
-							File originalJar = getOriginalJar(targetJar, jProject);
+						for(String targetJar : buildFile.getTargets()) {
+							File originalJar = getClasspathJar(targetJar, jrefProject);
 							if (originalJar != null && originalJar.exists()) {
 								Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
 								allEngines.add(engine);
@@ -214,10 +206,10 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							}
 						}
 					} else {
-						for(String targetJar : BuildFile.getOrCreateBuildFile(jProject.getProject()).getTargets()) {
-							File phaseJar = getBuildPhaseJar(targetJar, jProject, lastPhase, lastNamedPhase);
+						for(String targetJar : buildFile.getTargets()) {
+							File phaseJar = getBuildPhaseJar(targetJar, jrefProject, lastPhase, lastNamedPhase);
 							if(!phaseJar.exists()){
-								phaseJar = getOriginalJar(targetJar, jProject);;
+								phaseJar = getClasspathJar(targetJar, jrefProject);;
 							}
 							if (phaseJar != null && phaseJar.exists()) {
 								Engine engine = new Engine(phaseJar, PreferencesPage.getMergeRenamingPrefix());
@@ -239,23 +231,22 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					}
 					
 					// compute the source based jar modifications
-					buildProject(binDirectory, jProject, engineMap, allEngines, currentPhase, currentNamedPhase);
+					buildProject(binDirectory, jrefProject, engineMap, allEngines, currentPhase, currentNamedPhase);
 					
 					// write out the modified jars
 					for(Engine engine : allEngines){
-						File modifiedRuntime; 
+						File modifiedLibrary = getBuildPhaseJar(engine.getJarName(), jrefProject, currentPhase, currentNamedPhase);
+						modifiedLibrary.getParentFile().mkdirs();
+						engine.save(modifiedLibrary);
+
 						if(isLastPhase){
-							modifiedRuntime = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
-							engine.save(modifiedRuntime);
-						} else {
-							modifiedRuntime = getBuildPhaseJar(engine.getJarName(), jProject, currentPhase, currentNamedPhase);
-							modifiedRuntime.getParentFile().mkdirs();
-							engine.save(modifiedRuntime);
+							File finalModifiedLibrary = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
+							RuntimeUtils.copyFile(modifiedLibrary, finalModifiedLibrary);
 						}
 						
 						// log the modified runtime
-						String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
-						String relativeFilePath = modifiedRuntime.getCanonicalPath().substring(base.length());
+						String base = jrefProject.getProject().getLocation().toFile().getCanonicalPath();
+						String relativeFilePath = modifiedLibrary.getCanonicalPath().substring(base.length());
 						if(relativeFilePath.charAt(0) == File.separatorChar){
 							relativeFilePath = relativeFilePath.substring(1);
 						}
@@ -271,28 +262,49 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 						Log.info("Phase " + currentPhase + " completed.");
 					}
 					
-					jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+					jrefProject.refresh();
+					
+					// remove the java nature to prevent the Java builder from running until we are ready
+					// if the build phase directory is null or does not exist then nothing was done during the phase
+					File buildPhaseDirectory = getBuildPhaseDirectory(jrefProject, currentPhase, currentNamedPhase);
+					if(buildPhaseDirectory != null && buildPhaseDirectory.exists()){
+						jrefProject.removeJavaNature();
+						for(File file : buildPhaseDirectory.listFiles()){
+							if(file.getName().endsWith(".jar")){
+								File modifiedLibrary = file;
+								jrefProject.updateProjectLibrary(modifiedLibrary.getName(), modifiedLibrary);
+							}
+						}
+						// restore the java nature
+						jrefProject.addJavaNature();
+						
+						jrefProject.refresh();
+					}
 				}
 			} catch (IOException | SAXException | ParserConfigurationException e) {
-				Log.error("Error building " + jProject.getProject().getName(), e);
+				Log.error("Error building " + jrefProject.getProject().getName(), e);
 				return;
 			}
 
-			jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+			jrefProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 			monitor.worked(1);
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
 		}
 	}
 	
-	private File getBuildPhaseJar(String targetJar, IJavaProject jProject, int buildPhase, int namedBuildPhase) throws IOException {
-		File projectBuildDirectory = jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
-		String buildPhaseDirectoryName = JReFrameworker.BUILD_PHASE_DIRECTORY_PREFIX + buildPhase + "." + namedBuildPhase;
-		return new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + buildPhaseDirectoryName + File.separatorChar + targetJar);
+	private File getBuildPhaseDirectory(JReFrameworkerProject jrefProject, int buildPhase, int namedBuildPhase) throws IOException {
+		File projectBuildDirectory = jrefProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
+		String buildPhaseDirectoryName = JReFrameworker.BUILD_PHASE_DIRECTORY_PREFIX + "-" + buildPhase + "-" + namedBuildPhase;
+		return new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + buildPhaseDirectoryName);
+	}
+	
+	private File getBuildPhaseJar(String targetJar, JReFrameworkerProject jrefProject, int buildPhase, int namedBuildPhase) throws IOException {
+		return new File(getBuildPhaseDirectory(jrefProject, buildPhase, namedBuildPhase).getCanonicalPath() + File.separatorChar + targetJar);
 	}
 
-	private Map<Integer,Integer> getNormalizedBuildPhases(File binDirectory, IJavaProject jProject) throws IOException {
-		Integer[] phases = getBuildPhases(binDirectory, jProject);
+	private Map<Integer,Integer> getNormalizedBuildPhases(File binDirectory, JReFrameworkerProject jrefProject) throws IOException {
+		Integer[] phases = getBuildPhases(binDirectory, jrefProject);
 		Map<Integer,Integer> normalizedPhases = new HashMap<Integer,Integer>();
 		Integer normalizedPhase = 1;
 		for(Integer phase : phases){
@@ -301,8 +313,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return normalizedPhases;
 	}
 	
-	private Integer[] getBuildPhases(File binDirectory, IJavaProject jProject) throws IOException {
-		Set<Integer> phases = getBuildPhases(binDirectory, jProject, new HashSet<Integer>());
+	private Integer[] getBuildPhases(File binDirectory, JReFrameworkerProject jrefProject) throws IOException {
+		Set<Integer> phases = getBuildPhases(binDirectory, jrefProject, new HashSet<Integer>());
 		ArrayList<Integer> phasesSorted = new ArrayList<Integer>(phases);
 		Collections.sort(phasesSorted);
 		Integer[] result = new Integer[phasesSorted.size()];
@@ -310,7 +322,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return result;
 	}
 	
-	private Set<Integer> getBuildPhases(File binDirectory, IJavaProject jProject, Set<Integer> phases) throws IOException {
+	private Set<Integer> getBuildPhases(File binDirectory, JReFrameworkerProject jrefProject, Set<Integer> phases) throws IOException {
 		File[] files = binDirectory.listFiles();
 		for(File file : files){
 			if(file.isFile()){
@@ -386,14 +398,14 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					}
 				}
 			} else if(file.isDirectory()){
-				getBuildPhases(file, jProject, phases);
+				getBuildPhases(file, jrefProject, phases);
 			}
 		}
 		return phases;
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void buildProject(File binDirectory, IJavaProject jProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines, int phase, int namedPhase) throws IOException {
+	private void buildProject(File binDirectory, JReFrameworkerProject jrefProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines, int phase, int namedPhase) throws IOException {
 		// make changes for each annotated class file in current directory
 		File[] files = binDirectory.listFiles();
 		for(File file : files){
@@ -412,7 +424,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							
 							if(purgeModification || finalityModification || visibilityModification || mergeModification || defineModification){
 								// get the qualified modification class name
-								String base = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
+								String base = jrefProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
 								String modificationClassName = file.getCanonicalPath().substring(base.length());
 								if(modificationClassName.charAt(0) == File.separatorChar){
 									modificationClassName = modificationClassName.substring(1);
@@ -524,7 +536,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					}
 				}
 			} else if(file.isDirectory()){
-				buildProject(file, jProject, engineMap, allEngines, phase, namedPhase);
+				buildProject(file, jrefProject, engineMap, allEngines, phase, namedPhase);
 			}
 		}
 	}
@@ -578,14 +590,11 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	 * Returns the JReFrameworker project to build or clean, if the project is invalid returns null
 	 * @return
 	 */
-	private IJavaProject getJReFrameworkerProject(){
+	private JReFrameworkerProject getJReFrameworkerProject(){
 		IProject project = getProject();
 		try {
-			if(project.isOpen() && project.hasNature(JavaCore.NATURE_ID) && project.hasNature(JReFrameworkerNature.NATURE_ID)){
-				IJavaProject jProject = JavaCore.create(project);
-				if(jProject.exists()){
-					return jProject;
-				}
+			if(project.isOpen() && project.exists() && project.hasNature(JavaCore.NATURE_ID) && project.hasNature(JReFrameworkerNature.NATURE_ID)){
+				return new JReFrameworkerProject(project);
 			}
 		} catch (CoreException e) {}
 		return null;
@@ -612,21 +621,21 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-	public static File getOriginalJar(String targetJar, IJavaProject jProject) throws IOException, JavaModelException {
-		for(IClasspathEntry classpathEntry : jProject.getRawClasspath()){
+	public static File getClasspathJar(String targetJar, JReFrameworkerProject jrefProject) throws IOException, JavaModelException {
+		for(IClasspathEntry classpathEntry : jrefProject.getJavaProject().getRawClasspath()){
 			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
 				File jar = classpathEntry.getPath().toFile().getCanonicalFile();
 				if(jar.getName().equals(targetJar)){
 					if(!jar.exists()){
 						// path may have been relative, so try again to resolve path relative to project directory
 						String relativePath = jar.getAbsolutePath();
-						String projectName = jProject.getProject().getName();
+						String projectName = jrefProject.getProject().getName();
 						String projectRoot = File.separator + projectName;
 						relativePath = relativePath.substring(relativePath.indexOf(projectRoot) + projectRoot.length());
-						jar = jProject.getProject().getFile(relativePath).getLocation().toFile();
+						jar = jrefProject.getProject().getFile(relativePath).getLocation().toFile();
 						if(!jar.exists()){
 							// if jar still doesn't exist match any jar in the project with the same name
-							jar = jProject.getProject().getFile(jar.getName()).getLocation().toFile();
+							jar = jrefProject.getProject().getFile(jar.getName()).getLocation().toFile();
 						}
 					}
 					return jar;
