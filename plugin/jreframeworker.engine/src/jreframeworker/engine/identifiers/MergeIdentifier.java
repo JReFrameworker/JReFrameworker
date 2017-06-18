@@ -20,7 +20,7 @@ public class MergeIdentifier {
 				AnnotationNode annotation = (AnnotationNode) annotationObject;
 				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
 				checker.visitAnnotation(annotation.desc, false);
-				if(checker.isDefineTypeAnnotation()){
+				if(checker.isMergeTypeAnnotation()){
 					extractMergeTypeAnnotationValues(classNode, annotation);
 				}	
 			}
@@ -61,16 +61,10 @@ public class MergeIdentifier {
 	}
 	
     public static class MergeMethodAnnotation {
-    	private int phase;
     	private MethodNode methodNode;
 		
-		public MergeMethodAnnotation(int phase, MethodNode methodNode) {
-			this.phase = phase;
+		public MergeMethodAnnotation(MethodNode methodNode) {
 			this.methodNode = methodNode;
-		}
-		
-		public int getPhase(){
-			return phase;
 		}
 		
 		public MethodNode getMethodNode(){
@@ -79,20 +73,9 @@ public class MergeIdentifier {
 	}
     
     private void extractMergeMethodAnnotationValues(MethodNode methodNode, AnnotationNode annotation){
-		int phaseValue = 1; // default to 1
-		if(annotation.values != null){
-	        for (int i = 0; i < annotation.values.size(); i += 2) {
-	            String name = (String) annotation.values.get(i);
-	            Object value = annotation.values.get(i + 1);
-	            if(name.equals(PHASE)){
-		        	phaseValue = (int) value;
-		        }
-	        }
-	    }
 		if(methodNode != null){
-			mergeMethodAnnotations.add(new MergeMethodAnnotation(phaseValue, methodNode));
+			mergeMethodAnnotations.add(new MergeMethodAnnotation(methodNode));
         }
-		
 	}
     
 	private void extractMergeTypeAnnotationValues(ClassNode classNode, AnnotationNode annotation){

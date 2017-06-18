@@ -29,16 +29,10 @@ public class DefineIdentifier {
 	}
 
 	public static class DefineMethodAnnotation {
-		private int phase;
 		private MethodNode methodNode;
 		
-		public DefineMethodAnnotation(int phase, MethodNode methodNode) {
-			this.phase = phase;
+		public DefineMethodAnnotation(MethodNode methodNode) {
 			this.methodNode = methodNode;
-		}
-		
-		public int getPhase(){
-			return phase;
 		}
 		
 		public MethodNode getMethodNode(){
@@ -47,16 +41,10 @@ public class DefineIdentifier {
 	}
 
 	public static class DefineFieldAnnotation {
-		private int phase;
 		private FieldNode fieldNode;
 		
-		public DefineFieldAnnotation(int phase, FieldNode fieldNode) {
-			this.phase = phase;
+		public DefineFieldAnnotation(FieldNode fieldNode) {
 			this.fieldNode = fieldNode;
-		}
-		
-		public int getPhase(){
-			return phase;
 		}
 		
 		public FieldNode getFieldNode(){
@@ -114,35 +102,15 @@ public class DefineIdentifier {
 	}
 
 	private void extractDefineFieldValues(FieldNode fieldNode, AnnotationNode annotation) {
-		int phaseValue = 1; // default to 1
-		if (annotation.values != null) {
-		    for (int i = 0; i < annotation.values.size(); i += 2) {
-		        String name = (String) annotation.values.get(i);
-		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(PHASE)){
-		        	phaseValue = (int) value;
-		        }
-		    }
-		    if(fieldNode != null){
-		    	targetFields.add(new DefineFieldAnnotation(phaseValue, fieldNode));
-		    }
-		}
+		if(fieldNode != null){
+	    	targetFields.add(new DefineFieldAnnotation(fieldNode));
+	    }
 	}
 
 	private void extractDefineMethodValues(MethodNode methodNode, AnnotationNode annotation) {
-		int phaseValue = 1; // default to 1
-		if (annotation.values != null) {
-		    for (int i = 0; i < annotation.values.size(); i += 2) {
-		        String name = (String) annotation.values.get(i);
-		        Object value = annotation.values.get(i + 1);
-		        if(name.equals(PHASE)){
-		        	phaseValue = (int) value;
-		        }
-		    }
-		    if(methodNode != null){
-		    	targetMethods.add(new DefineMethodAnnotation(phaseValue, methodNode));
-		    }
-		}
+		if(methodNode != null){
+	    	targetMethods.add(new DefineMethodAnnotation(methodNode));
+	    }
 	}
 
 	private void extractDefineTypeAnnotationValues(ClassNode classNode, AnnotationNode annotation) {

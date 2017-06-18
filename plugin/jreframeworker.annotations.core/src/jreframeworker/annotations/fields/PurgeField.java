@@ -20,7 +20,6 @@ import java.lang.annotation.Target;
  */
 @Repeatable(PurgeFields.class)
 public @interface PurgeField {
-	int phase() default 1;
 	String type();
 	String field();
 }

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,8 +43,6 @@ import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFin
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineIdentifier;
-import jreframeworker.engine.identifiers.DefineIdentifier.DefineFieldAnnotation;
-import jreframeworker.engine.identifiers.DefineIdentifier.DefineMethodAnnotation;
 import jreframeworker.engine.identifiers.DefineIdentifier.DefineTypeAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
@@ -51,14 +50,12 @@ import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethod
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
 import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier;
-import jreframeworker.engine.identifiers.MergeIdentifier.MergeMethodAnnotation;
 import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 import jreframeworker.engine.utils.BytecodeUtils;
-import jreframeworker.engine.utils.JarModifier;
 import jreframeworker.log.Log;
 import jreframeworker.ui.PreferencesPage;
 
@@ -137,75 +134,145 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			monitor.beginTask("Building: " + jProject.getProject().getName(), 1);
 			Log.info("Building: " + jProject.getProject().getName());
 
+//			// add each class from classes in jars in raw directory
+//			// this happens before any build phases
+//			File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
+//			if(rawDirectory.exists()){
+//				for(File jarFile : rawDirectory.listFiles()){
+//					if(jarFile.getName().endsWith(".jar")){
+//						for(Engine engine : allEngines){
+//							Log.info("Embedding raw resource: " + jarFile.getName() + " in " + engine.getJarName());
+//							
+//							// TODO: unjar to temp directory instead?
+//							File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
+//							JarModifier.unjar(jarFile, outputDirectory);
+//							
+//							// add raw class files
+//							addClassFiles(engine, outputDirectory);
+//							
+//							// cleanup temporary directory
+//							delete(outputDirectory);
+//						}
+//					}
+//				}
+//			}
+			
+			
+			// discover the build phases
 			File binDirectory = jProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
+			Map<Integer,Integer> phases = null;
 			try {
-				// map class entries to and initial modification engine sets
-				Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
-				Set<Engine> allEngines = new HashSet<Engine>();
-				for (String targetJar : BuildFile.getOrCreateBuildFile(jProject.getProject()).getTargets()) {
-					File originalJar = getOriginalJar(targetJar, jProject);
-					if (originalJar != null && originalJar.exists()) {
-						Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
-						allEngines.add(engine);
-						for(String entry : engine.getOriginalEntries()){
-							entry = entry.replace(".class", "");
-							if(engineMap.containsKey(entry)){
-								engineMap.get(entry).add(engine);
+				phases = getNormalizedBuildPhases(binDirectory, jProject);
+				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
+				Log.info("Discovered " + phases.size() + " explicit build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
+			} catch (Exception e){
+				Log.error("Error determining project build phases", e);
+				return;
+			}
+	
+			try {
+				LinkedList<Integer> sortedPhases = new LinkedList<Integer>(phases.keySet());
+				Collections.sort(sortedPhases);
+				int lastPhase = -1;
+				int lastNamedPhase = -1;
+				for(int currentPhase : sortedPhases){
+					int currentNamedPhase = phases.get(currentPhase);
+					boolean isFirstPhase = false;
+					if(sortedPhases.getFirst().equals(currentPhase)){
+						isFirstPhase = true;
+					}
+					boolean isLastPhase = false;
+					if(sortedPhases.getLast().equals(currentPhase)){
+						isLastPhase = true;
+					}
+					
+					// map class entries to and initial modification engine sets
+					Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
+					Set<Engine> allEngines = new HashSet<Engine>();
+
+					// initialize the modification engines
+					// if its the first phase then we are just initializing with the original jars
+					// if its after the first phase then we are initializing with the last build phase jars
+					if(isFirstPhase){
+						for(String targetJar : BuildFile.getOrCreateBuildFile(jProject.getProject()).getTargets()) {
+							File originalJar = getOriginalJar(targetJar, jProject);
+							if (originalJar != null && originalJar.exists()) {
+								Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
+								allEngines.add(engine);
+								for(String entry : engine.getOriginalEntries()){
+									entry = entry.replace(".class", "");
+									if(engineMap.containsKey(entry)){
+										engineMap.get(entry).add(engine);
+									} else {
+										Set<Engine> engines = new HashSet<Engine>();
+										engines.add(engine);
+										engineMap.put(entry, engines);
+									}
+								}
 							} else {
-								Set<Engine> engines = new HashSet<Engine>();
-								engines.add(engine);
-								engineMap.put(entry, engines);
+								Log.warning("Original Jar not found: " + targetJar);
 							}
 						}
 					} else {
-						Log.warning("Jar not found: " + targetJar);
-					}
-				}
-				
-				// discover the build phases
-				Map<Integer,Integer> phases = getNormalizedBuildPhases(binDirectory, jProject);
-				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
-				Log.info("Discovered " + phases.size() + " explicit build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
-				
-				// add each class from classes in jars in raw directory
-				File rawDirectory = jProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
-				if(rawDirectory.exists()){
-					for(File jarFile : rawDirectory.listFiles()){
-						if(jarFile.getName().endsWith(".jar")){
-							for(Engine engine : allEngines){
-								Log.info("Embedding raw resource: " + jarFile.getName() + " in " + engine.getJarName());
-								
-								// TODO: unjar to temp directory instead?
-								File outputDirectory = new File(jarFile.getParentFile().getAbsolutePath() + File.separatorChar + "." + jarFile.getName().replace(".jar", ""));
-								JarModifier.unjar(jarFile, outputDirectory);
-								
-								// add raw class files
-								addClassFiles(engine, outputDirectory);
-								
-								// cleanup temporary directory
-								delete(outputDirectory);
+						for(String targetJar : BuildFile.getOrCreateBuildFile(jProject.getProject()).getTargets()) {
+							File phaseJar = getBuildPhaseJar(targetJar, jProject, lastPhase, lastNamedPhase);
+							if(!phaseJar.exists()){
+								phaseJar = getOriginalJar(targetJar, jProject);;
+							}
+							if (phaseJar != null && phaseJar.exists()) {
+								Engine engine = new Engine(phaseJar, PreferencesPage.getMergeRenamingPrefix());
+								allEngines.add(engine);
+								for(String entry : engine.getOriginalEntries()){
+									entry = entry.replace(".class", "");
+									if(engineMap.containsKey(entry)){
+										engineMap.get(entry).add(engine);
+									} else {
+										Set<Engine> engines = new HashSet<Engine>();
+										engines.add(engine);
+										engineMap.put(entry, engines);
+									}
+								}
+							} else {
+								Log.warning("Phase Jar not found: " + targetJar);
 							}
 						}
 					}
-				}
-				
-				// compute the source based jar modifications
-				buildProject(binDirectory, jProject, engineMap, allEngines);
-				
-				// write out the modified jars
-				for(Engine engine : allEngines){
-					File modifiedRuntime = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
-					engine.save(modifiedRuntime);
 					
-					// log the modified runtime
-					String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
-					String relativeFilePath = modifiedRuntime.getCanonicalPath().substring(base.length());
-					if(relativeFilePath.charAt(0) == File.separatorChar){
-						relativeFilePath = relativeFilePath.substring(1);
+					// compute the source based jar modifications
+					buildProject(binDirectory, jProject, engineMap, allEngines, currentPhase, currentNamedPhase);
+					
+					// write out the modified jars
+					for(Engine engine : allEngines){
+						File modifiedRuntime; 
+						if(isLastPhase){
+							modifiedRuntime = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
+							engine.save(modifiedRuntime);
+						} else {
+							modifiedRuntime = getBuildPhaseJar(engine.getJarName(), jProject, currentPhase, currentNamedPhase);
+							modifiedRuntime.getParentFile().mkdirs();
+							engine.save(modifiedRuntime);
+						}
+						
+						// log the modified runtime
+						String base = jProject.getProject().getLocation().toFile().getCanonicalPath();
+						String relativeFilePath = modifiedRuntime.getCanonicalPath().substring(base.length());
+						if(relativeFilePath.charAt(0) == File.separatorChar){
+							relativeFilePath = relativeFilePath.substring(1);
+						}
+						Log.info("Modified: " + relativeFilePath);
 					}
-					Log.info("Modified: " + relativeFilePath);
+					
+					// the current build  phase is over
+					lastPhase = currentPhase;
+					lastNamedPhase = currentNamedPhase;
+					if(currentPhase != currentNamedPhase){
+						Log.info("Phase " + currentPhase + " (identified as " + currentNamedPhase + ") completed.");
+					} else {
+						Log.info("Phase " + currentPhase + " completed.");
+					}
+					
+					jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 				}
-				
 			} catch (IOException | SAXException | ParserConfigurationException e) {
 				Log.error("Error building " + jProject.getProject().getName(), e);
 				return;
@@ -218,6 +285,12 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
+	private File getBuildPhaseJar(String targetJar, IJavaProject jProject, int buildPhase, int namedBuildPhase) throws IOException {
+		File projectBuildDirectory = jProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
+		String buildPhaseDirectoryName = JReFrameworker.BUILD_PHASE_DIRECTORY_PREFIX + buildPhase + "." + namedBuildPhase;
+		return new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + buildPhaseDirectoryName + File.separatorChar + targetJar);
+	}
+
 	private Map<Integer,Integer> getNormalizedBuildPhases(File binDirectory, IJavaProject jProject) throws IOException {
 		Integer[] phases = getBuildPhases(binDirectory, jProject);
 		Map<Integer,Integer> normalizedPhases = new HashMap<Integer,Integer>();
@@ -295,9 +368,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
 								phases.add(mergeTypeAnnotation.getPhase());
 								// no such thing as merge field, so skipping fields
-								for(MergeMethodAnnotation mergeMethodAnnotation : mergeIdentifier.getMergeMethodAnnotations()){
-									phases.add(mergeMethodAnnotation.getPhase());
-								}
+								// define field, define method, and merge method all must have the same phase as the merge type annotation
+								// so we can't discover new phases by looking at the body
 							}
 							
 							boolean defineModification = hasDefineTypeModification(classNode);
@@ -305,12 +377,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
 								DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
 								phases.add(defineTypeAnnotation.getPhase());
-								for(DefineFieldAnnotation defineFieldAnnotation : defineIdentifier.getDefineFieldAnnotations()){
-									phases.add(defineFieldAnnotation.getPhase());
-								}
-								for(DefineMethodAnnotation defineMethodAnnotation : defineIdentifier.getDefineMethodAnnotations()){
-									phases.add(defineMethodAnnotation.getPhase());
-								}	
+								// define field, define method must have the same phase as the define type annotation
+								// so we can't discover new phases by looking at the body
 							}
 						} catch (RuntimeException e){
 							Log.error("Error discovering build phases...", e);
@@ -325,7 +393,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
-	private void buildProject(File binDirectory, IJavaProject jProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines) throws IOException {
+	private void buildProject(File binDirectory, IJavaProject jProject, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines, int phase, int namedPhase) throws IOException {
 		// make changes for each annotated class file in current directory
 		File[] files = binDirectory.listFiles();
 		for(File file : files){
@@ -352,7 +420,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								modificationClassName = modificationClassName.replace(".class", "");
 							
 								if(purgeModification){
-									Set<String> targets = PurgeIdentifier.getPurgeTargets(classNode);
+									Set<String> targets = PurgeIdentifier.getPurgeTargets(classNode, namedPhase);
 									for(String target : targets){
 										// purge target from each jar that contains the purge target
 										if(engineMap.containsKey(target)){
@@ -363,7 +431,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
 													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
 												}
-												engine.process(classBytes);
+												engine.process(classBytes, phase, namedPhase);
 											}
 										} else {
 											Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
@@ -372,7 +440,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								} 
 								
 								if(finalityModification){
-									Set<String> targets = DefineFinalityIdentifier.getFinalityTargets(classNode);
+									Set<String> targets = DefineFinalityIdentifier.getFinalityTargets(classNode, namedPhase);
 									for(String target : targets){
 										// merge into each target jar that contains the merge target
 										if(engineMap.containsKey(target)){
@@ -383,7 +451,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
 													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
 												}
-												engine.process(classBytes);
+												engine.process(classBytes, phase, namedPhase);
 											}
 										} else {
 											Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
@@ -392,7 +460,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								} 
 								
 								if(visibilityModification){
-									Set<String> targets = DefineVisibilityIdentifier.getVisibilityTargets(classNode);
+									Set<String> targets = DefineVisibilityIdentifier.getVisibilityTargets(classNode, namedPhase);
 									for(String target : targets){
 										// merge into each target jar that contains the merge target
 										if(engineMap.containsKey(target)){
@@ -403,7 +471,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
 													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
 												}
-												engine.process(classBytes);
+												engine.process(classBytes, phase, namedPhase);
 											}
 										} else {
 											Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
@@ -413,33 +481,40 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 								
 								if(mergeModification){
 									MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
-									String target = mergeIdentifier.getMergeTypeAnnotation().getSupertype();
-									// merge into each target jar that contains the merge target
-									if(engineMap.containsKey(target)){
-										for(Engine engine : engineMap.get(target)){
+									MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
+									if(mergeTypeAnnotation.getPhase() == namedPhase){
+										String target = mergeTypeAnnotation.getSupertype();
+										// merge into each target jar that contains the merge target
+										if(engineMap.containsKey(target)){
+											for(Engine engine : engineMap.get(target)){
+												if(isRuntimeJar(engine.getJarName())){
+													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+												} else {
+													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+												}
+												engine.process(classBytes, phase, namedPhase);
+											}
+										} else {
+											Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+										}
+									}
+								} 
+								
+								if(defineModification){
+									DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
+									DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
+									if(defineTypeAnnotation.getPhase() == namedPhase){
+										// define or replace in every target jar
+										for(Engine engine : allEngines){
 											if(isRuntimeJar(engine.getJarName())){
 												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
 											} else {
 												URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
 												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
 											}
-											engine.process(classBytes);
+											engine.process(classBytes, phase, namedPhase);
 										}
-									} else {
-										Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
-									}
-								} 
-								
-								if(defineModification){
-									// define or replace in every target jar
-									for(Engine engine : allEngines){
-										if(isRuntimeJar(engine.getJarName())){
-											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-										} else {
-											URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-											engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-										}
-										engine.process(classBytes);
 									}
 								}
 							}
@@ -449,7 +524,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					}
 				}
 			} else if(file.isDirectory()){
-				buildProject(file, jProject, engineMap, allEngines);
+				buildProject(file, jProject, engineMap, allEngines, phase, namedPhase);
 			}
 		}
 	}

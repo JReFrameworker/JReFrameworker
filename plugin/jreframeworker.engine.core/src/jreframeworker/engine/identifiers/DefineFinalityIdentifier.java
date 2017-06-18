@@ -25,6 +25,27 @@ public class DefineFinalityIdentifier {
 		return targets;
 	}
 	
+	public static Set<String> getFinalityTargets(ClassNode classNode, int phase) throws IOException {
+		DefineFinalityIdentifier finalityIdentifier = new DefineFinalityIdentifier(classNode);
+		Set<String> targets = new HashSet<String>();
+		for(DefineTypeFinalityAnnotation annotation : finalityIdentifier.getTargetTypes()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		for(DefineMethodFinalityAnnotation annotation : finalityIdentifier.getTargetMethods()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		for(DefineFieldFinalityAnnotation annotation : finalityIdentifier.getTargetFields()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		return targets;
+	}
+	
 	private static final String PHASE = "phase";
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";

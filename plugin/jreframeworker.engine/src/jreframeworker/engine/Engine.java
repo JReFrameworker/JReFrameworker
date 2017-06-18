@@ -165,26 +165,42 @@ public class Engine {
 		jarModifier.add(qualifiedClassName, inputClass, overwrite);
 	}
 	
-	public boolean process(byte[] inputClass) throws IOException {
-		
+	/**
+	 * Process the annotations of the class for the given phase
+	 * @param inputClass
+	 * @param namedPhase
+	 * @return
+	 * @throws IOException
+	 */
+	public boolean process(byte[] inputClass, int phase, int namedPhase) throws IOException {
 		// set the ASM class loaders to be used to process this input
 		ClassLoaders.setClassLoaders(classLoaders);
 		
 		boolean processed = false;
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
-		Log.info("Processing input class: " + classNode.name + "...");
+		
+		if(namedPhase == -1){
+			Log.info("Processing input class: " + classNode.name + "...");
+		} else {
+			if(phase == namedPhase){
+				Log.info("Processing phase " + namedPhase + " of input class: " + classNode.name + "...");
+			} else {
+				Log.info("Processing phase " + phase + " (identified as " + namedPhase + ") of input class: " + classNode.name + "...");
+			}
+			
+		}
 		
 		// make requested method and field purges
 		PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
-		processed |= purge(purgeIdentifier);
+		processed |= purge(purgeIdentifier, namedPhase);
 		
 		// set finality
 		DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
-		processed |= setFinality(defineFinalityIdentifier);
+		processed |= setFinality(defineFinalityIdentifier, namedPhase);
 		
 		// set visibility modifiers
 		DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
-		processed |= setVisibility(defineVisibilityIdentifier);
+		processed |= setVisibility(defineVisibilityIdentifier, namedPhase);
 		
 		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
 		if(classNode.invisibleAnnotations != null){
@@ -194,25 +210,29 @@ public class Engine {
 				checker.visitAnnotation(annotationNode.desc, false);
 				String qualifiedClassName = classNode.name;
 				if(checker.isDefineTypeAnnotation()){
-					String qualifiedClassFilename = qualifiedClassName + ".class";
-					if(jarModifier.getJarEntrySet().contains(qualifiedClassFilename)){
-						updateBytecode(classNode.name, inputClass);
-						Log.info("Replaced: " + qualifiedClassName + " in " + jarModifier.getJarFile().getName());
-					} else {
-						updateBytecode(classNode.name, inputClass);
-						Log.info("Inserted: " + qualifiedClassName + " into " + jarModifier.getJarFile().getName());
+					DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
+					if(namedPhase == -1 || defineIdentifier.getDefineTypeAnnotation().getPhase() == namedPhase){
+						String qualifiedClassFilename = qualifiedClassName + ".class";
+						if(jarModifier.getJarEntrySet().contains(qualifiedClassFilename)){
+							updateBytecode(classNode.name, inputClass);
+							Log.info("Replaced: " + qualifiedClassName + " in " + jarModifier.getJarFile().getName());
+						} else {
+							updateBytecode(classNode.name, inputClass);
+							Log.info("Inserted: " + qualifiedClassName + " into " + jarModifier.getJarFile().getName());
+						}
+						processed = true;
 					}
-					processed = true;
 				} else if(checker.isMergeTypeAnnotation()){
 					MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
-					
 					MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
-					String qualifiedParentClassName = mergeTypeAnnotation.getSupertype();
-					byte[] baseClass = getRawBytecode(qualifiedParentClassName);
-					byte[] mergedClass = mergeClasses(baseClass, inputClass);
-					updateBytecode(qualifiedParentClassName, mergedClass);
-					Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + jarModifier.getJarFile().getName());
-					processed = true;
+					if(namedPhase == -1 || mergeTypeAnnotation.getPhase() == namedPhase){
+						String qualifiedParentClassName = mergeTypeAnnotation.getSupertype();
+						byte[] baseClass = getRawBytecode(qualifiedParentClassName);
+						byte[] mergedClass = mergeClasses(baseClass, inputClass);
+						updateBytecode(qualifiedParentClassName, mergedClass);
+						Log.info("Merged: " + qualifiedClassName + " into " + qualifiedParentClassName + " in " + jarModifier.getJarFile().getName());
+						processed = true;
+					}
 				}
 			}
 		}
@@ -220,90 +240,106 @@ public class Engine {
 		return processed;
 	}
 	
-	private boolean purge(PurgeIdentifier purgeIdentifier) throws IOException {
+	/**
+	 * Process all annotations regardless of phase
+	 * @param inputClass
+	 * @return
+	 * @throws IOException
+	 */
+	public boolean process(byte[] inputClass) throws IOException {
+		return process(inputClass, -1, -1);
+	}
+	
+	private boolean purge(PurgeIdentifier purgeIdentifier, int phase) throws IOException {
 		boolean processed = false;
 		// purge types
 		for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
-			String className = purgeTypeAnnotation.getClassName();
-			if(className.contains("$")){
-				// deal with outer class references to inner class files first
-				String baseClassName = className.substring(0, className.lastIndexOf("$"));
-				ClassNode baseClassNode = getBytecode(baseClassName);
-				List<InnerClassNode> innerClassNodesToRemove = new LinkedList<InnerClassNode>();
-				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
-					if(innerClassNode.name.equals(className)){
-						innerClassNodesToRemove.add(innerClassNode);
+			if(phase == -1 || purgeTypeAnnotation.getPhase() == phase){
+				String className = purgeTypeAnnotation.getClassName();
+				if(className.contains("$")){
+					// deal with outer class references to inner class files first
+					String baseClassName = className.substring(0, className.lastIndexOf("$"));
+					ClassNode baseClassNode = getBytecode(baseClassName);
+					List<InnerClassNode> innerClassNodesToRemove = new LinkedList<InnerClassNode>();
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+							innerClassNodesToRemove.add(innerClassNode);
+						}
 					}
-				}
-				for(InnerClassNode innerClassNodeToRemove : innerClassNodesToRemove){
-					baseClassNode.innerClasses.remove(innerClassNodeToRemove);
-					Log.info("Purged " + baseClassName + " reference to " + innerClassNodeToRemove.name + " inner class.");
-				}
-				updateBytecode(baseClassName, BytecodeUtils.writeClass(baseClassNode));
+					for(InnerClassNode innerClassNodeToRemove : innerClassNodesToRemove){
+						baseClassNode.innerClasses.remove(innerClassNodeToRemove);
+						Log.info("Purged " + baseClassName + " reference to " + innerClassNodeToRemove.name + " inner class.");
+					}
+					updateBytecode(baseClassName, BytecodeUtils.writeClass(baseClassNode));
 
-				// deal with the inner class file directly
-				String innerClassName = className;
-				purgeBytecode(innerClassName);
-				Log.info("Purged " + innerClassName + " inner class.");
-				processed = true;
-			} else {
-				// simple case no inner classes
-				ClassNode baseClassNode = getBytecode(className);
-				if(baseClassNode != null){
-					Log.info("Purged " + baseClassNode.name + " class.");
-					purgeBytecode(className);
+					// deal with the inner class file directly
+					String innerClassName = className;
+					purgeBytecode(innerClassName);
+					Log.info("Purged " + innerClassName + " inner class.");
 					processed = true;
 				} else {
-					Log.warning("Could not locate base class.", new RuntimeException("Missing base class"));
+					// simple case no inner classes
+					ClassNode baseClassNode = getBytecode(className);
+					if(baseClassNode != null){
+						Log.info("Purged " + baseClassNode.name + " class.");
+						purgeBytecode(className);
+						processed = true;
+					} else {
+						Log.warning("Could not locate base class.", new RuntimeException("Missing base class"));
+					}
 				}
 			}
 		}
 		// purge methods
 		for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
-			// final is not a valid modifier for initializers so no need to consider that case
-			String className = purgeMethodAnnotation.getClassName();
-			ClassNode classNode = getBytecode(className);
-			for (Object o : classNode.methods) {
-				MethodNode methodNode = (MethodNode) o;
-				if(methodNode.name.equals(purgeMethodAnnotation.getMethodName())){
-					ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-					PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, methodNode);
-					ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
-					purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
-					byte[] purgedClassBytes = classWriter.toByteArray();
-					classNode = BytecodeUtils.getClassNode(purgedClassBytes);
-					updateBytecode(classNode.name, purgedClassBytes);
-					processed = true;
-					
-					updateBytecode(className, classNode);
-					processed = true;
-					
-					Log.info("Purged " + classNode.name + "." + methodNode.name + " method.");
-					processed = true;
+			if(phase == -1 || purgeMethodAnnotation.getPhase() == phase){
+				// final is not a valid modifier for initializers so no need to consider that case
+				String className = purgeMethodAnnotation.getClassName();
+				ClassNode classNode = getBytecode(className);
+				for (Object o : classNode.methods) {
+					MethodNode methodNode = (MethodNode) o;
+					if(methodNode.name.equals(purgeMethodAnnotation.getMethodName())){
+						ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+						PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, methodNode);
+						ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
+						purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
+						byte[] purgedClassBytes = classWriter.toByteArray();
+						classNode = BytecodeUtils.getClassNode(purgedClassBytes);
+						updateBytecode(classNode.name, purgedClassBytes);
+						processed = true;
+						
+						updateBytecode(className, classNode);
+						processed = true;
+						
+						Log.info("Purged " + classNode.name + "." + methodNode.name + " method.");
+						processed = true;
+					}
 				}
 			}
 		}
 		// purge fields
 		for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
-			String className = purgeFieldAnnotation.getClassName();
-			ClassNode classNode = getBytecode(className);
-			for (Object o : classNode.fields) {
-				FieldNode fieldNode = (FieldNode) o;
-				if(fieldNode.name.equals(purgeFieldAnnotation.getFieldName())){
-					ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-					PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, fieldNode);
-					ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
-					purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
-					byte[] purgedClassBytes = classWriter.toByteArray();
-					classNode = BytecodeUtils.getClassNode(purgedClassBytes);
-					updateBytecode(classNode.name, purgedClassBytes);
-					processed = true;
-					
-					updateBytecode(className, classNode);
-					processed = true;
-					
-					Log.info("Purged " + classNode.name + "." + fieldNode.name + " field.");
-					break; // should only be one match
+			if(phase == -1 || purgeFieldAnnotation.getPhase() == phase){
+				String className = purgeFieldAnnotation.getClassName();
+				ClassNode classNode = getBytecode(className);
+				for (Object o : classNode.fields) {
+					FieldNode fieldNode = (FieldNode) o;
+					if(fieldNode.name.equals(purgeFieldAnnotation.getFieldName())){
+						ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+						PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, fieldNode);
+						ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
+						purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
+						byte[] purgedClassBytes = classWriter.toByteArray();
+						classNode = BytecodeUtils.getClassNode(purgedClassBytes);
+						updateBytecode(classNode.name, purgedClassBytes);
+						processed = true;
+						
+						updateBytecode(className, classNode);
+						processed = true;
+						
+						Log.info("Purged " + classNode.name + "." + fieldNode.name + " field.");
+						break; // should only be one match
+					}
 				}
 			}
 		}
@@ -379,187 +415,194 @@ public class Engine {
 	/**
 	 * Sets the access (visibility) modifiers for types, methods, and fields as defined by the annotation system
 	 * @param defineVisibilityIdentifier
+	 * @param phase 
 	 * @param runtimeModifications
 	 * @throws IOException 
 	 */
-	private boolean setVisibility(DefineVisibilityIdentifier defineVisibilityIdentifier) throws IOException {
+	private boolean setVisibility(DefineVisibilityIdentifier defineVisibilityIdentifier, int phase) throws IOException {
 		boolean processed = false;
 		// update types
 		for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
-			String className = defineTypeVisibilityAnnotation.getClassName();
-			if(className.contains("$")){
-				// deal with outer class references to inner class files first
-				String baseClassName = className.substring(0, className.lastIndexOf("$"));
-				ClassNode baseClassNode = getBytecode(baseClassName);
-				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
-					if(innerClassNode.name.equals(className)){
-//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
-						innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-						if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PUBLIC;
-							Log.info("Set outer class attributes for " + innerClassNode.name + " class to be public.");
-						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PROTECTED;
-							Log.info("Set outer class attributes for " + innerClassNode.name + " class to be protected.");
-						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PRIVATE;
-							Log.info("Set outer class attributes for " + innerClassNode.name + " class to be private.");
-						} else {
-							// should never happen
-							throw new RuntimeException("Missing visibility modifier");
+			if(phase == -1 || defineTypeVisibilityAnnotation.getPhase() == phase){
+				String className = defineTypeVisibilityAnnotation.getClassName();
+				if(className.contains("$")){
+					// deal with outer class references to inner class files first
+					String baseClassName = className.substring(0, className.lastIndexOf("$"));
+					ClassNode baseClassNode = getBytecode(baseClassName);
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+//							Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+							innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+							if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_PUBLIC;
+								Log.info("Set outer class attributes for " + innerClassNode.name + " class to be public.");
+							} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_PROTECTED;
+								Log.info("Set outer class attributes for " + innerClassNode.name + " class to be protected.");
+							} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_PRIVATE;
+								Log.info("Set outer class attributes for " + innerClassNode.name + " class to be private.");
+							} else {
+								// should never happen
+								throw new RuntimeException("Missing visibility modifier");
+							}
+//							Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 						}
-//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 					}
-				}
-				updateBytecode(baseClassName, baseClassNode);
-				
-				// deal with the inner class file directly
-				String innerClassName = className;
-				baseClassNode = getBytecode(innerClassName);
-				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
-					if(innerClassNode.name.equals(className)){
-//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
-						innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-						if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PUBLIC;
-							Log.info("Set " + innerClassNode.name + " inner class to be public.");
-						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PROTECTED;
-							Log.info("Set " + innerClassNode.name + " inner class to be protected.");
-						} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_PRIVATE;
-							Log.info("Set " + innerClassNode.name + " inner class to be private.");
-						} else {
-							// should never happen
-							throw new RuntimeException("Missing visibility modifier");
+					updateBytecode(baseClassName, baseClassNode);
+					
+					// deal with the inner class file directly
+					String innerClassName = className;
+					baseClassNode = getBytecode(innerClassName);
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+//							Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+							innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+							if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_PUBLIC;
+								Log.info("Set " + innerClassNode.name + " inner class to be public.");
+							} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_PROTECTED;
+								Log.info("Set " + innerClassNode.name + " inner class to be protected.");
+							} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_PRIVATE;
+								Log.info("Set " + innerClassNode.name + " inner class to be private.");
+							} else {
+								// should never happen
+								throw new RuntimeException("Missing visibility modifier");
+							}
+//							Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 						}
-//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 					}
-				}
-				updateBytecode(innerClassName, baseClassNode);
-			} else {
-				// simple case no inner classes
-				ClassNode baseClassNode = getBytecode(className);
-//				Log.info("Pre Access Modifiers: " + getAccessModifiers(baseClassNode.access));
-				baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-				if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
-					Log.info("Set " + baseClassNode.name + " class to be public.");
-				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
-					Log.info("Set " + baseClassNode.name + " class to be protected.");
-				} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-					baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
-					Log.info("Set " + baseClassNode.name + " class to be private.");
+					updateBytecode(innerClassName, baseClassNode);
 				} else {
-					// should never happen
-					throw new RuntimeException("Missing visibility modifier");
-				}
-//				Log.info("Post Access Modifiers: " + getAccessModifiers(baseClassNode.access));
-				updateBytecode(className, baseClassNode);
-			}
-			
-			processed = true;
-		}
-		// update methods
-		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
-			String qualifiedClassName = defineMethodVisibilityAnnotation.getClassName();
-			String[] simpleClassNameParts = qualifiedClassName.split("/");
-			ClassNode baseClassNode = getBytecode(qualifiedClassName);
-			String simpleClassName = simpleClassNameParts[simpleClassNameParts.length-1];
-			if(simpleClassName.contains("$")){
-				simpleClassName = simpleClassName.substring(simpleClassName.indexOf("$")+1,simpleClassName.length());
-			}
-			for (Object o : baseClassNode.methods) {
-				MethodNode methodNode = (MethodNode) o;
-				if(defineMethodVisibilityAnnotation.getMethodName().equals(simpleClassName)){
-					if(methodNode.name.equals("<init>")){
-//						Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
-						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
-							Log.info("Set " + methodNode.name + " initializer to be public.");
-						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-							methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
-							Log.info("Set " + methodNode.name + " initializer to be protected.");
-						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-							methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
-							Log.info("Set " + methodNode.name + " initializer to be private.");
-						} else {
-							// should never happen
-							throw new RuntimeException("Missing visibility modifier");
-						}
-//						Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
-					} else if(methodNode.name.equals("<clinit>")){
-//						Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
-						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
-							Log.info("Set " + methodNode.name + " static initializer to be public.");
-						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-							methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
-							Log.info("Set " + methodNode.name + " static initializer to be protected.");
-						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-							methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
-							Log.info("Set " + methodNode.name + " static initializer to be private.");
-						} else {
-							// should never happen
-							throw new RuntimeException("Missing visibility modifier");
-						}
-//						Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
-					}
-					updateBytecode(qualifiedClassName, baseClassNode);
-					processed = true;
-				} else if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
-//					Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
-					methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-					if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-						methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
-						Log.info("Set " + methodNode.name + " method to be public.");
-					} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-						methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
-						Log.info("Set " + methodNode.name + " method to be protected.");
-					} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-						methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
-						Log.info("Set " + methodNode.name + " method to be private.");
+					// simple case no inner classes
+					ClassNode baseClassNode = getBytecode(className);
+//					Log.info("Pre Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+					baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+					if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+						baseClassNode.access = baseClassNode.access | Opcodes.ACC_PUBLIC;
+						Log.info("Set " + baseClassNode.name + " class to be public.");
+					} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+						baseClassNode.access = baseClassNode.access | Opcodes.ACC_PROTECTED;
+						Log.info("Set " + baseClassNode.name + " class to be protected.");
+					} else if(defineTypeVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+						baseClassNode.access = baseClassNode.access | Opcodes.ACC_PRIVATE;
+						Log.info("Set " + baseClassNode.name + " class to be private.");
 					} else {
 						// should never happen
 						throw new RuntimeException("Missing visibility modifier");
 					}
-//					Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
-					updateBytecode(qualifiedClassName, baseClassNode);
-					processed = true;
-//					break; // should only be one match?
-					// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+//					Log.info("Post Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+					updateBytecode(className, baseClassNode);
+				}
+				
+				processed = true;
+			}
+		}
+		// update methods
+		for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
+			if(phase == -1 || defineMethodVisibilityAnnotation.getPhase() == phase){
+				String qualifiedClassName = defineMethodVisibilityAnnotation.getClassName();
+				String[] simpleClassNameParts = qualifiedClassName.split("/");
+				ClassNode baseClassNode = getBytecode(qualifiedClassName);
+				String simpleClassName = simpleClassNameParts[simpleClassNameParts.length-1];
+				if(simpleClassName.contains("$")){
+					simpleClassName = simpleClassName.substring(simpleClassName.indexOf("$")+1,simpleClassName.length());
+				}
+				for (Object o : baseClassNode.methods) {
+					MethodNode methodNode = (MethodNode) o;
+					if(defineMethodVisibilityAnnotation.getMethodName().equals(simpleClassName)){
+						if(methodNode.name.equals("<init>")){
+//							Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
+							methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+							if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+								methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+								Log.info("Set " + methodNode.name + " initializer to be public.");
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+								methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+								Log.info("Set " + methodNode.name + " initializer to be protected.");
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+								methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+								Log.info("Set " + methodNode.name + " initializer to be private.");
+							} else {
+								// should never happen
+								throw new RuntimeException("Missing visibility modifier");
+							}
+//							Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
+						} else if(methodNode.name.equals("<clinit>")){
+//							Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
+							methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+							if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+								methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+								Log.info("Set " + methodNode.name + " static initializer to be public.");
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+								methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+								Log.info("Set " + methodNode.name + " static initializer to be protected.");
+							} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+								methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+								Log.info("Set " + methodNode.name + " static initializer to be private.");
+							} else {
+								// should never happen
+								throw new RuntimeException("Missing visibility modifier");
+							}
+//							Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
+						}
+						updateBytecode(qualifiedClassName, baseClassNode);
+						processed = true;
+					} else if(methodNode.name.equals(defineMethodVisibilityAnnotation.getMethodName())){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
+						methodNode.access = methodNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+						if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							methodNode.access = methodNode.access | Opcodes.ACC_PUBLIC;
+							Log.info("Set " + methodNode.name + " method to be public.");
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							methodNode.access = methodNode.access | Opcodes.ACC_PROTECTED;
+							Log.info("Set " + methodNode.name + " method to be protected.");
+						} else if(defineMethodVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							methodNode.access = methodNode.access | Opcodes.ACC_PRIVATE;
+							Log.info("Set " + methodNode.name + " method to be private.");
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
+						updateBytecode(qualifiedClassName, baseClassNode);
+						processed = true;
+//						break; // should only be one match?
+						// TODO: is above true? need to do better signature matching I assume? for now just blast em all...
+					}
 				}
 			}
 		}
 		// update fields
 		for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
-			String className = defineFieldVisibilityAnnotation.getClassName();
-			ClassNode baseClassNode = getBytecode(className);
-			for (Object o : baseClassNode.fields) {
-				FieldNode fieldNode = (FieldNode) o;
-				if(fieldNode.name.equals(defineFieldVisibilityAnnotation.getFieldName())){
-//					Log.info("Pre Access Modifiers: " + getAccessModifiers(fieldNode.access));
-					fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
-					if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
-						fieldNode.access = fieldNode.access | Opcodes.ACC_PUBLIC;
-						Log.info("Set " + fieldNode.name + " field to be public.");
-					} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
-						fieldNode.access = fieldNode.access | Opcodes.ACC_PROTECTED;
-						Log.info("Set " + fieldNode.name + " field to be protected.");
-					} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
-						fieldNode.access = fieldNode.access | Opcodes.ACC_PRIVATE;
-						Log.info("Set " + fieldNode.name + " field to be private.");
-					} else {
-						// should never happen
-						throw new RuntimeException("Missing visibility modifier");
+			if(phase == -1 || defineFieldVisibilityAnnotation.getPhase() == phase){
+				String className = defineFieldVisibilityAnnotation.getClassName();
+				ClassNode baseClassNode = getBytecode(className);
+				for (Object o : baseClassNode.fields) {
+					FieldNode fieldNode = (FieldNode) o;
+					if(fieldNode.name.equals(defineFieldVisibilityAnnotation.getFieldName())){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(fieldNode.access));
+						fieldNode.access = fieldNode.access & (~Opcodes.ACC_PUBLIC & ~Opcodes.ACC_PROTECTED & ~Opcodes.ACC_PRIVATE);
+						if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PUBLIC){
+							fieldNode.access = fieldNode.access | Opcodes.ACC_PUBLIC;
+							Log.info("Set " + fieldNode.name + " field to be public.");
+						} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PROTECTED){
+							fieldNode.access = fieldNode.access | Opcodes.ACC_PROTECTED;
+							Log.info("Set " + fieldNode.name + " field to be protected.");
+						} else if(defineFieldVisibilityAnnotation.getVisibility() == Visibility.PRIVATE){
+							fieldNode.access = fieldNode.access | Opcodes.ACC_PRIVATE;
+							Log.info("Set " + fieldNode.name + " field to be private.");
+						} else {
+							// should never happen
+							throw new RuntimeException("Missing visibility modifier");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(fieldNode.access));
+						updateBytecode(className, baseClassNode);
+						processed = true;
+						break; // should only be one match
 					}
-//					Log.info("Post Access Modifiers: " + getAccessModifiers(fieldNode.access));
-					updateBytecode(className, baseClassNode);
-					processed = true;
-					break; // should only be one match
 				}
 			}
 		}
@@ -569,112 +612,119 @@ public class Engine {
 	/**
 	 * Sets the finality bit for for types, methods, and fields as defined by the annotation system
 	 * @param defineFinalityIdentifier
+	 * @param phase 
 	 * @param runtimeModifications
 	 * @throws IOException
 	 */
-	private boolean setFinality(DefineFinalityIdentifier defineFinalityIdentifier) throws IOException {
+	private boolean setFinality(DefineFinalityIdentifier defineFinalityIdentifier, int phase) throws IOException {
 		boolean processed = false;
 		// update types
 		for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
-			String className = defineTypeFinalityAnnotation.getClassName();
-			if(className.contains("$")){
-				// deal with outer class references to inner class files first
-				String baseClassName = className.substring(0, className.lastIndexOf("$"));
-				ClassNode baseClassNode = getBytecode(baseClassName);
-				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
-					if(innerClassNode.name.equals(className)){
-//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
-						if(defineTypeFinalityAnnotation.getFinality()){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_FINAL;
-							Log.info("Set " + innerClassNode.name + " class to be final.");
-						} else {
-							innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_FINAL);
-							Log.info("Set " + innerClassNode.name + " class to be non-final.");
+			if(phase == -1 || defineTypeFinalityAnnotation.getPhase() == phase){
+				String className = defineTypeFinalityAnnotation.getClassName();
+				if(className.contains("$")){
+					// deal with outer class references to inner class files first
+					String baseClassName = className.substring(0, className.lastIndexOf("$"));
+					ClassNode baseClassNode = getBytecode(baseClassName);
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+//							Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+							if(defineTypeFinalityAnnotation.getFinality()){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_FINAL;
+								Log.info("Set " + innerClassNode.name + " class to be final.");
+							} else {
+								innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_FINAL);
+								Log.info("Set " + innerClassNode.name + " class to be non-final.");
+							}
+//							Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 						}
-//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 					}
-				}
-				updateBytecode(baseClassName, baseClassNode);
-				
-				// deal with the inner class file directly
-				String innerClassName = className;
-				baseClassNode = getBytecode(innerClassName);
-				for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
-					if(innerClassNode.name.equals(className)){
-//						Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
-						if(defineTypeFinalityAnnotation.getFinality()){
-							innerClassNode.access = innerClassNode.access | Opcodes.ACC_FINAL;
-							Log.info("Set " + innerClassNode.name + " class to be final.");
-						} else {
-							innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_FINAL);
-							Log.info("Set " + innerClassNode.name + " class to be non-final.");
+					updateBytecode(baseClassName, baseClassNode);
+					
+					// deal with the inner class file directly
+					String innerClassName = className;
+					baseClassNode = getBytecode(innerClassName);
+					for(InnerClassNode innerClassNode : baseClassNode.innerClasses){
+						if(innerClassNode.name.equals(className)){
+//							Log.info("Pre Access Modifiers: " + getAccessModifiers(innerClassNode.access));
+							if(defineTypeFinalityAnnotation.getFinality()){
+								innerClassNode.access = innerClassNode.access | Opcodes.ACC_FINAL;
+								Log.info("Set " + innerClassNode.name + " class to be final.");
+							} else {
+								innerClassNode.access = innerClassNode.access & (~Opcodes.ACC_FINAL);
+								Log.info("Set " + innerClassNode.name + " class to be non-final.");
+							}
+//							Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 						}
-//						Log.info("Post Access Modifiers: " + getAccessModifiers(innerClassNode.access));
 					}
-				}
-				updateBytecode(innerClassName, baseClassNode);
-				processed = true;
-			} else {
-				// simple case no inner classes
-				ClassNode baseClassNode = getBytecode(className);
-				if(baseClassNode != null){
-//					Log.info("Pre Access Modifiers: " + getAccessModifiers(baseClassNode.access));
-					if(defineTypeFinalityAnnotation.getFinality()){
-						baseClassNode.access = baseClassNode.access | Opcodes.ACC_FINAL;
-						Log.info("Set " + baseClassNode.name + " class to be final.");
-					} else {
-						baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_FINAL);
-						Log.info("Set " + baseClassNode.name + " class to be non-final.");
-					}
-//					Log.info("Post Access Modifiers: " + getAccessModifiers(baseClassNode.access));
-					updateBytecode(className, baseClassNode);
+					updateBytecode(innerClassName, baseClassNode);
 					processed = true;
 				} else {
-					Log.warning("Could not locate base class.", new RuntimeException("Missing base class"));
+					// simple case no inner classes
+					ClassNode baseClassNode = getBytecode(className);
+					if(baseClassNode != null){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+						if(defineTypeFinalityAnnotation.getFinality()){
+							baseClassNode.access = baseClassNode.access | Opcodes.ACC_FINAL;
+							Log.info("Set " + baseClassNode.name + " class to be final.");
+						} else {
+							baseClassNode.access = baseClassNode.access & (~Opcodes.ACC_FINAL);
+							Log.info("Set " + baseClassNode.name + " class to be non-final.");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(baseClassNode.access));
+						updateBytecode(className, baseClassNode);
+						processed = true;
+					} else {
+						Log.warning("Could not locate base class.", new RuntimeException("Missing base class"));
+					}
 				}
 			}
 		}
 		// update methods
 		for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
-			// final is not a valid modifier for initializers so no need to consider that case
-			String className = defineMethodFinalityAnnotation.getClassName();
-			ClassNode baseClassNode = getBytecode(className);
-			for (Object o : baseClassNode.methods) {
-				MethodNode methodNode = (MethodNode) o;
-				if(methodNode.name.equals(defineMethodFinalityAnnotation.getMethodName())){
-//					Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
-					if(defineMethodFinalityAnnotation.getFinality()){
-						methodNode.access = methodNode.access | Opcodes.ACC_FINAL;
-						Log.info("Set " + methodNode.name + " method to be final.");
-					} else {
-						methodNode.access = methodNode.access & (~Opcodes.ACC_FINAL);
-						Log.info("Set " + methodNode.name + " method to be non-final.");
+			if(phase == -1 || defineMethodFinalityAnnotation.getPhase() == phase){
+				// final is not a valid modifier for initializers so no need to consider that case
+				String className = defineMethodFinalityAnnotation.getClassName();
+				ClassNode baseClassNode = getBytecode(className);
+				for (Object o : baseClassNode.methods) {
+					MethodNode methodNode = (MethodNode) o;
+					if(methodNode.name.equals(defineMethodFinalityAnnotation.getMethodName())){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(methodNode.access));
+						if(defineMethodFinalityAnnotation.getFinality()){
+							methodNode.access = methodNode.access | Opcodes.ACC_FINAL;
+							Log.info("Set " + methodNode.name + " method to be final.");
+						} else {
+							methodNode.access = methodNode.access & (~Opcodes.ACC_FINAL);
+							Log.info("Set " + methodNode.name + " method to be non-final.");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
+						updateBytecode(className, baseClassNode);
+						processed = true;
 					}
-//					Log.info("Post Access Modifiers: " + getAccessModifiers(methodNode.access));
-					updateBytecode(className, baseClassNode);
-					processed = true;
 				}
 			}
 		}
 		// update fields
 		for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
-			String className = defineFieldFinalityAnnotation.getClassName();
-			ClassNode baseClassNode = getBytecode(className);
-			for (Object o : baseClassNode.fields) {
-				FieldNode fieldNode = (FieldNode) o;
-				if(fieldNode.name.equals(defineFieldFinalityAnnotation.getFieldName())){
-//					Log.info("Pre Access Modifiers: " + getAccessModifiers(fieldNode.access));
-					if(defineFieldFinalityAnnotation.getFinality()){
-						fieldNode.access = fieldNode.access | Opcodes.ACC_FINAL;
-						Log.info("Set " + fieldNode.name + " field to be final.");
-					} else {
-						fieldNode.access = fieldNode.access & (~Opcodes.ACC_FINAL);
-						Log.info("Set " + fieldNode.name + " field to be non-final.");
+			if(phase == -1 || defineFieldFinalityAnnotation.getPhase() == phase){
+				String className = defineFieldFinalityAnnotation.getClassName();
+				ClassNode baseClassNode = getBytecode(className);
+				for (Object o : baseClassNode.fields) {
+					FieldNode fieldNode = (FieldNode) o;
+					if(fieldNode.name.equals(defineFieldFinalityAnnotation.getFieldName())){
+//						Log.info("Pre Access Modifiers: " + getAccessModifiers(fieldNode.access));
+						if(defineFieldFinalityAnnotation.getFinality()){
+							fieldNode.access = fieldNode.access | Opcodes.ACC_FINAL;
+							Log.info("Set " + fieldNode.name + " field to be final.");
+						} else {
+							fieldNode.access = fieldNode.access & (~Opcodes.ACC_FINAL);
+							Log.info("Set " + fieldNode.name + " field to be non-final.");
+						}
+//						Log.info("Post Access Modifiers: " + getAccessModifiers(fieldNode.access));
+						updateBytecode(className, baseClassNode);
+						processed = true;
+						break; // should only be one match
 					}
-//					Log.info("Post Access Modifiers: " + getAccessModifiers(fieldNode.access));
-					updateBytecode(className, baseClassNode);
-					processed = true;
-					break; // should only be one match
 				}
 			}
 		}

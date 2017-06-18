@@ -19,6 +19,4 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
-public @interface DefineField {
-	int phase() default 1;
-}
+public @interface DefineField {}

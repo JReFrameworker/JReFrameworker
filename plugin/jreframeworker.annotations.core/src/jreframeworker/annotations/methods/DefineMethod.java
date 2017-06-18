@@ -19,6 +19,4 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
-public @interface DefineMethod {
-	int phase() default 1;
-}
+public @interface DefineMethod {}

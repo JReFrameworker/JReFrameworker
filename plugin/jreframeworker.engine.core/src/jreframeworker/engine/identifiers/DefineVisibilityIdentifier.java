@@ -41,6 +41,27 @@ public class DefineVisibilityIdentifier {
 		return targets;
 	}
 	
+	public static Set<String> getVisibilityTargets(ClassNode classNode, int phase) throws IOException {
+		DefineVisibilityIdentifier visibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+		Set<String> targets = new HashSet<String>();
+		for(DefineTypeVisibilityAnnotation annotation : visibilityIdentifier.getTargetTypes()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		for(DefineMethodVisibilityAnnotation annotation : visibilityIdentifier.getTargetMethods()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		for(DefineFieldVisibilityAnnotation annotation : visibilityIdentifier.getTargetFields()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		return targets;
+	}
+	
 	private static final String PHASE = "phase";
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";

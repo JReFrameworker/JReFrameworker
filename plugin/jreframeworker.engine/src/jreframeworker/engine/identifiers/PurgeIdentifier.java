@@ -32,6 +32,34 @@ public class PurgeIdentifier {
 		return targets;
 	}
 	
+	/**
+	 * Returns a collection of qualified classes that are marked to be purged or contain
+	 * classes, fields, or methods marked to be purged
+	 * @param classNode
+	 * @return
+	 * @throws IOException
+	 */
+	public static Set<String> getPurgeTargets(ClassNode classNode, int phase) throws IOException {
+		PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
+		Set<String> targets = new HashSet<String>();
+		for(PurgeTypeAnnotation annotation : purgeIdentifier.getPurgeTypeAnnotations()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		for(PurgeMethodAnnotation annotation : purgeIdentifier.getPurgeMethodAnnotations()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		for(PurgeFieldAnnotation annotation : purgeIdentifier.getPurgeFieldAnnotations()){
+			if(annotation.getPhase() == phase){
+				targets.add(annotation.getClassName());
+			}
+		}
+		return targets;
+	}
+	
 	private static final String PHASE = "phase";
 	private static final String TYPE = "type";
 	private static final String FIELD = "field";

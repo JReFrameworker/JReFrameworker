@@ -21,6 +21,4 @@ import java.lang.annotation.Target;
  * 
  * @author Ben Holland
  */
-public @interface MergeMethod {
-	int phase() default 1;
-}
+public @interface MergeMethod {}
