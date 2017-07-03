@@ -15,6 +15,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.xml.sax.SAXException;
 
 import jreframeworker.builder.JReFrameworkerNature;
+import jreframeworker.core.BuildFile;
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.core.JReFrameworkerProject;
 
@@ -35,7 +36,8 @@ public class JREF {
 		try {
 			return open(projectName);
 		} catch (Exception e) {
-			IStatus status = JReFrameworker.createProject(projectName, ResourcesPlugin.getWorkspace().getRoot().getLocation(), new NullProgressMonitor(), "rt.jar");
+			BuildFile.Target[] targets = new BuildFile.Target[]{};
+			IStatus status = JReFrameworker.createProject(projectName, ResourcesPlugin.getWorkspace().getRoot().getLocation(), new NullProgressMonitor(), targets);
 			if(status.isOK()){
 				return open(projectName);
 			} else {

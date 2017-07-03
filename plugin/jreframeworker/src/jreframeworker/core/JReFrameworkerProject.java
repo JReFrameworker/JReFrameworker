@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -15,10 +16,14 @@ import javax.xml.transform.TransformerException;
 
 import org.apache.commons.io.FileDeleteStrategy;
 import org.eclipse.core.resources.ICommand;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.IClasspathEntry;
@@ -29,6 +34,9 @@ import org.eclipse.jdt.internal.core.ClasspathEntry;
 import org.xml.sax.SAXException;
 
 import jreframeworker.builder.JReFrameworkerBuilder;
+import jreframeworker.common.RuntimeUtils;
+import jreframeworker.core.BuildFile.LibraryTarget;
+import jreframeworker.core.BuildFile.RuntimeTarget;
 import jreframeworker.log.Log;
 
 @SuppressWarnings("restriction")
@@ -90,10 +98,11 @@ public class JReFrameworkerProject {
 		}
 	}
 	
-	public void removeJavaNature() throws CoreException {
+	public void disableJavaBuilder() throws CoreException {
 		IProjectDescription description = getProject().getDescription();
 		ICommand[] commands = description.getBuildSpec();
 		for (int i = 0; i < commands.length; ++i) {
+			// if the command exists, remove it
 			if (commands[i].getBuilderName().equals(JavaCore.BUILDER_ID)) {
 				ICommand[] newCommands = new ICommand[commands.length - 1];
 				System.arraycopy(commands, 0, newCommands, 0, i);
@@ -105,9 +114,10 @@ public class JReFrameworkerProject {
 		}
 	}
 	
-	public void addJavaNature() throws CoreException {
+	public void enableJavaBuilder() throws CoreException {
 		IProjectDescription desc = project.getDescription();
 		ICommand[] commands = desc.getBuildSpec();
+		// if the command already exists, don't add it again
 		for (int i = 0; i < commands.length; ++i) {
 			if (commands[i].getBuilderName().equals(JavaCore.BUILDER_ID)) {
 				return;
@@ -116,7 +126,7 @@ public class JReFrameworkerProject {
 		ICommand[] newCommands = new ICommand[commands.length + 1];
 		System.arraycopy(commands, 0, newCommands, 0, commands.length);
 		ICommand command = desc.newCommand();
-		command.setBuilderName(JReFrameworkerBuilder.BUILDER_ID);
+		command.setBuilderName(JavaCore.BUILDER_ID);
 		newCommands[newCommands.length - 1] = command;
 		desc.setBuildSpec(newCommands);
 		project.setDescription(desc, null);
@@ -130,7 +140,11 @@ public class JReFrameworkerProject {
 	 * @throws ParserConfigurationException
 	 */
 	public Set<String> listTargets() throws SAXException, IOException, ParserConfigurationException {
-		return getBuildFile().getTargets();
+		Set<String> targets = new HashSet<String>();
+		for(BuildFile.Target target : getBuildFile().getTargets()){
+			targets.add(target.getName());
+		}
+		return targets;
 	}
 	
 	/**
@@ -143,8 +157,7 @@ public class JReFrameworkerProject {
 		
 		// update the build file
 		BuildFile buildFile = getBuildFile();
-		buildFile.addTarget(targetLibrary.getName());
-		buildFile.addOriginalClasspathEntry(entry);
+		buildFile.addLibraryTarget(targetLibrary.getName(), entry);
 	}
 	
 	/**
@@ -163,8 +176,7 @@ public class JReFrameworkerProject {
 		
 		// update the build file
 		BuildFile buildFile = getBuildFile();
-		buildFile.addTarget(targetLibrary.getName());
-		buildFile.addOriginalClasspathEntry(entry);
+		buildFile.addLibraryTarget(targetLibrary.getName(), entry);
 	}
 	
 	/**
@@ -353,14 +365,23 @@ public class JReFrameworkerProject {
 	 * @throws CoreException
 	 */
 	public void restoreOriginalClasspathEntries() throws SAXException, IOException, ParserConfigurationException, CoreException {
-		for(String entry : getBuildFile().getOriginalClasspathEntries()){
-			File library = new File(entry);
-			if(library.exists()){
-				updateProjectLibrary(library.getName(), library);
+		for(BuildFile.Target entry : getBuildFile().getTargets()){
+			if(entry.isRuntime()){
+				// TODO: implement
+				throw new RuntimeException("Not Implemented");
+//				File runtime = RuntimeUtils.getRuntimeJar(entry.getName());
+//				updateProjectLibrary(runtime.getName(), runtime);
 			} else {
-				library = project.getFile(entry).getLocation().toFile();
+				File library = new File(((LibraryTarget) entry).getLibraryPath());
 				if(library.exists()){
+					// absolute path
 					updateProjectLibrary(library.getName(), library);
+				} else {
+					// relative path
+					library = project.getFile(((LibraryTarget) entry).getLibraryPath()).getLocation().toFile();
+					if(library.exists()){
+						updateProjectLibrary(library.getName(), library);
+					}
 				}
 			}
 		}

@@ -39,6 +39,63 @@ public class BuildFile {
 	}
 	
 	/**
+	 * A target is a jar that we want to modify
+	 */
+	public static abstract class Target {
+		private String name;
+		
+		public Target(String name){
+			this.name = name;
+		}
+		
+		public String getName(){
+			return name;
+		}
+		
+		public abstract boolean isRuntime();
+	}
+	
+	/**
+	 * For all practical purposes, we say a runtime target has a path
+	 * and we know where it is absolutely or relative to the project
+	 */
+	public static class LibraryTarget extends Target {
+		
+		private String path;
+		
+		public LibraryTarget(String name, String path){
+			super(name);
+			this.path = path;
+		}
+		
+		public String getLibraryPath(){
+			return path;
+		}
+
+		@Override
+		public boolean isRuntime() {
+			return false;
+		}
+	}
+	
+	/**
+	 * For all practical purposes, we say a runtime target does not have a path
+	 * since it is located depending on the current project runtime.
+	 */
+	public static class RuntimeTarget extends Target {
+
+		public RuntimeTarget(String name) {
+			super(name);
+		}
+		
+		@Override
+		public boolean isRuntime() {
+			return true;
+		}
+		
+	}
+	
+	/**
 	 * Returns a set of all the target jars in the xml file
 	 * @param buildFile
 	 * @return
@@ -46,16 +103,25 @@ public class BuildFile {
 	 * @throws IOException
 	 * @throws ParserConfigurationException
 	 */
-	public Set<String> getTargets() throws SAXException, IOException, ParserConfigurationException {
+	public Set<Target> getTargets() throws SAXException, IOException, ParserConfigurationException {
 		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 		Document doc = dBuilder.parse(jrefXMLFile);
 		doc.getDocumentElement().normalize();
 		NodeList targets = doc.getElementsByTagName("target");
-		Set<String> results = new HashSet<String>();
+		Set<Target> results = new HashSet<Target>();
 		for (int i = 0; i < targets.getLength(); i++) {
 			Element target = (Element) targets.item(i);
-			results.add(target.getAttribute("name"));
+			String name = target.getAttribute("name");
+			Boolean runtime = Boolean.parseBoolean(target.getAttribute("runtime"));
+			if(runtime){
+				results.add(new RuntimeTarget(name));
+			} else {
+				String path = target.getAttribute("path");
+				path = path.replace(File.separatorChar, '/');
+				results.add(new LibraryTarget(name, path));
+			}
+			
 		}
 		return results;
 	}
@@ -69,18 +135,52 @@ public class BuildFile {
 	 * @throws SAXException
 	 * @throws IOException
 	 */
-	public void addTarget(String targetJarName) throws TransformerException, ParserConfigurationException, SAXException, IOException {
+	public void addRuntimeTarget(String targetJarName) throws TransformerException, ParserConfigurationException, SAXException, IOException {
+		addTarget(new RuntimeTarget(targetJarName));
+	}
+	
+	/**
+	 * Adds a target jar to the build file
+	 * @param buildFile
+	 * @param targetJar
+	 * @throws TransformerException
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 */
+	public void addLibraryTarget(String targetJarName, String targetJarPath) throws TransformerException, ParserConfigurationException, SAXException, IOException {
+		addTarget(new LibraryTarget(targetJarName, targetJarPath));
+	}
+	
+	/**
+	 * Adds a target jar to the build file
+	 * @param buildFile
+	 * @param targetJar
+	 * @throws TransformerException
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 */
+	public void addTarget(Target targetToAdd) throws TransformerException, ParserConfigurationException, SAXException, IOException {
 		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 		Document doc = dBuilder.parse(jrefXMLFile);
 		doc.getDocumentElement().normalize();
 		
-		if(!getTargets().contains(targetJarName)){
+		if(!getTargets().contains(targetToAdd.getName())){
 			// add target
 			Element rootElement = doc.getDocumentElement();
 			Element target = doc.createElement("target");
 			rootElement.appendChild(target);
-			target.setAttribute("name", targetJarName);
+			
+			target.setAttribute("name", targetToAdd.getName());
+			
+			if(targetToAdd instanceof RuntimeTarget){
+				target.setAttribute("runtime", "true");
+			} else if(targetToAdd instanceof LibraryTarget){
+				target.setAttribute("runtime", "false");
+				target.setAttribute("path", ((LibraryTarget)targetToAdd).getLibraryPath());
+			}
 
 			// write the content into xml file
 			writeBuildFile(jrefXMLFile, doc);
@@ -109,86 +209,6 @@ public class BuildFile {
 
 		// write the content into xml file
 		writeBuildFile(jrefXMLFile, doc);
-	}
-	
-	/**
-	 * Adds an original classpath entry jar to the build file
-	 * @param buildFile
-	 * @param jarName
-	 * @throws TransformerException
-	 * @throws ParserConfigurationException
-	 * @throws SAXException
-	 * @throws IOException
-	 */
-	public void addOriginalClasspathEntry(String jarName) throws TransformerException, ParserConfigurationException, SAXException, IOException {
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-		Document doc = dBuilder.parse(jrefXMLFile);
-		doc.getDocumentElement().normalize();
-		
-		if(!getOriginalClasspathEntries().contains(jarName)){
-			Element originalClasspath = (Element) doc.getElementsByTagName("original-classpath").item(0);
-			
-			if(originalClasspath == null){
-				Element rootElement = doc.getDocumentElement();
-				originalClasspath = doc.createElement("original-classpath");
-				rootElement.appendChild(originalClasspath);
-			}
-			
-			// add classpath entry
-			Element entry = doc.createElement("entry");
-			originalClasspath.appendChild(entry);
-			entry.setAttribute("library", jarName);
-
-			// write the content into xml file
-			writeBuildFile(jrefXMLFile, doc);
-		}
-	}
-	
-	/**
-	 * Removes an original jar classpath entry from the build file
-	 * @param project
-	 * @param jarName
-	 */
-	public void removeOriginalClasspathEntry(String jarName) throws TransformerException, ParserConfigurationException, SAXException, IOException {
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-		Document doc = dBuilder.parse(jrefXMLFile);
-		doc.getDocumentElement().normalize();
-		
-		// remove target
-		NodeList targets = doc.getElementsByTagName("entry");
-		for (int i = 0; i < targets.getLength(); i++) {
-			Element target = (Element) targets.item(i);
-			if(target.getAttribute("library").equals(jarName)){
-				target.getParentNode().removeChild(target);
-			}
-		}
-
-		// write the content into xml file
-		writeBuildFile(jrefXMLFile, doc);
-	}
-	
-	/**
-	 * Returns a set of all the original classpath library entries
-	 * @param buildFile
-	 * @return
-	 * @throws SAXException
-	 * @throws IOException
-	 * @throws ParserConfigurationException
-	 */
-	public Set<String> getOriginalClasspathEntries() throws SAXException, IOException, ParserConfigurationException {
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-		Document doc = dBuilder.parse(jrefXMLFile);
-		doc.getDocumentElement().normalize();
-		NodeList targets = doc.getElementsByTagName("entry");
-		Set<String> results = new HashSet<String>();
-		for (int i = 0; i < targets.getLength(); i++) {
-			Element target = (Element) targets.item(i);
-			results.add(target.getAttribute("library"));
-		}
-		return results;
 	}
 	
 	/**
@@ -231,12 +251,8 @@ public class BuildFile {
 			doc.appendChild(rootElement);
 			
 			// save the original classpath
-			Element originalClasspath = doc.createElement("original-classpath");
-			for(IClasspathEntry entry : jProject.getRawClasspath()){
-				Element originalClasspathEntry = doc.createElement("entry");
-				originalClasspathEntry.setAttribute("library", entry.getPath().toString());
-			}
-			rootElement.appendChild(originalClasspath);
+			Element targets = doc.createElement("targets");
+			rootElement.appendChild(targets);
 
 			// write the content into xml file
 			writeBuildFile(buildXMLFile, doc);
@@ -248,8 +264,6 @@ public class BuildFile {
 			Log.error("TransformerException", tfe);
 		} catch (IOException ioe) {
 			Log.error("IOException", ioe);
-		} catch (JavaModelException jme) {
-			Log.error("IOException", jme);
 		} catch (DOMException dome) {
 			Log.error("DOMException", dome);
 		}

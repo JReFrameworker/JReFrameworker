@@ -92,7 +92,7 @@ public class JReFrameworker {
 	// https://sdqweb.ipd.kit.edu/wiki/JDT_Tutorial:_Creating_Eclipse_Java_Projects_Programmatically
 	// https://eclipse.org/articles/Article-Builders/builders.html
 	// http://www.programcreek.com/java-api-examples/index.php?api=org.eclipse.core.internal.events.BuildCommand
-	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor, String... targets) throws CoreException, IOException, URISyntaxException, TransformerException, ParserConfigurationException, SAXException {
+	public static IStatus createProject(String projectName, IPath projectPath, IProgressMonitor monitor, BuildFile.Target... targets) throws CoreException, IOException, URISyntaxException, TransformerException, ParserConfigurationException, SAXException {
 		IProject project = null;
 		
 		try {
@@ -113,7 +113,7 @@ public class JReFrameworker {
 			}
 			
 			BuildFile buildFile = BuildFile.createBuildFile(jProject);
-			for(String target : targets){
+			for(BuildFile.Target target : targets){
 				buildFile.addTarget(target);
 			}
 			

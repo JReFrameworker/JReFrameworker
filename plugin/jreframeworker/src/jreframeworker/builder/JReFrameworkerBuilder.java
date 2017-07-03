@@ -92,6 +92,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			Log.info("Cleaning: " + jrefProject.getProject().getName());
 			
 			// clear the Java compiler error markers (these will be fixed and restored if they remain after building phases)
+			// TODO: is this actually working?
 			jrefProject.getProject().deleteMarkers(JavaCore.ERROR, true, IProject.DEPTH_INFINITE);
 
 			try {
@@ -186,8 +187,9 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					// if its after the first phase then we are initializing with the last build phase jars
 					BuildFile buildFile = jrefProject.getBuildFile();
 					if(isFirstPhase){
-						for(String targetJar : buildFile.getTargets()) {
-							File originalJar = getClasspathJar(targetJar, jrefProject);
+						for(BuildFile.Target target : buildFile.getTargets()) {
+							// classpath has been restored, these are all the original jars
+							File originalJar = RuntimeUtils.getClasspathJar(target.getName(), jrefProject);
 							if (originalJar != null && originalJar.exists()) {
 								Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
 								allEngines.add(engine);
@@ -202,14 +204,14 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									}
 								}
 							} else {
-								Log.warning("Original Jar not found: " + targetJar);
+								Log.warning("Original Jar not found: " + target.getName());
 							}
 						}
 					} else {
-						for(String targetJar : buildFile.getTargets()) {
-							File phaseJar = getBuildPhaseJar(targetJar, jrefProject, lastPhase, lastNamedPhase);
+						for(BuildFile.Target target : buildFile.getTargets()) {
+							File phaseJar = getBuildPhaseJar(target.getName(), jrefProject, lastPhase, lastNamedPhase);
 							if(!phaseJar.exists()){
-								phaseJar = getClasspathJar(targetJar, jrefProject);;
+								phaseJar = RuntimeUtils.getClasspathJar(target.getName(), jrefProject);
 							}
 							if (phaseJar != null && phaseJar.exists()) {
 								Engine engine = new Engine(phaseJar, PreferencesPage.getMergeRenamingPrefix());
@@ -225,7 +227,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									}
 								}
 							} else {
-								Log.warning("Phase Jar not found: " + targetJar);
+								Log.warning("Phase Jar not found: " + target.getName());
 							}
 						}
 					}
@@ -268,7 +270,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					// if the build phase directory is null or does not exist then nothing was done during the phase
 					File buildPhaseDirectory = getBuildPhaseDirectory(jrefProject, currentPhase, currentNamedPhase);
 					if(buildPhaseDirectory != null && buildPhaseDirectory.exists()){
-						jrefProject.removeJavaNature();
+						jrefProject.disableJavaBuilder();
 						for(File file : buildPhaseDirectory.listFiles()){
 							if(file.getName().endsWith(".jar")){
 								File modifiedLibrary = file;
@@ -276,7 +278,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 							}
 						}
 						// restore the java nature
-						jrefProject.addJavaNature();
+						jrefProject.enableJavaBuilder();
 						
 						jrefProject.refresh();
 					}
@@ -437,7 +439,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 										// purge target from each jar that contains the purge target
 										if(engineMap.containsKey(target)){
 											for(Engine engine : engineMap.get(target)){
-												if(isRuntimeJar(engine.getJarName())){
+												if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
 													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
 												} else {
 													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
@@ -457,7 +459,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 										// merge into each target jar that contains the merge target
 										if(engineMap.containsKey(target)){
 											for(Engine engine : engineMap.get(target)){
-												if(isRuntimeJar(engine.getJarName())){
+												if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
 													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
 												} else {
 													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
@@ -477,7 +479,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 										// merge into each target jar that contains the merge target
 										if(engineMap.containsKey(target)){
 											for(Engine engine : engineMap.get(target)){
-												if(isRuntimeJar(engine.getJarName())){
+												if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
 													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
 												} else {
 													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
@@ -499,7 +501,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 										// merge into each target jar that contains the merge target
 										if(engineMap.containsKey(target)){
 											for(Engine engine : engineMap.get(target)){
-												if(isRuntimeJar(engine.getJarName())){
+												if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
 													engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
 												} else {
 													URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
@@ -519,7 +521,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									if(defineTypeAnnotation.getPhase() == namedPhase){
 										// define or replace in every target jar
 										for(Engine engine : allEngines){
-											if(isRuntimeJar(engine.getJarName())){
+											if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
 												engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
 											} else {
 												URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
@@ -621,53 +623,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-	public static File getClasspathJar(String targetJar, JReFrameworkerProject jrefProject) throws IOException, JavaModelException {
-		for(IClasspathEntry classpathEntry : jrefProject.getJavaProject().getRawClasspath()){
-			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
-				File jar = classpathEntry.getPath().toFile().getCanonicalFile();
-				if(jar.getName().equals(targetJar)){
-					if(!jar.exists()){
-						// path may have been relative, so try again to resolve path relative to project directory
-						String relativePath = jar.getAbsolutePath();
-						String projectName = jrefProject.getProject().getName();
-						String projectRoot = File.separator + projectName;
-						relativePath = relativePath.substring(relativePath.indexOf(projectRoot) + projectRoot.length());
-						jar = jrefProject.getProject().getFile(relativePath).getLocation().toFile();
-						if(!jar.exists()){
-							// if jar still doesn't exist match any jar in the project with the same name
-							jar = jrefProject.getProject().getFile(jar.getName()).getLocation().toFile();
-						}
-					}
-					return jar;
-				}
-			}
-		}
-		return getOriginalRuntimeJar(targetJar);
-	}
-
-	private boolean isRuntimeJar(String jar) throws IOException {
-		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
-		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
-		for (LibraryLocation library : locations) {
-			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
-			if(runtime.getName().equals(jar)){
-				return true;
-			}
-		}
-		return false;
-	}
 	
-	private static File getOriginalRuntimeJar(String targetJar) throws IOException {
-		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
-		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
-		for (LibraryLocation library : locations) {
-			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
-			if(runtime.getName().equals(targetJar)){
-				return runtime;
-			}
-		}
-		return null;
-	}
 	
 	private static boolean hasMergeTypeModification(ClassNode classNode) throws IOException {
 		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...

@@ -40,7 +40,7 @@ import jreframeworker.annotations.types.MergeType;
 import jreframeworker.atlas.analysis.ClassAnalysis;
 import jreframeworker.atlas.analysis.MethodAnalysis;
 import jreframeworker.atlas.analysis.MethodAnalysis.Return;
-import jreframeworker.builder.JReFrameworkerBuilder;
+import jreframeworker.common.RuntimeUtils;
 import jreframeworker.core.JReFrameworkerProject;
 
 public class JReFrameworkerAtlasProject {
@@ -50,7 +50,7 @@ public class JReFrameworkerAtlasProject {
 		ArrayList<ClassLoader> classLoaders = new ArrayList<ClassLoader>();
 		classLoaders.add(getClass().getClassLoader());
 		for (String targetJar : listTargets()) {
-			File originalJar = JReFrameworkerBuilder.getClasspathJar(targetJar, project);
+			File originalJar = RuntimeUtils.getClasspathJar(targetJar, project);
 			URL[] jarURL = { new URL("jar:file:" + originalJar.getCanonicalPath() + "!/") };
 			classLoaders.add(URLClassLoader.newInstance(jarURL));
 		}

@@ -5,32 +5,83 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedList;
 
+import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
 
+import jreframeworker.core.JReFrameworkerProject;
 import jreframeworker.log.Log;
 
 public class RuntimeUtils {
 
-	public static File getDefaultRuntime() throws Exception {
-		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
-		LinkedList<File> libraries = new LinkedList<File>();
-		for (LibraryLocation element : JavaRuntime.getLibraryLocations(vmInstall)) {
-			libraries.add(JavaCore.newLibraryEntry(element.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile());
-		}
-		Log.info(libraries.toString());
-		return findJavaRuntimeJar(libraries.toArray(new File[libraries.size()]));
-	}
-
-	public static File findJavaRuntimeJar(File... files) throws Exception {
-		for (File file : files) {
-			if (file.getName().equals("rt.jar")) {
-				return file;
+//	public static File getDefaultRuntime() throws Exception {
+//		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
+//		LinkedList<File> libraries = new LinkedList<File>();
+//		for (LibraryLocation element : JavaRuntime.getLibraryLocations(vmInstall)) {
+//			libraries.add(JavaCore.newLibraryEntry(element.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile());
+//		}
+//		Log.info(libraries.toString());
+//		return findJavaRuntimeJar(libraries.toArray(new File[libraries.size()]));
+//	}
+//
+//	public static File findJavaRuntimeJar(File... files) throws Exception {
+//		for (File file : files) {
+//			if (file.getName().equals("rt.jar")) {
+//				return file;
+//			}
+//		}
+//		throw new Exception("Could not located default runtime!");
+//	}
+	
+	public static File getClasspathJar(String targetJarName, JReFrameworkerProject jrefProject) throws IOException, JavaModelException {
+		for(IClasspathEntry classpathEntry : jrefProject.getJavaProject().getRawClasspath()){
+			if(classpathEntry.getEntryKind() == IClasspathEntry.CPE_LIBRARY){
+				File jar = classpathEntry.getPath().toFile().getCanonicalFile();
+				if(jar.getName().equals(targetJarName)){
+					if(!jar.exists()){
+						// path may have been relative, so try again to resolve path relative to project directory
+						String relativePath = jar.getAbsolutePath();
+						String projectName = jrefProject.getProject().getName();
+						String projectRoot = File.separator + projectName;
+						relativePath = relativePath.substring(relativePath.indexOf(projectRoot) + projectRoot.length());
+						jar = jrefProject.getProject().getFile(relativePath).getLocation().toFile();
+						if(!jar.exists()){
+							// if jar still doesn't exist match any jar in the project with the same name
+							jar = jrefProject.getProject().getFile(targetJarName).getLocation().toFile();
+						}
+					}
+					return jar;
+				}
 			}
 		}
-		throw new Exception("Could not located default runtime!");
+		return getRuntimeJar(targetJarName);
+	}
+
+	public static boolean isRuntimeJar(File jar) throws IOException {
+		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
+		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
+		for (LibraryLocation library : locations) {
+			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
+			if(runtime.equals(jar.getCanonicalFile())){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public static File getRuntimeJar(String jarName) throws IOException {
+		IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
+		LibraryLocation[] locations = JavaRuntime.getLibraryLocations(vmInstall);
+		for (LibraryLocation library : locations) {
+			File runtime = JavaCore.newLibraryEntry(library.getSystemLibraryPath(), null, null).getPath().toFile().getCanonicalFile();
+			if(runtime.getName().equals(jarName)){
+				return runtime;
+			}
+		}
+		return null;
 	}
 
 	// modified from http://rosettacode.org/wiki/Find_common_directory_path#Java

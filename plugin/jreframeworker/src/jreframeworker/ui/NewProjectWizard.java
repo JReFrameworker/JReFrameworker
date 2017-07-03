@@ -19,6 +19,7 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.UIJob;
 
+import jreframeworker.core.BuildFile;
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.log.Log;
 
@@ -68,7 +69,7 @@ public class NewProjectWizard extends Wizard implements INewWizard {
 			public void run(IProgressMonitor monitor) {
 				IStatus result = null;
 				try {
-					String [] targets = new String[]{};
+					BuildFile.Target[] targets = new BuildFile.Target[]{};
 					result = JReFrameworker.createProject(projectName, projectLocation, monitor, targets);
 				} catch (Throwable t) {
 					String message = "Could not create JReFrameworker runtime project. " + t.getMessage();
