@@ -138,6 +138,9 @@
 		<handler commandId="jreframeworker.addTargetCommand"
 				 class="jreframeworker.handlers.AddTargetHandler">
 		</handler>
+		<handler commandId="jreframeworker.resetClasspathCommand"
+				 class="jreframeworker.handlers.ResetClasspathHandler">
+		</handler>
 	</extension>
 	
 	<!-- add some menu items for the command handlers -->
@@ -150,6 +153,10 @@
 			<command commandId="jreframeworker.addTargetCommand" 
 					 icon="icons/JReFrameworker-toolbar.gif" 
 					 label="Add Library as Target" 
+					 style="push" />
+		    <command commandId="jreframeworker.resetClasspathCommand" 
+					 icon="icons/JReFrameworker-toolbar.gif" 
+					 label="Reset Project Classpath" 
 					 style="push" />
 		</menuContribution>
 	</extension>

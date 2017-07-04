@@ -128,10 +128,59 @@ public class JReFrameworkerProject {
 		ICommand command = desc.newCommand();
 		command.setBuilderName(JavaCore.BUILDER_ID);
 		newCommands[newCommands.length - 1] = command;
+		
+		if(!command1PreceedsCommand2(JavaCore.BUILDER_ID, JReFrameworkerBuilder.BUILDER_ID, newCommands)){
+			swapBuildCommands(JavaCore.BUILDER_ID, JReFrameworkerBuilder.BUILDER_ID, newCommands);
+		}
+		
 		desc.setBuildSpec(newCommands);
 		project.setDescription(desc, null);
 	}
 	
+	private boolean command1PreceedsCommand2(String command1, String command2, ICommand[] commands) {
+		int command1Position = -1;
+		int command2Position = -1;
+		for (int i = 0; i < commands.length; ++i) {
+			if(commands[i].getBuilderName().equals(command1)){
+				command1Position = i;
+			}
+			if(commands[i].getBuilderName().equals(command2)){
+				command2Position = i;
+			}
+		}
+		if(command1Position != -1 && command2Position != -1 && command1Position != command2Position){
+			if(command1Position < command2Position){
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	
+	private void swapBuildCommands(String command1, String command2, ICommand[] commands) {
+		int command1Position = -1;
+		int command2Position = -1;
+		for (int i = 0; i < commands.length; ++i) {
+			if(commands[i].getBuilderName().equals(command1)){
+				command1Position = i;
+			}
+			if(commands[i].getBuilderName().equals(command2)){
+				command2Position = i;
+			}
+		}
+		if(command1Position != -1 && command2Position != -1 && command1Position != command2Position){
+			swapBuildCommands(command1Position, command2Position, commands);
+		}
+	}
+	
+	private void swapBuildCommands(int command1Position, int command2Position, ICommand[] commands) {
+		ICommand swap = commands[command1Position];
+		commands[command1Position] = commands[command2Position];
+		commands[command2Position] = swap;
+	}
+
 	/**
 	 * Lists the JReFrameworker project targets
 	 * @return
