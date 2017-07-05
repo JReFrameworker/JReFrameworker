@@ -7,6 +7,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceDelta;
@@ -23,12 +25,15 @@ import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaModelMarker;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.launching.IVMInstall;
-import org.eclipse.jdt.launching.JavaRuntime;
-import org.eclipse.jdt.launching.LibraryLocation;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.xml.sax.SAXException;
@@ -94,14 +99,20 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			// clear the Java compiler error markers (these will be fixed and restored if they remain after building phases)
 			// TODO: is this actually working?
 			jrefProject.getProject().deleteMarkers(JavaCore.ERROR, true, IProject.DEPTH_INFINITE);
+			jrefProject.getProject().deleteMarkers(IJavaModelMarker.JAVA_MODEL_PROBLEM_MARKER, true, IProject.DEPTH_INFINITE);
 
+			jrefProject.disableJavaBuilder();
 			try {
 				jrefProject.clean();
-				this.forgetLastBuiltState(); 
+				jrefProject.restoreOriginalClasspathEntries(); 
 			} catch (Exception e) {
 				Log.error("Error cleaning " + jrefProject.getProject().getName(), e);
 			}
-			jrefProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+			jrefProject.enableJavaBuilder();
+			
+			this.forgetLastBuiltState();
+			jrefProject.refresh();
+			
 			monitor.worked(1);
 		} else {
 			Log.warning(getProject().getName() + " is not a valid JReFrameworker project!");
@@ -122,7 +133,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			// build each jref project fresh
 			monitor.beginTask("Building: " + jrefProject.getProject().getName(), 1);
 			Log.info("Building: " + jrefProject.getProject().getName());
-
+			
 //			// add each class from classes in jars in raw directory
 //			// this happens before any build phases
 //			File rawDirectory = jrefProject.getProject().getFolder(JReFrameworker.RAW_DIRECTORY).getLocation().toFile();
@@ -146,11 +157,23 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 //				}
 //			}
 			
+			// filter our the compilation units with build errors
+			ICompilationUnit[] compilationUnits = getSourceCompilationUnits(jrefProject.getJavaProject());
+			ArrayList<ICompilationUnit> compilingCompilationUnitList = new ArrayList<ICompilationUnit>();
+			for(ICompilationUnit compilationUnit : compilationUnits){
+				if(getJavaProblemMarkers(compilationUnit).length == 0){
+					compilingCompilationUnitList.add(compilationUnit);
+				} else {
+					Log.info(compilationUnit.getCorrespondingResource().getLocation().toFile().getName() + " has compile errors");
+				}
+			}
+			compilationUnits = new ICompilationUnit[compilingCompilationUnitList.size()];
+			compilingCompilationUnitList.toArray(compilationUnits);
+			
 			// discover the build phases
-			File binDirectory = jrefProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 			Map<Integer,Integer> phases = null;
 			try {
-				phases = getNormalizedBuildPhases(binDirectory, jrefProject);
+				phases = getNormalizedBuildPhases(jrefProject, compilationUnits);
 				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
 				Log.info("Discovered " + phases.size() + " explicit build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
 				if(phases.isEmpty()){
@@ -233,7 +256,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					}
 					
 					// compute the source based jar modifications
-					buildProject(binDirectory, jrefProject, engineMap, allEngines, currentPhase, currentNamedPhase);
+					buildProject(jrefProject.getBinaryDirectory(), jrefProject, engineMap, allEngines, currentPhase, currentNamedPhase);
 					
 					// write out the modified jars
 					for(Engine engine : allEngines){
@@ -305,8 +328,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return new File(getBuildPhaseDirectory(jrefProject, buildPhase, namedBuildPhase).getCanonicalPath() + File.separatorChar + targetJar);
 	}
 
-	private Map<Integer,Integer> getNormalizedBuildPhases(File binDirectory, JReFrameworkerProject jrefProject) throws IOException {
-		Integer[] phases = getBuildPhases(binDirectory, jrefProject);
+	private Map<Integer,Integer> getNormalizedBuildPhases(JReFrameworkerProject jrefProject, ICompilationUnit[] compilationUnits) throws IOException, JavaModelException {
+		Integer[] phases = getBuildPhases(jrefProject, compilationUnits);
 		Map<Integer,Integer> normalizedPhases = new HashMap<Integer,Integer>();
 		Integer normalizedPhase = 1;
 		for(Integer phase : phases){
@@ -315,8 +338,80 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return normalizedPhases;
 	}
 	
-	private Integer[] getBuildPhases(File binDirectory, JReFrameworkerProject jrefProject) throws IOException {
-		Set<Integer> phases = getBuildPhases(binDirectory, jrefProject, new HashSet<Integer>());
+	private Integer[] getBuildPhases(JReFrameworkerProject jrefProject, ICompilationUnit[] compilationUnits) throws IOException, JavaModelException {
+		Set<Integer> phases = new HashSet<Integer>();
+		for(File classFile : getCorrespondingClassFiles(jrefProject, compilationUnits)){
+			byte[] classBytes = Files.readAllBytes(classFile.toPath());
+			if(classBytes.length > 0){
+				try {
+					ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
+					
+					boolean purgeModification = hasPurgeModification(classNode);
+					if(purgeModification){
+						PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
+						for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
+							phases.add(purgeTypeAnnotation.getPhase());
+						}
+						for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
+							phases.add(purgeFieldAnnotation.getPhase());
+						}
+						for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
+							phases.add(purgeMethodAnnotation.getPhase());
+						}
+					}
+					
+					boolean finalityModification = hasFinalityModification(classNode);
+					if(finalityModification){
+						DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
+						for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
+							phases.add(defineTypeFinalityAnnotation.getPhase());
+						}
+						for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
+							phases.add(defineFieldFinalityAnnotation.getPhase());
+						}
+						for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
+							phases.add(defineMethodFinalityAnnotation.getPhase());
+						}
+					}
+					
+					boolean visibilityModification = hasVisibilityModification(classNode);
+					if(visibilityModification){
+						DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+						for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
+							phases.add(defineTypeVisibilityAnnotation.getPhase());
+						}
+						for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
+							phases.add(defineFieldVisibilityAnnotation.getPhase());
+						}
+						for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
+							phases.add(defineMethodVisibilityAnnotation.getPhase());
+						}
+					}
+					
+					boolean mergeModification = hasMergeTypeModification(classNode);
+					if(mergeModification){
+						MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
+						MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
+						phases.add(mergeTypeAnnotation.getPhase());
+						// no such thing as merge field, so skipping fields
+						// define field, define method, and merge method all must have the same phase as the merge type annotation
+						// so we can't discover new phases by looking at the body
+					}
+					
+					boolean defineModification = hasDefineTypeModification(classNode);
+					if(defineModification){
+						DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
+						DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
+						phases.add(defineTypeAnnotation.getPhase());
+						// define field, define method must have the same phase as the define type annotation
+						// so we can't discover new phases by looking at the body
+					}
+				} catch (RuntimeException e){
+					Log.error("Error discovering build phases...", e);
+				}
+			}
+		}
+		
 		ArrayList<Integer> phasesSorted = new ArrayList<Integer>(phases);
 		Collections.sort(phasesSorted);
 		Integer[] result = new Integer[phasesSorted.size()];
@@ -324,86 +419,81 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return result;
 	}
 	
-	private Set<Integer> getBuildPhases(File binDirectory, JReFrameworkerProject jrefProject, Set<Integer> phases) throws IOException {
-		File[] files = binDirectory.listFiles();
-		for(File file : files){
-			if(file.isFile()){
-				if(file.getName().endsWith(".class")){
-					byte[] classBytes = Files.readAllBytes(file.toPath());
-					if(classBytes.length > 0){
-						try {
-							ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
-							
-							boolean purgeModification = hasPurgeModification(classNode);
-							if(purgeModification){
-								PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
-								for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
-									phases.add(purgeTypeAnnotation.getPhase());
-								}
-								for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
-									phases.add(purgeFieldAnnotation.getPhase());
-								}
-								for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
-									phases.add(purgeMethodAnnotation.getPhase());
-								}
-							}
-							
-							boolean finalityModification = hasFinalityModification(classNode);
-							if(finalityModification){
-								DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
-								for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
-									phases.add(defineTypeFinalityAnnotation.getPhase());
-								}
-								for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
-									phases.add(defineFieldFinalityAnnotation.getPhase());
-								}
-								for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
-									phases.add(defineMethodFinalityAnnotation.getPhase());
+	/**
+	 * Returns a collection of K_SOURCE Compilation units in the project's package fragments
+	 * Reference: https://www.eclipse.org/forums/index.php/t/68072/
+	 * @param javaproject
+	 * @return
+	 */
+	private final ICompilationUnit[] getSourceCompilationUnits(IJavaProject jProject) {
+		ArrayList<ICompilationUnit> sourceCompilationUnits = new ArrayList<ICompilationUnit>();
+		try {
+			IPackageFragmentRoot[] roots = jProject.getPackageFragmentRoots();
+			for (int i = 0; i < roots.length; i++) {
+				IPackageFragmentRoot root = roots[i];
+				if (root.getKind() == IPackageFragmentRoot.K_SOURCE) {
+					IJavaElement[] javaElements = root.getChildren();
+					for (int j = 0; j < javaElements.length; j++) {
+						IJavaElement javaElement = javaElements[j];
+						if (javaElement.getElementType() == IJavaElement.PACKAGE_FRAGMENT) {
+							IPackageFragment pf = (IPackageFragment) javaElement;
+							ICompilationUnit[] compilationUnits = pf.getCompilationUnits();
+							for (int k = 0; k < compilationUnits.length; k++) {
+								ICompilationUnit unit = compilationUnits[k];
+								if (unit.isStructureKnown()) {
+									sourceCompilationUnits.add(unit);
 								}
 							}
-							
-							boolean visibilityModification = hasVisibilityModification(classNode);
-							if(visibilityModification){
-								DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
-								for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
-									phases.add(defineTypeVisibilityAnnotation.getPhase());
-								}
-								for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
-									phases.add(defineFieldVisibilityAnnotation.getPhase());
-								}
-								for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
-									phases.add(defineMethodVisibilityAnnotation.getPhase());
-								}
-							}
-							
-							boolean mergeModification = hasMergeTypeModification(classNode);
-							if(mergeModification){
-								MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
-								MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
-								phases.add(mergeTypeAnnotation.getPhase());
-								// no such thing as merge field, so skipping fields
-								// define field, define method, and merge method all must have the same phase as the merge type annotation
-								// so we can't discover new phases by looking at the body
-							}
-							
-							boolean defineModification = hasDefineTypeModification(classNode);
-							if(defineModification){
-								DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
-								DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
-								phases.add(defineTypeAnnotation.getPhase());
-								// define field, define method must have the same phase as the define type annotation
-								// so we can't discover new phases by looking at the body
-							}
-						} catch (RuntimeException e){
-							Log.error("Error discovering build phases...", e);
 						}
 					}
 				}
-			} else if(file.isDirectory()){
-				getBuildPhases(file, jrefProject, phases);
+			}
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+		ICompilationUnit[] sourceCompilationUnitsArray = new ICompilationUnit[sourceCompilationUnits.size()];
+		sourceCompilationUnits.toArray(sourceCompilationUnitsArray);
+		return sourceCompilationUnitsArray;
+	}
+	
+	/**
+	 * Returns a collection of the compilation units problem markers
+	 * 
+	 * Reference: https://www.ibm.com/support/knowledgecenter/en/SS4JCV_7.5.5/org.eclipse.jdt.doc.isv/guide/jdt_api_compile.htm
+	 * @param compilationUnit
+	 * @return
+	 * @throws CoreException
+	 */
+	private IMarker[] getJavaProblemMarkers(ICompilationUnit compilationUnit) throws CoreException {
+		IResource javaSourceFile = compilationUnit.getUnderlyingResource();
+		IMarker[] markers = javaSourceFile.findMarkers(IJavaModelMarker.JAVA_MODEL_PROBLEM_MARKER, true, IResource.DEPTH_INFINITE);
+		return markers;
+	}
+	
+	/**
+	 * Returns the set of corresponding class files for the given compilation units of the project if they exit
+	 * @param jrefProject
+	 * @param compilationUnits
+	 * @return
+	 * @throws JavaModelException
+	 * @throws IOException
+	 */
+	private Set<File> getCorrespondingClassFiles(JReFrameworkerProject jrefProject, ICompilationUnit[] compilationUnits) throws JavaModelException, IOException {
+		Set<File> classFiles = new HashSet<File>();
+		for(ICompilationUnit compilationUnit : compilationUnits){
+			File sourceFile = compilationUnit.getUnderlyingResource().getLocation().toFile().getCanonicalFile();
+			String sourceDirectory = jrefProject.getSourceDirectory().getCanonicalPath();
+			String relativeSourceFileDirectoryPath = sourceFile.getParentFile().getCanonicalPath().substring(sourceDirectory.length());
+			if(relativeSourceFileDirectoryPath.charAt(0) == File.separatorChar){
+				relativeSourceFileDirectoryPath = relativeSourceFileDirectoryPath.substring(1);
+			}
+			String classFileName = sourceFile.getName().replace(".java", ".class");
+			File classFile = new File(jrefProject.getBinaryDirectory().getCanonicalPath() + File.separator + relativeSourceFileDirectoryPath + File.separator + classFileName);
+			if(classFile.exists()){
+				classFiles.add(classFile);
 			}
 		}
-		return phases;
+		return classFiles;
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature

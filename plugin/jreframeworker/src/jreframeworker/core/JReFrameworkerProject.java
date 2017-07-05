@@ -54,6 +54,14 @@ public class JReFrameworkerProject {
 		return BuildFile.getOrCreateBuildFile(jProject);
 	}
 	
+	public File getBinaryDirectory(){
+		return getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
+	}
+	
+	public File getSourceDirectory(){
+		return getProject().getFolder(JReFrameworker.SOURCE_DIRECTORY).getLocation().toFile();
+	}
+	
 	/**
 	 * Returns the Eclipse project resource
 	 * @return
