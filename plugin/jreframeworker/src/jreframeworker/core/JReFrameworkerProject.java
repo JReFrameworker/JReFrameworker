@@ -85,7 +85,7 @@ public class JReFrameworkerProject {
 			// restore the classpath
 			restoreOriginalClasspathEntries();
 
-			if (buildDirectory.exists()) {
+			if(buildDirectory.exists()) {
 				clearProjectBuildDirectory(buildDirectory);
 			}
 		} catch (Exception e) {

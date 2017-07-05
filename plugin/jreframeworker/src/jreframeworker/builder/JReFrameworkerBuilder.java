@@ -121,11 +121,15 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
 		Log.info("JReFrameworker Build Number: " + buildNumber++);
-
 		JReFrameworkerProject jrefProject = getJReFrameworkerProject();
-		if (jrefProject != null) {
+		
+		if(jrefProject != null) {
+			// run the java builder
+			jrefProject.getProject().build(IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor);
+			jrefProject.refresh();
+			
 			// make sure the build directory exists
-			File projectBuildDirectory = jrefProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
+			File projectBuildDirectory = jrefProject.getBinaryDirectory();
 			if (!projectBuildDirectory.exists()) {
 				projectBuildDirectory.mkdirs();
 			}
@@ -157,23 +161,57 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 //				}
 //			}
 			
-			// filter our the compilation units with build errors
+			// a set of processed class files, a set of class files to be
+			// processed, and a set of class files that cannot be processed yet
+			// because they have compilation errors
+			Set<File> processedClassFiles = new HashSet<File>();
+			Set<File> classFilesToProcess = new HashSet<File>();
+			Set<File> unresolvedClassFiles = new HashSet<File>();
+			
+			// discover class files to process and filter out
+			// the compilation units with build errors
 			ICompilationUnit[] compilationUnits = getSourceCompilationUnits(jrefProject.getJavaProject());
-			ArrayList<ICompilationUnit> compilingCompilationUnitList = new ArrayList<ICompilationUnit>();
 			for(ICompilationUnit compilationUnit : compilationUnits){
-				if(getJavaProblemMarkers(compilationUnit).length == 0){
-					compilingCompilationUnitList.add(compilationUnit);
-				} else {
-					Log.info(compilationUnit.getCorrespondingResource().getLocation().toFile().getName() + " has compile errors");
+				try {
+					File sourceFile = compilationUnit.getCorrespondingResource().getLocation().toFile().getCanonicalFile();
+					File classFile = getCorrespondingClassFile(jrefProject, compilationUnit);
+					if(classFile.exists()){
+						
+						// TODO: check that the class file has jref annotations
+						
+						if(hasSevereProblems(compilationUnit)){
+							unresolvedClassFiles.add(classFile);
+						} else {
+							classFilesToProcess.add(classFile);
+						}
+					}
+				} catch (IOException e) {
+					Log.error("Error resolving compilation units", e);
+					return;
 				}
 			}
-			compilationUnits = new ICompilationUnit[compilingCompilationUnitList.size()];
-			compilingCompilationUnitList.toArray(compilationUnits);
+			
+//			// process class files until no new class files are discovered
+//			while(!classFilesToProcess.isEmpty()){
+//			
+//				// TODO: implement
+//				
+//				// detect build phases and build in order
+//				
+//				// check that the phases haven't regressed
+//				
+//				// run java builder again...
+//				
+//				// remove the classes we have processed
+//				
+//				// figure out what new classes we have found and what previously unresolved classes can now be processed
+//				
+//			}
 			
 			// discover the build phases
 			Map<Integer,Integer> phases = null;
 			try {
-				phases = getNormalizedBuildPhases(jrefProject, compilationUnits);
+				phases = getNormalizedBuildPhases(classFilesToProcess);
 				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
 				Log.info("Discovered " + phases.size() + " explicit build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
 				if(phases.isEmpty()){
@@ -328,8 +366,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return new File(getBuildPhaseDirectory(jrefProject, buildPhase, namedBuildPhase).getCanonicalPath() + File.separatorChar + targetJar);
 	}
 
-	private Map<Integer,Integer> getNormalizedBuildPhases(JReFrameworkerProject jrefProject, ICompilationUnit[] compilationUnits) throws IOException, JavaModelException {
-		Integer[] phases = getBuildPhases(jrefProject, compilationUnits);
+	private Map<Integer,Integer> getNormalizedBuildPhases(Set<File> classFiles) throws IOException {
+		Integer[] phases = getBuildPhases(classFiles);
 		Map<Integer,Integer> normalizedPhases = new HashMap<Integer,Integer>();
 		Integer normalizedPhase = 1;
 		for(Integer phase : phases){
@@ -338,9 +376,9 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return normalizedPhases;
 	}
 	
-	private Integer[] getBuildPhases(JReFrameworkerProject jrefProject, ICompilationUnit[] compilationUnits) throws IOException, JavaModelException {
+	private Integer[] getBuildPhases(Set<File> classFiles) throws IOException {
 		Set<Integer> phases = new HashSet<Integer>();
-		for(File classFile : getCorrespondingClassFiles(jrefProject, compilationUnits)){
+		for(File classFile : classFiles){
 			byte[] classBytes = Files.readAllBytes(classFile.toPath());
 			if(classBytes.length > 0){
 				try {
@@ -457,43 +495,44 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	}
 	
 	/**
-	 * Returns a collection of the compilation units problem markers
+	 * Returns true if the compilation unit has severe problem markers
 	 * 
 	 * Reference: https://www.ibm.com/support/knowledgecenter/en/SS4JCV_7.5.5/org.eclipse.jdt.doc.isv/guide/jdt_api_compile.htm
 	 * @param compilationUnit
 	 * @return
 	 * @throws CoreException
 	 */
-	private IMarker[] getJavaProblemMarkers(ICompilationUnit compilationUnit) throws CoreException {
+	private boolean hasSevereProblems(ICompilationUnit compilationUnit) throws CoreException {
 		IResource javaSourceFile = compilationUnit.getUnderlyingResource();
 		IMarker[] markers = javaSourceFile.findMarkers(IJavaModelMarker.JAVA_MODEL_PROBLEM_MARKER, true, IResource.DEPTH_INFINITE);
-		return markers;
+		ArrayList<IMarker> severeErrorMarkers = new ArrayList<IMarker>();
+		for (IMarker marker : markers) {
+			Integer severityType = (Integer) marker.getAttribute(IMarker.SEVERITY);
+			if (severityType.intValue() == IMarker.SEVERITY_ERROR){
+				severeErrorMarkers.add(marker);
+			}
+		}
+		return !severeErrorMarkers.isEmpty();
 	}
 	
 	/**
-	 * Returns the set of corresponding class files for the given compilation units of the project if they exit
+	 * Returns the the corresponding class file for the given compilation units of the project
 	 * @param jrefProject
 	 * @param compilationUnits
 	 * @return
 	 * @throws JavaModelException
 	 * @throws IOException
 	 */
-	private Set<File> getCorrespondingClassFiles(JReFrameworkerProject jrefProject, ICompilationUnit[] compilationUnits) throws JavaModelException, IOException {
-		Set<File> classFiles = new HashSet<File>();
-		for(ICompilationUnit compilationUnit : compilationUnits){
-			File sourceFile = compilationUnit.getUnderlyingResource().getLocation().toFile().getCanonicalFile();
-			String sourceDirectory = jrefProject.getSourceDirectory().getCanonicalPath();
-			String relativeSourceFileDirectoryPath = sourceFile.getParentFile().getCanonicalPath().substring(sourceDirectory.length());
-			if(relativeSourceFileDirectoryPath.charAt(0) == File.separatorChar){
-				relativeSourceFileDirectoryPath = relativeSourceFileDirectoryPath.substring(1);
-			}
-			String classFileName = sourceFile.getName().replace(".java", ".class");
-			File classFile = new File(jrefProject.getBinaryDirectory().getCanonicalPath() + File.separator + relativeSourceFileDirectoryPath + File.separator + classFileName);
-			if(classFile.exists()){
-				classFiles.add(classFile);
-			}
+	private File getCorrespondingClassFile(JReFrameworkerProject jrefProject, ICompilationUnit compilationUnit) throws JavaModelException, IOException {
+		File sourceFile = compilationUnit.getUnderlyingResource().getLocation().toFile().getCanonicalFile();
+		String sourceDirectory = jrefProject.getSourceDirectory().getCanonicalPath();
+		String relativeSourceFileDirectoryPath = sourceFile.getParentFile().getCanonicalPath().substring(sourceDirectory.length());
+		if(relativeSourceFileDirectoryPath.charAt(0) == File.separatorChar){
+			relativeSourceFileDirectoryPath = relativeSourceFileDirectoryPath.substring(1);
 		}
-		return classFiles;
+		String classFileName = sourceFile.getName().replace(".java", ".class");
+		File classFile = new File(jrefProject.getBinaryDirectory().getCanonicalPath() + File.separator + relativeSourceFileDirectoryPath + File.separator + classFileName);
+		return classFile;
 	}
 
 	// TODO: adding a progress monitor subtask here would be a nice feature
