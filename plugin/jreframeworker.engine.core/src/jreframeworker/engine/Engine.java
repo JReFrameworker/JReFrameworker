@@ -172,35 +172,30 @@ public class Engine {
 	 * @return
 	 * @throws IOException
 	 */
-	public boolean process(byte[] inputClass, int phase, int namedPhase) throws IOException {
+	public boolean process(byte[] inputClass, int phase) throws IOException {
 		// set the ASM class loaders to be used to process this input
 		ClassLoaders.setClassLoaders(classLoaders);
 		
 		boolean processed = false;
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
 		
-		if(namedPhase == -1){
+		if(phase == -1){
 			Log.info("Processing input class: " + classNode.name + "...");
 		} else {
-			if(phase == namedPhase){
-				Log.info("Processing phase " + namedPhase + " of input class: " + classNode.name + "...");
-			} else {
-				Log.info("Processing phase " + phase + " (identified as " + namedPhase + ") of input class: " + classNode.name + "...");
-			}
-			
+			Log.info("Processing phase " + phase + " of input class: " + classNode.name + "...");
 		}
 		
 		// make requested method and field purges
 		PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
-		processed |= purge(purgeIdentifier, namedPhase);
+		processed |= purge(purgeIdentifier, phase);
 		
 		// set finality
 		DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
-		processed |= setFinality(defineFinalityIdentifier, namedPhase);
+		processed |= setFinality(defineFinalityIdentifier, phase);
 		
 		// set visibility modifiers
 		DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
-		processed |= setVisibility(defineVisibilityIdentifier, namedPhase);
+		processed |= setVisibility(defineVisibilityIdentifier, phase);
 		
 		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
 		if(classNode.invisibleAnnotations != null){
@@ -211,7 +206,7 @@ public class Engine {
 				String qualifiedClassName = classNode.name;
 				if(checker.isDefineTypeAnnotation()){
 					DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
-					if(namedPhase == -1 || defineIdentifier.getDefineTypeAnnotation().getPhase() == namedPhase){
+					if(phase == -1 || defineIdentifier.getDefineTypeAnnotation().getPhase() == phase){
 						String qualifiedClassFilename = qualifiedClassName + ".class";
 						if(jarModifier.getJarEntrySet().contains(qualifiedClassFilename)){
 							updateBytecode(classNode.name, inputClass);
@@ -225,7 +220,7 @@ public class Engine {
 				} else if(checker.isMergeTypeAnnotation()){
 					MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
 					MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
-					if(namedPhase == -1 || mergeTypeAnnotation.getPhase() == namedPhase){
+					if(phase == -1 || mergeTypeAnnotation.getPhase() == phase){
 						String qualifiedParentClassName = mergeTypeAnnotation.getSupertype();
 						byte[] baseClass = getRawBytecode(qualifiedParentClassName);
 						byte[] mergedClass = mergeClasses(baseClass, inputClass);
@@ -247,7 +242,7 @@ public class Engine {
 	 * @throws IOException
 	 */
 	public boolean process(byte[] inputClass) throws IOException {
-		return process(inputClass, -1, -1);
+		return process(inputClass, -1);
 	}
 	
 	private boolean purge(PurgeIdentifier purgeIdentifier, int phase) throws IOException {

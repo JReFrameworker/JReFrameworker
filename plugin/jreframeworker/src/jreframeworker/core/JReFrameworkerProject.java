@@ -54,6 +54,10 @@ public class JReFrameworkerProject {
 		return BuildFile.getOrCreateBuildFile(jProject);
 	}
 	
+	public File getBuildDirectory() {
+		return getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
+	}
+	
 	public File getBinaryDirectory(){
 		return getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile();
 	}
@@ -285,7 +289,7 @@ public class JReFrameworkerProject {
 		
 		// if the updated library is inside the project, then make the path relative
 		// otherwise we must use the absolution path
-		if(isUpdatedLibraryContainedInProject){
+		if(isUpdatedLibraryContainedInProject){ // TODO: is this condition working correctly?
 			String base = projectRoot.getCanonicalPath();
 			String relativeFilePath = updatedLibrary.getCanonicalPath().substring(base.length());
 			if(relativeFilePath.charAt(0) == File.separatorChar){
