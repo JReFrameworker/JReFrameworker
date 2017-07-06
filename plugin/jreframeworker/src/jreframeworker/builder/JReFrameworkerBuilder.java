@@ -164,6 +164,9 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			// a set of processed class files, a set of class files to be
 			// processed, and a set of class files that cannot be processed yet
 			// because they have compilation errors
+			// class files with compilation errors can still be produced but for
+			// our purposes should not be used
+			// Reference: https://eclipse.org/articles/Article-Builders/builders.html
 			Set<File> processedClassFiles = new HashSet<File>();
 			Set<File> classFilesToProcess = new HashSet<File>();
 			Set<File> unresolvedClassFiles = new HashSet<File>();
@@ -176,13 +179,12 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					File sourceFile = compilationUnit.getCorrespondingResource().getLocation().toFile().getCanonicalFile();
 					File classFile = getCorrespondingClassFile(jrefProject, compilationUnit);
 					if(classFile.exists()){
-						
-						// TODO: check that the class file has jref annotations
-						
-						if(hasSevereProblems(compilationUnit)){
-							unresolvedClassFiles.add(classFile);
-						} else {
-							classFilesToProcess.add(classFile);
+						if(BuilderUtils.hasTypeModification(classFile)){
+							if(hasSevereProblems(compilationUnit)){
+								unresolvedClassFiles.add(classFile);
+							} else {
+								classFilesToProcess.add(classFile);
+							}
 						}
 					}
 				} catch (IOException e) {
@@ -211,7 +213,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			// discover the build phases
 			Map<Integer,Integer> phases = null;
 			try {
-				phases = getNormalizedBuildPhases(classFilesToProcess);
+				phases = BuilderUtils.getNormalizedBuildPhases(classFilesToProcess);
 				String phasePurality = phases.size() > 1 || phases.isEmpty() ? "s" : "";
 				Log.info("Discovered " + phases.size() + " explicit build phase" + phasePurality + "\nNormalized Build Phase Mapping: " + phases.toString());
 				if(phases.isEmpty()){
@@ -270,7 +272,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 						}
 					} else {
 						for(BuildFile.Target target : buildFile.getTargets()) {
-							File phaseJar = getBuildPhaseJar(target.getName(), jrefProject, lastPhase, lastNamedPhase);
+							File phaseJar = BuilderUtils.getBuildPhaseJar(target.getName(), jrefProject, lastPhase, lastNamedPhase);
 							if(!phaseJar.exists()){
 								phaseJar = RuntimeUtils.getClasspathJar(target.getName(), jrefProject);
 							}
@@ -298,7 +300,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					
 					// write out the modified jars
 					for(Engine engine : allEngines){
-						File modifiedLibrary = getBuildPhaseJar(engine.getJarName(), jrefProject, currentPhase, currentNamedPhase);
+						File modifiedLibrary = BuilderUtils.getBuildPhaseJar(engine.getJarName(), jrefProject, currentPhase, currentNamedPhase);
 						modifiedLibrary.getParentFile().mkdirs();
 						engine.save(modifiedLibrary);
 
@@ -329,7 +331,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					
 					// remove the java nature to prevent the Java builder from running until we are ready
 					// if the build phase directory is null or does not exist then nothing was done during the phase
-					File buildPhaseDirectory = getBuildPhaseDirectory(jrefProject, currentPhase, currentNamedPhase);
+					File buildPhaseDirectory = BuilderUtils.getBuildPhaseDirectory(jrefProject, currentPhase, currentNamedPhase);
 					if(buildPhaseDirectory != null && buildPhaseDirectory.exists()){
 						jrefProject.disableJavaBuilder();
 						for(File file : buildPhaseDirectory.listFiles()){
@@ -356,106 +358,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-	private File getBuildPhaseDirectory(JReFrameworkerProject jrefProject, int buildPhase, int namedBuildPhase) throws IOException {
-		File projectBuildDirectory = jrefProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
-		String buildPhaseDirectoryName = JReFrameworker.BUILD_PHASE_DIRECTORY_PREFIX + "-" + buildPhase + "-" + namedBuildPhase;
-		return new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + buildPhaseDirectoryName);
-	}
 	
-	private File getBuildPhaseJar(String targetJar, JReFrameworkerProject jrefProject, int buildPhase, int namedBuildPhase) throws IOException {
-		return new File(getBuildPhaseDirectory(jrefProject, buildPhase, namedBuildPhase).getCanonicalPath() + File.separatorChar + targetJar);
-	}
-
-	private Map<Integer,Integer> getNormalizedBuildPhases(Set<File> classFiles) throws IOException {
-		Integer[] phases = getBuildPhases(classFiles);
-		Map<Integer,Integer> normalizedPhases = new HashMap<Integer,Integer>();
-		Integer normalizedPhase = 1;
-		for(Integer phase : phases){
-			normalizedPhases.put(normalizedPhase++, phase);
-		}
-		return normalizedPhases;
-	}
-	
-	private Integer[] getBuildPhases(Set<File> classFiles) throws IOException {
-		Set<Integer> phases = new HashSet<Integer>();
-		for(File classFile : classFiles){
-			byte[] classBytes = Files.readAllBytes(classFile.toPath());
-			if(classBytes.length > 0){
-				try {
-					ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
-					
-					boolean purgeModification = hasPurgeModification(classNode);
-					if(purgeModification){
-						PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
-						for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
-							phases.add(purgeTypeAnnotation.getPhase());
-						}
-						for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
-							phases.add(purgeFieldAnnotation.getPhase());
-						}
-						for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
-							phases.add(purgeMethodAnnotation.getPhase());
-						}
-					}
-					
-					boolean finalityModification = hasFinalityModification(classNode);
-					if(finalityModification){
-						DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
-						for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
-							phases.add(defineTypeFinalityAnnotation.getPhase());
-						}
-						for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
-							phases.add(defineFieldFinalityAnnotation.getPhase());
-						}
-						for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
-							phases.add(defineMethodFinalityAnnotation.getPhase());
-						}
-					}
-					
-					boolean visibilityModification = hasVisibilityModification(classNode);
-					if(visibilityModification){
-						DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
-						for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
-							phases.add(defineTypeVisibilityAnnotation.getPhase());
-						}
-						for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
-							phases.add(defineFieldVisibilityAnnotation.getPhase());
-						}
-						for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
-							phases.add(defineMethodVisibilityAnnotation.getPhase());
-						}
-					}
-					
-					boolean mergeModification = hasMergeTypeModification(classNode);
-					if(mergeModification){
-						MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
-						MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
-						phases.add(mergeTypeAnnotation.getPhase());
-						// no such thing as merge field, so skipping fields
-						// define field, define method, and merge method all must have the same phase as the merge type annotation
-						// so we can't discover new phases by looking at the body
-					}
-					
-					boolean defineModification = hasDefineTypeModification(classNode);
-					if(defineModification){
-						DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
-						DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
-						phases.add(defineTypeAnnotation.getPhase());
-						// define field, define method must have the same phase as the define type annotation
-						// so we can't discover new phases by looking at the body
-					}
-				} catch (RuntimeException e){
-					Log.error("Error discovering build phases...", e);
-				}
-			}
-		}
-		
-		ArrayList<Integer> phasesSorted = new ArrayList<Integer>(phases);
-		Collections.sort(phasesSorted);
-		Integer[] result = new Integer[phasesSorted.size()];
-		phases.toArray(result);
-		return result;
-	}
 	
 	/**
 	 * Returns a collection of K_SOURCE Compilation units in the project's package fragments
@@ -547,11 +450,11 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 						try {
 							// TODO: refactor this bit to just save the parsed annotation requests instead of true/false
 							ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
-							boolean purgeModification = hasPurgeModification(classNode);
-							boolean finalityModification = hasFinalityModification(classNode);
-							boolean visibilityModification = hasVisibilityModification(classNode);
-							boolean mergeModification = hasMergeTypeModification(classNode);
-							boolean defineModification = hasDefineTypeModification(classNode);
+							boolean purgeModification = BuilderUtils.hasPurgeModification(classNode);
+							boolean finalityModification = BuilderUtils.hasFinalityModification(classNode);
+							boolean visibilityModification = BuilderUtils.hasVisibilityModification(classNode);
+							boolean mergeModification = BuilderUtils.hasMergeTypeModification(classNode);
+							boolean defineModification = BuilderUtils.hasDefineTypeModification(classNode);
 							
 							if(purgeModification || finalityModification || visibilityModification || mergeModification || defineModification){
 								// get the qualified modification class name
@@ -731,17 +634,6 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		return null;
 	}
 	
-	private void delete(File f) throws IOException {
-		if (f.isDirectory()){
-			for (File c : f.listFiles()){
-				delete(c);
-			}
-		}
-		if (!f.delete()){
-			throw new FileNotFoundException("Failed to delete file: " + f);
-		}
-	}
-	
 	private void addClassFiles(Engine engine, File f) throws IOException {
 		if (f.isDirectory()){
 			for (File f2 : f.listFiles()){
@@ -752,80 +644,4 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		}
 	}
 	
-	
-	
-	private static boolean hasMergeTypeModification(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-				checker.visitAnnotation(annotationNode.desc, false);
-				if(checker.isMergeTypeAnnotation()){
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static boolean hasDefineTypeModification(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-				checker.visitAnnotation(annotationNode.desc, false);
-				if(checker.isDefineTypeAnnotation()){
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static boolean hasPurgeModification(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-				checker.visitAnnotation(annotationNode.desc, false);
-				if(checker.isPurgeAnnotation()){
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static boolean hasFinalityModification(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-				checker.visitAnnotation(annotationNode.desc, false);
-				if(checker.isFinalityAnnotation()){
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static boolean hasVisibilityModification(ClassNode classNode) throws IOException {
-		// TODO: address innerclasses, classNode.innerClasses, could these even be found from class files? they would be different files...
-		if(classNode.invisibleAnnotations != null){
-			for(Object annotationObject : classNode.invisibleAnnotations){
-				AnnotationNode annotationNode = (AnnotationNode) annotationObject;
-				JREFAnnotationIdentifier checker = new JREFAnnotationIdentifier();
-				checker.visitAnnotation(annotationNode.desc, false);
-				if(checker.isVisibilityAnnotation()){
-					return true;
-				}
-			}
-		}
-		return false;
-	}
 }
