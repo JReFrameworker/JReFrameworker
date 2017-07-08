@@ -1,14 +1,11 @@
-package jreframeworker.builder;
+package jreframeworker.core;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.resources.IMarker;
@@ -24,27 +21,23 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.core.JReFrameworkerProject;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
-import jreframeworker.engine.identifiers.DefineIdentifier;
-import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
-import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
-import jreframeworker.engine.identifiers.MergeIdentifier;
-import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
+import jreframeworker.engine.identifiers.DefineIdentifier;
 import jreframeworker.engine.identifiers.DefineIdentifier.DefineTypeAnnotation;
+import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
 import jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
+import jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
+import jreframeworker.engine.identifiers.MergeIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
+import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
-import jreframeworker.engine.utils.BytecodeUtils;
-import jreframeworker.log.Log;
 
 public class BuilderUtils {
 
@@ -126,6 +119,18 @@ public class BuilderUtils {
 		return classFile;
 	}
 	
+	public static int getLastBuildPhase(JReFrameworkerProject jrefProject) throws IOException {
+		int phase=1;
+		while(getBuildPhaseDirectory(jrefProject, phase).exists()){
+			phase++;
+		}
+		if(phase != 1){
+			return phase-1;
+		} else {
+			return 1;
+		}
+	}
+	
 	public static final File getBuildPhaseDirectory(JReFrameworkerProject jrefProject, int buildPhase) throws IOException {
 		File projectBuildDirectory = jrefProject.getProject().getFolder(JReFrameworker.BUILD_DIRECTORY).getLocation().toFile();
 		String buildPhaseDirectoryName = JReFrameworker.BUILD_PHASE_DIRECTORY_PREFIX + "-" + buildPhase;
@@ -138,74 +143,71 @@ public class BuilderUtils {
 
 	public static final List<Integer> getSortedBuildPhases(ClassNode classNode) throws IOException {
 		Set<Integer> phases = new HashSet<Integer>();
-		try {
-			boolean purgeModification = hasPurgeModification(classNode);
-			if(purgeModification){
-				PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
-				for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
-					phases.add(purgeTypeAnnotation.getPhase());
-				}
-				for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
-					phases.add(purgeFieldAnnotation.getPhase());
-				}
-				for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
-					phases.add(purgeMethodAnnotation.getPhase());
-				}
+		
+		boolean purgeModification = hasPurgeModification(classNode);
+		if(purgeModification){
+			PurgeIdentifier purgeIdentifier = new PurgeIdentifier(classNode);
+			for(PurgeTypeAnnotation purgeTypeAnnotation : purgeIdentifier.getPurgeTypeAnnotations()){
+				phases.add(purgeTypeAnnotation.getPhase());
 			}
-			
-			boolean finalityModification = hasFinalityModification(classNode);
-			if(finalityModification){
-				DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
-				for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
-					phases.add(defineTypeFinalityAnnotation.getPhase());
-				}
-				for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
-					phases.add(defineFieldFinalityAnnotation.getPhase());
-				}
-				for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
-					phases.add(defineMethodFinalityAnnotation.getPhase());
-				}
+			for(PurgeFieldAnnotation purgeFieldAnnotation : purgeIdentifier.getPurgeFieldAnnotations()){
+				phases.add(purgeFieldAnnotation.getPhase());
 			}
-			
-			boolean visibilityModification = hasVisibilityModification(classNode);
-			if(visibilityModification){
-				DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
-				for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
-					phases.add(defineTypeVisibilityAnnotation.getPhase());
-				}
-				for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
-					phases.add(defineFieldVisibilityAnnotation.getPhase());
-				}
-				for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
-					phases.add(defineMethodVisibilityAnnotation.getPhase());
-				}
+			for(PurgeMethodAnnotation purgeMethodAnnotation : purgeIdentifier.getPurgeMethodAnnotations()){
+				phases.add(purgeMethodAnnotation.getPhase());
 			}
-			
-			boolean mergeModification = hasMergeTypeModification(classNode);
-			if(mergeModification){
-				MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
-				MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
-				phases.add(mergeTypeAnnotation.getPhase());
-				// no such thing as merge field, so skipping fields
-				// define field, define method, and merge method all must have the same phase as the merge type annotation
-				// so we can't discover new phases by looking at the body
+		}
+		
+		boolean finalityModification = hasFinalityModification(classNode);
+		if(finalityModification){
+			DefineFinalityIdentifier defineFinalityIdentifier = new DefineFinalityIdentifier(classNode);
+			for(DefineTypeFinalityAnnotation defineTypeFinalityAnnotation : defineFinalityIdentifier.getTargetTypes()){
+				phases.add(defineTypeFinalityAnnotation.getPhase());
 			}
-			
-			boolean defineModification = hasDefineTypeModification(classNode);
-			if(defineModification){
-				DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
-				DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
-				phases.add(defineTypeAnnotation.getPhase());
-				// define field, define method must have the same phase as the define type annotation
-				// so we can't discover new phases by looking at the body
+			for(DefineFieldFinalityAnnotation defineFieldFinalityAnnotation : defineFinalityIdentifier.getTargetFields()){
+				phases.add(defineFieldFinalityAnnotation.getPhase());
 			}
-		} catch (RuntimeException e){
-			Log.error("Error discovering build phases...", e);
+			for(DefineMethodFinalityAnnotation defineMethodFinalityAnnotation : defineFinalityIdentifier.getTargetMethods()){
+				phases.add(defineMethodFinalityAnnotation.getPhase());
+			}
+		}
+		
+		boolean visibilityModification = hasVisibilityModification(classNode);
+		if(visibilityModification){
+			DefineVisibilityIdentifier defineVisibilityIdentifier = new DefineVisibilityIdentifier(classNode);
+			for(DefineTypeVisibilityAnnotation defineTypeVisibilityAnnotation : defineVisibilityIdentifier.getTargetTypes()){
+				phases.add(defineTypeVisibilityAnnotation.getPhase());
+			}
+			for(DefineFieldVisibilityAnnotation defineFieldVisibilityAnnotation : defineVisibilityIdentifier.getTargetFields()){
+				phases.add(defineFieldVisibilityAnnotation.getPhase());
+			}
+			for(DefineMethodVisibilityAnnotation defineMethodVisibilityAnnotation : defineVisibilityIdentifier.getTargetMethods()){
+				phases.add(defineMethodVisibilityAnnotation.getPhase());
+			}
+		}
+		
+		boolean mergeModification = hasMergeTypeModification(classNode);
+		if(mergeModification){
+			MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
+			MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
+			phases.add(mergeTypeAnnotation.getPhase());
+			// no such thing as merge field, so skipping fields
+			// define field, define method, and merge method all must have the same phase as the merge type annotation
+			// so we can't discover new phases by looking at the body
+		}
+		
+		boolean defineModification = hasDefineTypeModification(classNode);
+		if(defineModification){
+			DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
+			DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
+			phases.add(defineTypeAnnotation.getPhase());
+			// define field, define method must have the same phase as the define type annotation
+			// so we can't discover new phases by looking at the body
 		}
 		
 		// if no phases were detected add the default build phase
 		if(phases.isEmpty()){
-			phases.add(1); 
+			phases.add(1);
 		}
 		
 		ArrayList<Integer> phasesSorted = new ArrayList<Integer>(phases);
@@ -213,41 +215,33 @@ public class BuilderUtils {
 		return phasesSorted;
 	}
 	
-	public static final boolean hasTypeModification(File classFile) {
-		try {
-			byte[] classBytes = Files.readAllBytes(classFile.toPath());
-			if (classBytes.length > 0) {
-				ClassNode classNode = BytecodeUtils.getClassNode(classBytes);
-
-				boolean purgeModification = hasPurgeModification(classNode);
-				if (purgeModification) {
-					return true;
-				}
-
-				boolean finalityModification = hasFinalityModification(classNode);
-				if (finalityModification) {
-					return true;
-				}
-
-				boolean visibilityModification = hasVisibilityModification(classNode);
-				if (visibilityModification) {
-					return true;
-				}
-
-				boolean mergeModification = hasMergeTypeModification(classNode);
-				if (mergeModification) {
-					return true;
-				}
-
-				boolean defineModification = hasDefineTypeModification(classNode);
-				if (defineModification) {
-					return true;
-				}
-			}
-			return false;
-		} catch (Exception e) {
-			return false;
+	public static final boolean hasTopLevelAnnotation(ClassNode classNode) throws IOException {
+		boolean purgeModification = hasPurgeModification(classNode);
+		if (purgeModification) {
+			return true;
 		}
+
+		boolean finalityModification = hasFinalityModification(classNode);
+		if (finalityModification) {
+			return true;
+		}
+
+		boolean visibilityModification = hasVisibilityModification(classNode);
+		if (visibilityModification) {
+			return true;
+		}
+
+		boolean mergeModification = hasMergeTypeModification(classNode);
+		if (mergeModification) {
+			return true;
+		}
+
+		boolean defineModification = hasDefineTypeModification(classNode);
+		if (defineModification) {
+			return true;
+		}
+		
+		return false;
 	}
 	
 	public static final boolean hasMergeTypeModification(ClassNode classNode) throws IOException {

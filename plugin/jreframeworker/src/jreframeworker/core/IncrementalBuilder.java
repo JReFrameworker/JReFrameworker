@@ -1,10 +1,9 @@
-package jreframeworker.builder;
+package jreframeworker.core;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,13 +16,12 @@ import java.util.jar.JarException;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.objectweb.asm.tree.ClassNode;
 import org.xml.sax.SAXException;
 
 import jreframeworker.common.RuntimeUtils;
-import jreframeworker.core.BuildFile;
-import jreframeworker.core.JReFrameworker;
-import jreframeworker.core.JReFrameworkerProject;
 import jreframeworker.engine.Engine;
 import jreframeworker.engine.identifiers.DefineFinalityIdentifier;
 import jreframeworker.engine.identifiers.DefineIdentifier;
@@ -32,7 +30,6 @@ import jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier;
-import jreframeworker.engine.utils.BytecodeUtils;
 import jreframeworker.log.Log;
 import jreframeworker.ui.PreferencesPage;
 
@@ -41,20 +38,28 @@ public class IncrementalBuilder {
 	public static final int DEFAULT_BUILD_PHASE = 1;
 	
 	public static abstract class Source {
-		private File sourceFile;
+		protected File sourceFile;
+		protected ClassNode classNode;
 		
-		public Source(File sourceFile){
+		public Source(File sourceFile, ClassNode classNode){
 			try {
 				this.sourceFile = sourceFile.getCanonicalFile();
 			} catch (Exception e){
 				throw new IllegalArgumentException(e);
 			}
+			this.classNode = classNode;
 		}
 		
 		public File getSourceFile() {
 			return sourceFile;
 		}
 
+		public ClassNode getClassNode(){
+			return classNode;
+		}
+		
+		public abstract List<Integer> getSortedPhases();
+		
 		/**
 		 * A source object is equivalent if it shares the same source file
 		 */
@@ -89,22 +94,22 @@ public class IncrementalBuilder {
 	}
 	
 	public static class ProcessedSource extends Source {
-
-		private ClassNode classNode;
+		
 		private List<Integer> phases;
 		
 		public ProcessedSource(File sourceFile, ClassNode classNode, List<Integer> phases) {
-			super(sourceFile);
-			this.classNode = classNode;
+			super(sourceFile, classNode);
 			this.phases = phases;
 		}
-		
-		public ClassNode getClassNode() {
-			return classNode;
+
+		@Override
+		public List<Integer> getSortedPhases() {
+			return new LinkedList<Integer>(phases);
 		}
 		
-		public List<Integer> getSortedPhases(){
-			return new LinkedList<Integer>(phases);
+		@Override
+		public String toString() {
+			return "[ProcessedSource (" + sourceFile.getName() + ")]";
 		}
 	}
 	
@@ -115,7 +120,6 @@ public class IncrementalBuilder {
 		}
 		
 		private Delta delta;
-		private ClassNode classNode;
 		private List<Integer> phases;
 		
 		public DeltaSource(File sourceFile, Delta delta){
@@ -123,8 +127,7 @@ public class IncrementalBuilder {
 		}
 		
 		public DeltaSource(File sourceFile, ClassNode classNode, Delta delta){
-			super(sourceFile);
-			this.classNode = classNode;
+			super(sourceFile, classNode);
 			this.delta = delta;
 			if(delta == Delta.REMOVED && classNode != null){
 				throw new IllegalArgumentException("Removed source should not contain class nodes.");
@@ -138,25 +141,38 @@ public class IncrementalBuilder {
 			}
 		}
 
-		public ClassNode getClassNode() {
-			return classNode;
-		}
-
 		public Delta getDelta() {
 			return delta;
-		}
-		
-		public List<Integer> getSortedPhases(){
-			return new LinkedList<Integer>(phases);
 		}
 		
 		public ProcessedSource getProcessedSource(){
 			return new ProcessedSource(getSourceFile(), getClassNode(), getSortedPhases());
 		}
+
+		@Override
+		public List<Integer> getSortedPhases() {
+			return new LinkedList<Integer>(phases);
+		}
+		
+		@Override
+		public String toString() {
+			String change = "";
+			if(delta == Delta.ADDED){
+				change = "Added: ";
+			} else if(delta == Delta.MODIFIED){
+				change = "Modified: ";
+			} else if(delta == Delta.REMOVED){
+				change = "Removed: ";
+			}
+			return "[DeltaSource (" + change + sourceFile.getName() + ")]";
+		}
+		
 	}
 	
 	private static class IncrementalBuilderException extends Exception {
 		
+		private static final long serialVersionUID = 1L;
+
 		public IncrementalBuilderException(String message){
 			super(message);
 		}
@@ -174,7 +190,11 @@ public class IncrementalBuilder {
 		this.jrefProject = jrefProject;
 	}
 
-	public void build(Set<DeltaSource> sourceDeltas) throws IncrementalBuilderException {
+	public void build(Set<DeltaSource> sourceDeltas, IProgressMonitor monitor) throws IncrementalBuilderException {
+		if(sourceDeltas.isEmpty()){
+			// nothing to do
+			return;
+		}
 		try {
 			// first figure out if we need to revert to a previous build phase
 			// reverts can occur when a class file is modified or removed or added
@@ -240,12 +260,9 @@ public class IncrementalBuilder {
 			// assert build phases are contiguous
 			Set<Integer> phases = new HashSet<Integer>();
 			for(Source source : sourcesToProcess){
-				if(source instanceof ProcessedSource){
-					phases.addAll(((ProcessedSource)source).getSortedPhases());
-				} else if(source instanceof DeltaSource){
-					phases.addAll(((DeltaSource)source).getSortedPhases());
-				}
+				phases.addAll(source.getSortedPhases());
 			}
+			
 			LinkedList<Integer> sortedPhases = new LinkedList<Integer>(phases);
 			Collections.sort(sortedPhases);
 			for(int i=sortedPhases.getFirst(); i<=sortedPhases.getLast(); i++){
@@ -256,26 +273,22 @@ public class IncrementalBuilder {
 			
 			// starting from the current phase process every phase in the set of sources to process
 			int lastPhase = sortedPhases.getLast();
-			while(currentPhase++ <= lastPhase){
+			while(currentPhase <= lastPhase){
 				boolean isFirstPhase = (currentPhase == DEFAULT_BUILD_PHASE);
 				boolean isLastPhase = (currentPhase == lastPhase);
 				
 				// gather the sources that are relevant to the current phase
 				Set<Source> phaseSources = new HashSet<Source>();
 				for(Source source : sourcesToProcess){
-					if(source instanceof ProcessedSource){
-						if(((ProcessedSource)source).getSortedPhases().contains(currentPhase)){
-							phaseSources.add(source);
-						}
-					} else if(source instanceof DeltaSource){
-						if(((DeltaSource)source).getSortedPhases().contains(currentPhase)){
-							phaseSources.add(source);
-						}
+					if(source.getSortedPhases().contains(currentPhase)){
+						phaseSources.add(source);
 					}
 				}
 				
 				// build the phase targets
-				buildPhase(phaseSources, currentPhase, isFirstPhase, isLastPhase);
+				buildPhase(phaseSources, currentPhase, isFirstPhase, isLastPhase, monitor);
+				
+				currentPhase++;
 			}
 			
 			// record the processed phases for the next incremental build
@@ -291,7 +304,7 @@ public class IncrementalBuilder {
 		}
 	}
 
-	private void buildPhase(Set<Source> phaseSources, int currentPhase, boolean isFirstPhase, boolean isLastPhase) throws JarException, SAXException, IOException, ParserConfigurationException, CoreException {
+	private void buildPhase(Set<Source> phaseSources, int currentPhase, boolean isFirstPhase, boolean isLastPhase, IProgressMonitor monitor) throws JarException, SAXException, IOException, ParserConfigurationException, CoreException, IncrementalBuilderException {
 		// map class entries to and initial modification engine sets
 		Map<String, Set<Engine>> engineMap = new HashMap<String, Set<Engine>>();
 		Set<Engine> allEngines = new HashSet<Engine>();
@@ -346,8 +359,8 @@ public class IncrementalBuilder {
 			}
 		}
 		
-		// TODO: make modifications
-//		modifyTarget(phaseSources, currentPhase, engineMap, allEngines);
+		// make library modifications
+		modifyTarget(phaseSources, currentPhase, engineMap, allEngines, monitor);
 		
 		// make sure the build directory exists
 		File projectBuildDirectory = jrefProject.getBuildDirectory();
@@ -378,128 +391,135 @@ public class IncrementalBuilder {
 		jrefProject.refresh();
 	}
 	
-//	// TODO: adding a progress monitor subtask here would be a nice feature
-//	private void modifyTarget(Set<Source> sources, int phase, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines) throws IOException {
-//		try {
-//			// TODO: refactor this bit to just save the parsed annotation requests instead of true/false
-//			ClassNode classNode = source.get
-//			boolean purgeModification = BuilderUtils.hasPurgeModification(classNode);
-//			boolean finalityModification = BuilderUtils.hasFinalityModification(classNode);
-//			boolean visibilityModification = BuilderUtils.hasVisibilityModification(classNode);
-//			boolean mergeModification = BuilderUtils.hasMergeTypeModification(classNode);
-//			boolean defineModification = BuilderUtils.hasDefineTypeModification(classNode);
-//			
-//			if(purgeModification || finalityModification || visibilityModification || mergeModification || defineModification){
-//				// get the qualified modification class name
-//				String base = jrefProject.getProject().getFolder(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getCanonicalPath();
-//				String modificationClassName = file.getCanonicalPath().substring(base.length());
-//				if(modificationClassName.charAt(0) == File.separatorChar){
-//					modificationClassName = modificationClassName.substring(1);
-//				}
-//				modificationClassName = modificationClassName.replace(".class", "");
-//			
-//				if(purgeModification){
-//					Set<String> targets = PurgeIdentifier.getPurgeTargets(classNode, phase);
-//					for(String target : targets){
-//						// purge target from each jar that contains the purge target
-//						if(engineMap.containsKey(target)){
-//							for(Engine engine : engineMap.get(target)){
-//								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-//								} else {
-//									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-//								}
-//								engine.process(classBytes, phase);
-//							}
-//						} else {
-//							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
-//						}
-//					}
-//				} 
-//				
-//				if(finalityModification){
-//					Set<String> targets = DefineFinalityIdentifier.getFinalityTargets(classNode, phase);
-//					for(String target : targets){
-//						// merge into each target jar that contains the merge target
-//						if(engineMap.containsKey(target)){
-//							for(Engine engine : engineMap.get(target)){
-//								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-//								} else {
-//									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-//								}
-//								engine.process(classBytes, phase);
-//							}
-//						} else {
-//							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
-//						}
-//					}
-//				} 
-//				
-//				if(visibilityModification){
-//					Set<String> targets = DefineVisibilityIdentifier.getVisibilityTargets(classNode, phase);
-//					for(String target : targets){
-//						// merge into each target jar that contains the merge target
-//						if(engineMap.containsKey(target)){
-//							for(Engine engine : engineMap.get(target)){
-//								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-//								} else {
-//									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-//								}
-//								engine.process(classBytes, phase);
-//							}
-//						} else {
-//							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
-//						}
-//					}
-//				}
-//				
-//				if(mergeModification){
-//					MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
-//					MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
-//					if(mergeTypeAnnotation.getPhase() == phase){
-//						String target = mergeTypeAnnotation.getSupertype();
-//						// merge into each target jar that contains the merge target
-//						if(engineMap.containsKey(target)){
-//							for(Engine engine : engineMap.get(target)){
-//								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-//								} else {
-//									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-//									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-//								}
-//								engine.process(classBytes, phase);
-//							}
-//						} else {
-//							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
-//						}
-//					}
-//				} 
-//				
-//				if(defineModification){
-//					DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
-//					DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
-//					if(defineTypeAnnotation.getPhase() == phase){
-//						// define or replace in every target jar
-//						for(Engine engine : allEngines){
-//							if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
-//								engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
-//							} else {
-//								URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
-//								engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
-//							}
-//							engine.process(classBytes, phase);
-//						}
-//					}
-//				}
-//			}
-//		} catch (RuntimeException e){
-//			Log.error("Error modifying jar...", e);
-//		}
-//	}
+	private void modifyTarget(Set<Source> sources, int phase, Map<String, Set<Engine>> engineMap, Set<Engine> allEngines, IProgressMonitor monitor) throws IOException, IncrementalBuilderException {
+		SubMonitor modificationMonitor = SubMonitor.convert(monitor, sources.size());
+		monitor.subTask("Modifying targets of " + sources.size() + " phase " + phase + " source" + (sources.size() > 1 ? "s" : ""));
+		for(Source source : sources){
+			
+			// check if a cancellation was requested
+			if(modificationMonitor.isCanceled()){
+				throw new IncrementalBuilderException("Modification process was cancelled.");
+			}
+			
+			ClassNode classNode = source.getClassNode();
+			// TODO: refactor this bit to just save the parsed annotation requests instead of true/false
+			boolean purgeModification = BuilderUtils.hasPurgeModification(classNode);
+			boolean finalityModification = BuilderUtils.hasFinalityModification(classNode);
+			boolean visibilityModification = BuilderUtils.hasVisibilityModification(classNode);
+			boolean mergeModification = BuilderUtils.hasMergeTypeModification(classNode);
+			boolean defineModification = BuilderUtils.hasDefineTypeModification(classNode);
+			
+			if(purgeModification || finalityModification || visibilityModification || mergeModification || defineModification){
+				// get the qualified modification class name
+				String base = jrefProject.getBinaryDirectory().getCanonicalPath();
+				String modificationClassName = source.getSourceFile().getCanonicalPath().substring(base.length());
+				if(modificationClassName.charAt(0) == File.separatorChar){
+					modificationClassName = modificationClassName.substring(1);
+				}
+				modificationClassName = modificationClassName.replace(".java", "");
+			
+				if(purgeModification){
+					Set<String> targets = PurgeIdentifier.getPurgeTargets(classNode, phase);
+					for(String target : targets){
+						// purge target from each jar that contains the purge target
+						if(engineMap.containsKey(target)){
+							for(Engine engine : engineMap.get(target)){
+								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+								} else {
+									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+								}
+								engine.process(classNode, phase);
+							}
+						} else {
+							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+						}
+					}
+				} 
+				
+				if(finalityModification){
+					Set<String> targets = DefineFinalityIdentifier.getFinalityTargets(classNode, phase);
+					for(String target : targets){
+						// merge into each target jar that contains the merge target
+						if(engineMap.containsKey(target)){
+							for(Engine engine : engineMap.get(target)){
+								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+								} else {
+									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+								}
+								engine.process(classNode, phase);
+							}
+						} else {
+							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+						}
+					}
+				} 
+				
+				if(visibilityModification){
+					Set<String> targets = DefineVisibilityIdentifier.getVisibilityTargets(classNode, phase);
+					for(String target : targets){
+						// merge into each target jar that contains the merge target
+						if(engineMap.containsKey(target)){
+							for(Engine engine : engineMap.get(target)){
+								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+								} else {
+									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+								}
+								engine.process(classNode, phase);
+							}
+						} else {
+							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+						}
+					}
+				}
+				
+				if(mergeModification){
+					MergeIdentifier mergeIdentifier = new MergeIdentifier(classNode);
+					MergeTypeAnnotation mergeTypeAnnotation = mergeIdentifier.getMergeTypeAnnotation();
+					if(mergeTypeAnnotation.getPhase() == phase){
+						String target = mergeTypeAnnotation.getSupertype();
+						// merge into each target jar that contains the merge target
+						if(engineMap.containsKey(target)){
+							for(Engine engine : engineMap.get(target)){
+								if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+								} else {
+									URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+									engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+								}
+								engine.process(classNode, phase);
+							}
+						} else {
+							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+						}
+					}
+				} 
+				
+				if(defineModification){
+					DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
+					DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
+					if(defineTypeAnnotation.getPhase() == phase){
+						// define or replace in every target jar
+						for(Engine engine : allEngines){
+							if(RuntimeUtils.isRuntimeJar(engine.getOriginalJar())){
+								engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader() });
+							} else {
+								URL[] jarURL = { new URL("jar:file:" + engine.getOriginalJar().getCanonicalPath() + "!/") };
+								engine.setClassLoaders(new ClassLoader[]{ getClass().getClassLoader(), URLClassLoader.newInstance(jarURL) });
+							}
+							engine.process(classNode, phase);
+						}
+					}
+				}
+			}
+			modificationMonitor.worked(1);
+		}
+		
+	}
 	
 }

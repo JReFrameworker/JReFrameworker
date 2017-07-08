@@ -32,6 +32,7 @@ public class EngineTests extends TestCase {
 	}
 	
 	@Test
+	@SuppressWarnings({"resource", "unchecked", "rawtypes"})
 	public void testMergeMethodReplacesOriginalMethod() throws Exception {
 		// gather sources
 		String pkg = "inputs.a";
@@ -66,7 +67,7 @@ public class EngineTests extends TestCase {
 		Class modifiedBaseClass = classLoader.loadClass(packagePrefix + "." + pkg + "." + "BaseClass");
 		Method modifiedBaseClassMethod = modifiedBaseClass.getDeclaredMethod("method");
 		Object modifiedBaseClassInstance = modifiedBaseClass.newInstance();
-		Object result = modifiedBaseClassMethod.invoke(modifiedBaseClassInstance);	
+		Object result = modifiedBaseClassMethod.invoke(modifiedBaseClassInstance);
 		
 		// assert expected behavior is observed
 		// the replaced method should return merge-method
@@ -74,6 +75,7 @@ public class EngineTests extends TestCase {
 	}
 	
 	@Test
+	@SuppressWarnings({"resource", "unchecked", "rawtypes"})
 	public void testMergeMethodPreservesOriginalMethod() throws Exception {
 		// gather sources
 		String pkg = "inputs.b";

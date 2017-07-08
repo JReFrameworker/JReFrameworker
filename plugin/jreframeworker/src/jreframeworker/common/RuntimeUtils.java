@@ -3,7 +3,6 @@ package jreframeworker.common;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.LinkedList;
 
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.JavaCore;
@@ -13,7 +12,6 @@ import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jdt.launching.LibraryLocation;
 
 import jreframeworker.core.JReFrameworkerProject;
-import jreframeworker.log.Log;
 
 public class RuntimeUtils {
 

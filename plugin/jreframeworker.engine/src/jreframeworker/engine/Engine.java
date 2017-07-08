@@ -172,6 +172,18 @@ public class Engine {
 	 * @return
 	 * @throws IOException
 	 */
+	public boolean process(ClassNode inputClassNode, int phase) throws IOException {
+		byte[] inputClass = BytecodeUtils.writeClass(inputClassNode);
+		return process(inputClass, phase);
+	}
+	
+	/**
+	 * Process the annotations of the class for the given phase
+	 * @param inputClass
+	 * @param namedPhase
+	 * @return
+	 * @throws IOException
+	 */
 	public boolean process(byte[] inputClass, int phase) throws IOException {
 		// set the ASM class loaders to be used to process this input
 		ClassLoaders.setClassLoaders(classLoaders);
