@@ -32,9 +32,40 @@ public class BuildFile {
 	public static final String XML_BUILD_FILENAME = "jreframeworker.xml";
 	
 	private File jrefXMLFile;
-	
+
 	private BuildFile(File jrefXMLFile){
 		this.jrefXMLFile = jrefXMLFile;
+	}
+	
+	/**
+	 * A build file is equivalent to an object if it is representing the same file
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((jrefXMLFile == null) ? 0 : jrefXMLFile.hashCode());
+		return result;
+	}
+
+	/**
+	 * A build file is equivalent to an object if it is representing the same file
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		BuildFile other = (BuildFile) obj;
+		if (jrefXMLFile == null) {
+			if (other.jrefXMLFile != null)
+				return false;
+		} else if (!jrefXMLFile.equals(other.jrefXMLFile))
+			return false;
+		return true;
 	}
 	
 	/**

@@ -100,15 +100,32 @@ public class BuilderUtils {
 	}
 	
 	/**
-	 * Returns the the corresponding class file for the given compilation units of the project
+	 * Returns the corresponding source file for the given class files of a project
 	 * @param jrefProject
 	 * @param compilationUnits
 	 * @return
 	 * @throws JavaModelException
 	 * @throws IOException
 	 */
-	public static final File getCorrespondingClassFile(JReFrameworkerProject jrefProject, ICompilationUnit compilationUnit) throws JavaModelException, IOException {
-		File sourceFile = compilationUnit.getUnderlyingResource().getLocation().toFile().getCanonicalFile();
+	public static final File getCorrespondingSourceFile(JReFrameworkerProject jrefProject, File classFile) throws JavaModelException, IOException {
+		String relativeClassFileDirectoryPath = jrefProject.getBinaryDirectory().getCanonicalPath().substring(classFile.getCanonicalPath().length());
+		if(relativeClassFileDirectoryPath.charAt(0) == File.separatorChar){
+			relativeClassFileDirectoryPath = relativeClassFileDirectoryPath.substring(1);
+		}
+		String sourceFileName = classFile.getName().replace(".class", ".java");
+		File sourceFile = new File(jrefProject.getSourceDirectory().getCanonicalPath() + File.separator + relativeClassFileDirectoryPath + File.separator + sourceFileName);
+		return sourceFile;
+	}
+	
+	/**
+	 * Returns the corresponding class file for the given compilation units of the project
+	 * @param jrefProject
+	 * @param compilationUnits
+	 * @return
+	 * @throws JavaModelException
+	 * @throws IOException
+	 */
+	public static final File getCorrespondingClassFile(JReFrameworkerProject jrefProject, File sourceFile) throws JavaModelException, IOException {
 		String sourceDirectory = jrefProject.getSourceDirectory().getCanonicalPath();
 		String relativeSourceFileDirectoryPath = sourceFile.getParentFile().getCanonicalPath().substring(sourceDirectory.length());
 		if(relativeSourceFileDirectoryPath.charAt(0) == File.separatorChar){

@@ -169,7 +169,7 @@ public class IncrementalBuilder {
 		
 	}
 	
-	private static class IncrementalBuilderException extends Exception {
+	public static class IncrementalBuilderException extends Exception {
 		
 		private static final long serialVersionUID = 1L;
 
@@ -188,6 +188,10 @@ public class IncrementalBuilder {
 	
 	public IncrementalBuilder(JReFrameworkerProject jrefProject){
 		this.jrefProject = jrefProject;
+	}
+	
+	public JReFrameworkerProject getJReFrameworkerProject(){
+		return jrefProject;
 	}
 
 	public void build(Set<DeltaSource> sourceDeltas, IProgressMonitor monitor) throws IncrementalBuilderException {
@@ -376,6 +380,10 @@ public class IncrementalBuilder {
 
 			if(isLastPhase){
 				File finalModifiedLibrary = new File(projectBuildDirectory.getCanonicalPath() + File.separatorChar + engine.getJarName());
+				if(finalModifiedLibrary.exists()){
+					// replace the library
+					finalModifiedLibrary.delete();
+				}
 				RuntimeUtils.copyFile(modifiedLibrary, finalModifiedLibrary);
 			}
 			
