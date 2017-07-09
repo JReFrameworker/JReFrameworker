@@ -186,34 +186,36 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	 */
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
 		Log.info("Incremental Build");
-		boolean buildChangesMade = false;
+		boolean incrementalBuildChangesMade = false;
 		JReFrameworkerProject jrefProject = incrementalBuilder.getJReFrameworkerProject();
 		BuildDeltaVisitor deltaVisitor = new BuildDeltaVisitor(jrefProject);
 		delta.accept(deltaVisitor);
-		if(deltaVisitor.getDeltaBuildFilesToProcess().isEmpty()){
-			Set<DeltaSource> sourceDeltas = deltaVisitor.getDeltaSourcesToProcess();
-			if(!sourceDeltas.isEmpty()){
-				try {
-					incrementalBuilder.build(sourceDeltas, monitor);
-					buildChangesMade = true;
-				} catch (IncrementalBuilderException e) {
-					Log.error("Error incrementally building project", e);
-				}
-			}
-		} else {
+		if(!deltaVisitor.getDeltaBuildFilesToProcess().isEmpty()){
 			// TODO: this could be improved to just detect changes to individual libraries...but too much work for now...
 			// changes to the build file require a full build
 			clean(monitor);
 			fullBuild(monitor);
-			buildChangesMade = true;
+			return;
+		} else {
+			// process incremental changes
+			Set<DeltaSource> sourceDeltas = deltaVisitor.getDeltaSourcesToProcess();
+			if(!sourceDeltas.isEmpty()){
+				try {
+					incrementalBuilder.build(sourceDeltas, monitor);
+					incrementalBuildChangesMade = true;
+				} catch (IncrementalBuilderException e) {
+					Log.error("Error incrementally building JReFrameworker project", e);
+				}
+			}
 		}
 		
-		if(buildChangesMade){
+		if(incrementalBuildChangesMade){
 			updateBuildClasspath(jrefProject);
 		}
 	}
 
 	private void updateBuildClasspath(JReFrameworkerProject jrefProject) throws CoreException {
+		// make sure we are working with the latest files
 		jrefProject.refresh();
 		
 		// remove the java nature to prevent the Java builder from running until we are ready
@@ -296,66 +298,92 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		
 		@Override
 		public boolean visit(IResourceDelta delta) throws CoreException {
-			File file = new File(delta.getFullPath().toOSString());
-			if(!file.isDirectory()){
-				if(file.getName().equals(BuildFile.XML_BUILD_FILENAME)){
-					buildFilesToProcess.add(new DeltaBuildFile(file, delta));
-				} else if(file.getName().endsWith(".java") || file.getName().endsWith(".class")){
-					if(resolvedFiles.contains(file)){
-						// convert IResourceDelta to SourceDelta.Delta types
-						Delta sourceDeltaType = Delta.ADDED;
+			try {
+				String relativeResourcePath = delta.getResource().getProjectRelativePath().toOSString();
+				// note: the relative project path itself would be an empty string relative to the project
+				if(!relativeResourcePath.isEmpty()){ 
+					String resourcePath = jrefProject.getProject().getLocation().toFile().getCanonicalPath() + File.separator + relativeResourcePath;
+					File resource = new File(resourcePath);
+					if(resource.exists() && resource.isFile()){
+						
+						String changeType = "Added: ";
 						switch (delta.getKind()) {
 						case IResourceDelta.ADDED:
-							sourceDeltaType = Delta.ADDED;
+							changeType = "Added: ";
 							break;
 						case IResourceDelta.CHANGED:
-							sourceDeltaType = Delta.MODIFIED;
+							changeType = "Modified: ";
 							break;
 						case IResourceDelta.REMOVED:
-							sourceDeltaType = Delta.REMOVED;
+							changeType = "Removed: ";
 							break;
 						}
+						Log.info(changeType + resource.getName());
 						
-						// construct DeltaSource objects for each case
-						switch (delta.getKind()) {
-						case IResourceDelta.ADDED:
-						case IResourceDelta.CHANGED:
-							if(file.getName().endsWith(".java")){
-								try {
-									File sourceFile = file;
-									File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
-									ClassNode classNode = BytecodeUtils.getClassNode(classFile);
-									deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, classNode, sourceDeltaType));
-								} catch (Exception e){
-									throw new IllegalArgumentException("Unable to process source: " + file.getName(), e);
+						if(resource.getName().equals(BuildFile.XML_BUILD_FILENAME)){
+							buildFilesToProcess.add(new DeltaBuildFile(resource, delta));
+						} else if(resource.getName().endsWith(".java") || resource.getName().endsWith(".class")){
+							if(resolvedFiles.contains(resource)){
+								// convert IResourceDelta to SourceDelta.Delta types
+								Delta sourceDeltaType = Delta.ADDED;
+								switch (delta.getKind()) {
+								case IResourceDelta.ADDED:
+									sourceDeltaType = Delta.ADDED;
+									break;
+								case IResourceDelta.CHANGED:
+									sourceDeltaType = Delta.MODIFIED;
+									break;
+								case IResourceDelta.REMOVED:
+									sourceDeltaType = Delta.REMOVED;
+									break;
 								}
-							} else if(file.getName().endsWith(".class")){
-								try {
-									File classFile = file;
-									ClassNode classNode = BytecodeUtils.getClassNode(classFile);
-									File sourceFile = BuilderUtils.getCorrespondingSourceFile(jrefProject, classFile);
-									deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, classNode, sourceDeltaType));
-								} catch (Exception e){
-									throw new IllegalArgumentException("Unable to process source: " + file.getName(), e);
+								
+								// construct DeltaSource objects for each case
+								switch (delta.getKind()) {
+								case IResourceDelta.ADDED:
+								case IResourceDelta.CHANGED:
+									if(resource.getName().endsWith(".java")){
+										try {
+											File sourceFile = resource;
+											File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
+											ClassNode classNode = BytecodeUtils.getClassNode(classFile);
+											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, classNode, sourceDeltaType));
+										} catch (Exception e){
+											throw new IllegalArgumentException("Unable to process source: " + resource.getName(), e);
+										}
+									} else if(resource.getName().endsWith(".class")){
+										try {
+											File classFile = resource;
+											ClassNode classNode = BytecodeUtils.getClassNode(classFile);
+											File sourceFile = BuilderUtils.getCorrespondingSourceFile(jrefProject, classFile);
+											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, classNode, sourceDeltaType));
+										} catch (Exception e){
+											throw new IllegalArgumentException("Unable to process source: " + resource.getName(), e);
+										}
+									}
+									break;
+								case IResourceDelta.REMOVED:
+									// a removed source won't have a corresponding class file
+									if(resource.getName().endsWith(".java")){
+										try {
+											File sourceFile = resource;
+											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, sourceDeltaType));
+										} catch (Exception e){
+											throw new IllegalArgumentException("Unable to process source: " + resource.getName(), e);
+										}
+									}
+									break;
 								}
 							}
-							break;
-						case IResourceDelta.REMOVED:
-							// a removed source won't have a corresponding class file
-							if(file.getName().endsWith(".java")){
-								try {
-									File sourceFile = file;
-									deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, sourceDeltaType));
-								} catch (Exception e){
-									throw new IllegalArgumentException("Unable to process source: " + file.getName(), e);
-								}
-							}
-							break;
 						}
 					}
 				}
+			} catch (Exception e){
+				// not a valid file, skip
 			}
-			
+
+			// always returns true so the resource delta's children should be visited
+			// returning false skips the resource's children
 			return true;
 		}
 	}
