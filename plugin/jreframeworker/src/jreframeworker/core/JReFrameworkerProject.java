@@ -20,6 +20,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.IClasspathEntry;
@@ -292,33 +293,28 @@ public class JReFrameworkerProject {
 			updatedLibraryPath = relativeFilePath;
 		}
 		
+		// create path to library
+		IPath path;
+		// TODO: figure out why this is causing "Illegal require library path" error during testing
+//		if(isUpdatedLibraryContainedInProject){
+//			updatedLibraryPath = updatedLibraryPath.replace(File.separator, "/");
+//	    	// library is at some path relative to project root
+//			path = new Path(updatedLibraryPath);
+//	    } else {
+	    	// library is outside the project, using absolute path
+	    	path = jProject.getProject().getFile(updatedLibraryPath).getLocation();
+//	    }
 		
 		// create a classpath entry for the library
-		IClasspathEntry updatedLibraryEntry;
-		if(isUpdatedLibraryContainedInProject){
-			updatedLibraryPath = updatedLibraryPath.replace(File.separator, "/");
-	    	// library is at some path relative to project root
-	    	updatedLibraryEntry = new org.eclipse.jdt.internal.core.ClasspathEntry(
-	    	        IPackageFragmentRoot.K_BINARY,
-	    	        IClasspathEntry.CPE_LIBRARY, jProject.getProject().getFile(updatedLibraryPath).getLocation(),
-	    	        ClasspathEntry.INCLUDE_ALL, // inclusion patterns
-	    	        ClasspathEntry.EXCLUDE_NONE, // exclusion patterns
-	    	        null, null, null, // specific output folder
-	    	        false, // exported
-	    	        ClasspathEntry.NO_ACCESS_RULES, false, // no access rules to combine
-	    	        ClasspathEntry.NO_EXTRA_ATTRIBUTES);
-	    } else {
-	    	// library is outside the project, using absolute path
-	    	updatedLibraryEntry = new org.eclipse.jdt.internal.core.ClasspathEntry(
-	    	        IPackageFragmentRoot.K_BINARY,
-	    	        IClasspathEntry.CPE_LIBRARY, new Path(updatedLibraryPath),
-	    	        ClasspathEntry.INCLUDE_ALL, // inclusion patterns
-	    	        ClasspathEntry.EXCLUDE_NONE, // exclusion patterns
-	    	        null, null, null, // specific output folder
-	    	        false, // exported
-	    	        ClasspathEntry.NO_ACCESS_RULES, false, // no access rules to combine
-	    	        ClasspathEntry.NO_EXTRA_ATTRIBUTES);
-	    }
+		IClasspathEntry updatedLibraryEntry = new org.eclipse.jdt.internal.core.ClasspathEntry(
+    	        IPackageFragmentRoot.K_BINARY,
+    	        IClasspathEntry.CPE_LIBRARY, path,
+    	        ClasspathEntry.INCLUDE_ALL, // inclusion patterns
+    	        ClasspathEntry.EXCLUDE_NONE, // exclusion patterns
+    	        null, null, null, // specific output folder
+    	        false, // exported
+    	        ClasspathEntry.NO_ACCESS_RULES, false, // no access rules to combine
+    	        ClasspathEntry.NO_EXTRA_ATTRIBUTES);
 		
 		// search through the classpath's existing entries and replace the corresponding library entry
 	    IClasspathEntry[] entries = jProject.getRawClasspath();

@@ -108,11 +108,17 @@ public class BuilderUtils {
 	 * @throws IOException
 	 */
 	public static final File getCorrespondingSourceFile(JReFrameworkerProject jrefProject, File classFile) throws JavaModelException, IOException {
-		String relativeClassFileDirectoryPath = jrefProject.getBinaryDirectory().getCanonicalPath().substring(classFile.getCanonicalPath().length());
+		String binaryDirectoryPath = jrefProject.getBinaryDirectory().getCanonicalPath();
+		String classFilePath = classFile.getCanonicalPath();
+		
+		String relativeClassFileDirectoryPath = classFilePath.substring(binaryDirectoryPath.length());
 		if(relativeClassFileDirectoryPath.charAt(0) == File.separatorChar){
 			relativeClassFileDirectoryPath = relativeClassFileDirectoryPath.substring(1);
 		}
-		String sourceFileName = classFile.getName().replace(".class", ".java");
+		
+		String sourceFileName = classFile.getName();
+		relativeClassFileDirectoryPath = relativeClassFileDirectoryPath.substring(0, relativeClassFileDirectoryPath.indexOf(sourceFileName));
+		sourceFileName = sourceFileName.replace(".class", ".java");
 		File sourceFile = new File(jrefProject.getSourceDirectory().getCanonicalPath() + File.separator + relativeClassFileDirectoryPath + File.separator + sourceFileName);
 		return sourceFile;
 	}

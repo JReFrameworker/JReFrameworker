@@ -198,6 +198,8 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			return;
 		} else {
 			// process incremental changes
+			// changes could be to source code, which will change the class files
+			// changes could also be to class files only (if a build error was resolved but the source was not touched)
 			Set<DeltaSource> sourceDeltas = deltaVisitor.getDeltaSourcesToProcess();
 			if(!sourceDeltas.isEmpty()){
 				try {

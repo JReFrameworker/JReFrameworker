@@ -80,15 +80,17 @@ public class IncrementalBuilder {
 				return true;
 			if (obj == null)
 				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			Source other = (Source) obj;
-			if (sourceFile == null) {
-				if (other.sourceFile != null)
+			try {
+				Source other = (Source) obj;
+				if (sourceFile == null) {
+					if (other.sourceFile != null)
+						return false;
+				} else if (!sourceFile.equals(other.sourceFile))
 					return false;
-			} else if (!sourceFile.equals(other.sourceFile))
+				return true;
+			} catch (ClassCastException e){
 				return false;
-			return true;
+			}
 		}
 		
 	}
@@ -200,6 +202,8 @@ public class IncrementalBuilder {
 			return;
 		}
 		try {
+			// TODO: reverts are causing infinite loops...so we should really only reprocess a class only change if the previous source had a compiler error..or the actual source was changed
+			
 			// first figure out if we need to revert to a previous build phase
 			// reverts can occur when a class file is modified or removed or added
 			// added case: an earlier phase is added
@@ -213,10 +217,10 @@ public class IncrementalBuilder {
 					staleSources.add(source);
 					// for modified and removed sources revert back to
 					// the min(the source's original phase, lowest modified phase value)
-					boolean phaseFound = false;
+					boolean sourceFound = false;
 					for(ProcessedSource processedSource : processedSources){
-						if(source.equals(processedSource)){
-							phaseFound = true;
+						if(processedSource.equals(source)){
+							sourceFound = true;
 							// current phase should be the earliest phase of the previously processed source
 							currentPhase = Math.min(currentPhase, processedSource.phases.get(0));
 							// if the source is modified also consider the earlier phase in the modification
@@ -227,8 +231,10 @@ public class IncrementalBuilder {
 							break;
 						}
 					}
-					if(!phaseFound){
-						throw new IncrementalBuilderException("Unable to locate previous source reference");
+					if(!sourceFound){
+//						throw new IncrementalBuilderException("Unable to locate previous source reference");
+						// a source which was previously uncompilable just became compilable, so we need to revert back to it's earliest phase
+						currentPhase = source.getSortedPhases().get(0);
 					}
 				}
 				// consider phase reverts due to added sources
