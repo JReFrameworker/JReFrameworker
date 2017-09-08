@@ -123,13 +123,15 @@ public class IncrementalBuilder {
 		
 		private Delta delta;
 		private List<Integer> phases;
+		private File resourceFile;
 		
-		public DeltaSource(File sourceFile, Delta delta){
-			this(sourceFile, null, delta);
+		public DeltaSource(File resource, File sourceFile, Delta delta){
+			this(resource, sourceFile, null, delta);
 		}
 		
-		public DeltaSource(File sourceFile, ClassNode classNode, Delta delta){
+		public DeltaSource(File resourceFile, File sourceFile, ClassNode classNode, Delta delta){
 			super(sourceFile, classNode);
+			this.resourceFile = resourceFile;
 			this.delta = delta;
 			if(delta == Delta.REMOVED && classNode != null){
 				throw new IllegalArgumentException("Removed source should not contain class nodes.");
@@ -145,6 +147,10 @@ public class IncrementalBuilder {
 
 		public Delta getDelta() {
 			return delta;
+		}
+		
+		public File getResourceFile(){
+			return resourceFile;
 		}
 		
 		public ProcessedSource getProcessedSource(){
@@ -196,14 +202,12 @@ public class IncrementalBuilder {
 		return jrefProject;
 	}
 
-	public void build(Set<DeltaSource> sourceDeltas, IProgressMonitor monitor) throws IncrementalBuilderException {
+	public boolean build(Set<DeltaSource> sourceDeltas, IProgressMonitor monitor) throws IncrementalBuilderException {
 		if(sourceDeltas.isEmpty()){
 			// nothing to do
-			return;
+			return false;
 		}
 		try {
-			// TODO: reverts are causing infinite loops...so we should really only reprocess a class only change if the previous source had a compiler error..or the actual source was changed
-			
 			// first figure out if we need to revert to a previous build phase
 			// reverts can occur when a class file is modified or removed or added
 			// added case: an earlier phase is added
@@ -214,6 +218,12 @@ public class IncrementalBuilder {
 				// first consider modified or removed sources
 				if(source.getDelta() == DeltaSource.Delta.MODIFIED || source.getDelta() == DeltaSource.Delta.REMOVED){
 					// note modified and removed sources that are no longer valid
+					if(source.getDelta() == DeltaSource.Delta.MODIFIED && source.getResourceFile().getName().endsWith(".class")){
+						// reverts could cause infinite loops...so we should really only
+						// reprocess a class only change if the previous source had a
+						// compiler error..or the actual source was changed
+						continue;
+					}
 					staleSources.add(source);
 					// for modified and removed sources revert back to
 					// the min(the source's original phase, lowest modified phase value)
@@ -263,6 +273,12 @@ public class IncrementalBuilder {
 			// add any new or modified sources to the list of sources to be processed
 			for(DeltaSource source : sourceDeltas){
 				if(source.getDelta() == DeltaSource.Delta.ADDED || source.getDelta() == DeltaSource.Delta.MODIFIED){
+					if(source.getDelta() == DeltaSource.Delta.MODIFIED && source.getResourceFile().getName().endsWith(".class")){
+						// reverts could cause infinite loops...so we should really only
+						// reprocess a class only change if the previous source had a
+						// compiler error..or the actual source was changed
+						continue;
+					}
 					sourcesToProcess.add(source);
 				}
 			}
@@ -275,39 +291,46 @@ public class IncrementalBuilder {
 			
 			LinkedList<Integer> sortedPhases = new LinkedList<Integer>(phases);
 			Collections.sort(sortedPhases);
-			for(int i=sortedPhases.getFirst(); i<=sortedPhases.getLast(); i++){
-				if(!sortedPhases.contains(i)){
-					throw new IncrementalBuilderException("Phases are not contiguous. Phase " + i + " is missing.");
-				}
-			}
-			
-			// starting from the current phase process every phase in the set of sources to process
-			int lastPhase = sortedPhases.getLast();
-			while(currentPhase <= lastPhase){
-				boolean isFirstPhase = (currentPhase == DEFAULT_BUILD_PHASE);
-				boolean isLastPhase = (currentPhase == lastPhase);
-				
-				// gather the sources that are relevant to the current phase
-				Set<Source> phaseSources = new HashSet<Source>();
-				for(Source source : sourcesToProcess){
-					if(source.getSortedPhases().contains(currentPhase)){
-						phaseSources.add(source);
+			if(sortedPhases.isEmpty()){
+				return false;
+			} else {
+				for(int i=sortedPhases.getFirst(); i<=sortedPhases.getLast(); i++){
+					if(!sortedPhases.contains(i)){
+						throw new IncrementalBuilderException("Phases are not contiguous. Phase " + i + " is missing.");
 					}
 				}
 				
-				// build the phase targets
-				buildPhase(phaseSources, currentPhase, isFirstPhase, isLastPhase, monitor);
-				
-				currentPhase++;
-			}
-			
-			// record the processed phases for the next incremental build
-			for(Source source : sourcesToProcess){
-				// processed sources are already recorded as processed
-				// just need to add the delta sources as processed sources
-				if(source instanceof DeltaSource){
-					processedSources.add(((DeltaSource) source).getProcessedSource());
+				// starting from the current phase process every phase in the set of sources to process
+				int lastPhase = sortedPhases.getLast();
+				while(currentPhase <= lastPhase){
+					boolean isFirstPhase = (currentPhase == DEFAULT_BUILD_PHASE);
+					boolean isLastPhase = (currentPhase == lastPhase);
+					
+					// gather the sources that are relevant to the current phase
+					Set<Source> phaseSources = new HashSet<Source>();
+					for(Source source : sourcesToProcess){
+						if(source.getSortedPhases().contains(currentPhase)){
+							phaseSources.add(source);
+						}
+					}
+					
+					// build the phase targets
+					buildPhase(phaseSources, currentPhase, isFirstPhase, isLastPhase, monitor);
+					
+					currentPhase++;
 				}
+				
+				// record the processed phases for the next incremental build
+				for(Source source : sourcesToProcess){
+					// processed sources are already recorded as processed
+					// just need to add the delta sources as processed sources
+					if(source instanceof DeltaSource){
+						processedSources.add(((DeltaSource) source).getProcessedSource());
+					}
+				}
+				
+				// changes were made
+				return true;
 			}
 		} catch (Throwable t){
 			throw new IncrementalBuilderException("Error building sources", t);

@@ -113,7 +113,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 						ClassNode classNode = BytecodeUtils.getClassNode(classFile);
 						if(BuilderUtils.hasTopLevelAnnotation(classNode)){
 							// in a full build all sources are added deltas
-							DeltaSource source = new DeltaSource(sourceFile, classNode, Delta.ADDED);
+							DeltaSource source = new DeltaSource(sourceFile, sourceFile, classNode, Delta.ADDED);
 							sourcesToProcess.add(source);
 						}
 					}
@@ -203,8 +203,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			Set<DeltaSource> sourceDeltas = deltaVisitor.getDeltaSourcesToProcess();
 			if(!sourceDeltas.isEmpty()){
 				try {
-					incrementalBuilder.build(sourceDeltas, monitor);
-					incrementalBuildChangesMade = true;
+					incrementalBuildChangesMade = incrementalBuilder.build(sourceDeltas, monitor);
 				} catch (IncrementalBuilderException e) {
 					Log.error("Error incrementally building JReFrameworker project", e);
 				}
@@ -349,7 +348,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 											File sourceFile = resource;
 											File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
 											ClassNode classNode = BytecodeUtils.getClassNode(classFile);
-											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, classNode, sourceDeltaType));
+											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(resource, sourceFile, classNode, sourceDeltaType));
 										} catch (Exception e){
 											throw new IllegalArgumentException("Unable to process source: " + resource.getName(), e);
 										}
@@ -358,7 +357,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 											File classFile = resource;
 											ClassNode classNode = BytecodeUtils.getClassNode(classFile);
 											File sourceFile = BuilderUtils.getCorrespondingSourceFile(jrefProject, classFile);
-											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, classNode, sourceDeltaType));
+											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(resource,sourceFile, classNode, sourceDeltaType));
 										} catch (Exception e){
 											throw new IllegalArgumentException("Unable to process source: " + resource.getName(), e);
 										}
@@ -369,7 +368,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									if(resource.getName().endsWith(".java")){
 										try {
 											File sourceFile = resource;
-											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(sourceFile, sourceDeltaType));
+											deltaSourcesToProcess.add(new IncrementalBuilder.DeltaSource(resource, sourceFile, sourceDeltaType));
 										} catch (Exception e){
 											throw new IllegalArgumentException("Unable to process source: " + resource.getName(), e);
 										}
