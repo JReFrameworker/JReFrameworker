@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -283,7 +284,7 @@ public class JReFrameworkerProject {
 		
 		// if the updated library is inside the project, then make the path relative
 		// otherwise we must use the absolution path
-		if(isUpdatedLibraryContainedInProject){ // TODO: is this condition working correctly?
+		if(isUpdatedLibraryContainedInProject){
 			String base = projectRoot.getCanonicalPath();
 			String relativeFilePath = updatedLibrary.getCanonicalPath().substring(base.length());
 			if(relativeFilePath.charAt(0) == File.separatorChar){
@@ -315,16 +316,32 @@ public class JReFrameworkerProject {
     	        ClasspathEntry.NO_ACCESS_RULES, false, // no access rules to combine
     	        ClasspathEntry.NO_EXTRA_ATTRIBUTES);
 		
+		// get the classpath entries
+		ArrayList<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
+		for(IClasspathEntry entry : jProject.getRawClasspath()){
+			entries.add(entry);
+		}
+		
 		// search through the classpath's existing entries and replace the corresponding library entry
-	    IClasspathEntry[] entries = jProject.getRawClasspath();
-	    for(int i=0; i< entries.length; i++){
-	    	if(entries[i].getPath().toFile().getName().equals(jarName)){
-	    		entries[i] =  updatedLibraryEntry;
+	    boolean found = false;
+	    for(int i=0; i< entries.size(); i++){
+	    	if(entries.get(i).getPath().toFile().getName().equals(jarName)){
+	    		found = true;
+	    		entries.set(i, updatedLibraryEntry);
 	    		// assuming there is only one library with the same name...
 	    		break;
 	    	}
 	    }
-	    jProject.setRawClasspath(entries, null);
+	    
+	    // if the classpath entry was not found (because it was in a JRE container), then we need to add it to the classpath
+	    if(!found){
+	    	entries.add(updatedLibraryEntry);
+	    }
+	    
+	    // update the classpath
+	    IClasspathEntry[] classpath = new IClasspathEntry[entries.size()];
+	    entries.toArray(classpath);
+	    jProject.setRawClasspath(classpath, null);
 	    
 	    // refresh project
 	 	jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
@@ -366,6 +383,8 @@ public class JReFrameworkerProject {
 
 		// refresh project
 		jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+		
+		// TODO: refactor this code a little...
 		
 	    // create a classpath entry for the library
 		IClasspathEntry relativeLibraryEntry;
@@ -415,12 +434,10 @@ public class JReFrameworkerProject {
 	 * @throws CoreException
 	 */
 	public void restoreOriginalClasspathEntries() throws SAXException, IOException, ParserConfigurationException, CoreException {
+		Set<String> runtimes = new HashSet<String>();
 		for(BuildFile.Target entry : getBuildFile().getTargets()){
 			if(entry.isRuntime()){
-				// TODO: implement
-				throw new RuntimeException("Not Implemented");
-//				File runtime = RuntimeUtils.getRuntimeJar(entry.getName());
-//				updateProjectLibrary(runtime.getName(), runtime);
+				runtimes.add(entry.getName());
 			} else {
 				File library = new File(((LibraryTarget) entry).getLibraryPath());
 				if(library.exists()){
@@ -434,6 +451,28 @@ public class JReFrameworkerProject {
 					}
 				}
 			}
+		}
+		if(!runtimes.isEmpty()){
+			// search through the classpath's existing entries and replace the corresponding library entry
+		    ArrayList<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
+		    for(IClasspathEntry entry : jProject.getRawClasspath()){
+		    	if(!runtimes.contains(entry.getPath().toFile().getName())){
+		    		entries.add(entry);
+		    	}
+		    }
+		    
+		    // if it was removed, we may need to re-add the JRE container
+//		    // adds classpath entry of: <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+// 			String path = org.eclipse.jdt.launching.JavaRuntime.JRE_CONTAINER + "/" + org.eclipse.jdt.internal.launching.StandardVMType.ID_STANDARD_VM_TYPE + "/" + "JavaSE-1.8";
+// 			
+// 			// create a classpath entry for the library
+// 			IClasspathEntry runtimesEntry = JavaCore.newContainerEntry(new Path(path));
+// 			entries.add(runtimesEntry);
+ 			
+ 			// update the classpath
+		    IClasspathEntry[] classpath = new IClasspathEntry[entries.size()];
+		    entries.toArray(classpath);
+		    jProject.setRawClasspath(classpath, null);
 		}
 	}
 

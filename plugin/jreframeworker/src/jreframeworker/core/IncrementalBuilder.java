@@ -43,7 +43,11 @@ public class IncrementalBuilder {
 		
 		public Source(File sourceFile, ClassNode classNode){
 			try {
-				this.sourceFile = sourceFile.getCanonicalFile();
+				if(sourceFile != null && sourceFile.exists()){
+					this.sourceFile = sourceFile.getCanonicalFile();
+				} else {
+					this.sourceFile = sourceFile;
+				}
 			} catch (Exception e){
 				throw new IllegalArgumentException(e);
 			}
@@ -97,7 +101,7 @@ public class IncrementalBuilder {
 	
 	public static class ProcessedSource extends Source {
 		
-		private List<Integer> phases;
+		private List<Integer> phases = new LinkedList<Integer>();
 		
 		public ProcessedSource(File sourceFile, ClassNode classNode, List<Integer> phases) {
 			super(sourceFile, classNode);
@@ -122,7 +126,7 @@ public class IncrementalBuilder {
 		}
 		
 		private Delta delta;
-		private List<Integer> phases;
+		private List<Integer> phases = new LinkedList<Integer>();
 		private File resourceFile;
 		
 		public DeltaSource(File resource, File sourceFile, Delta delta){
@@ -138,10 +142,12 @@ public class IncrementalBuilder {
 			} else if(delta != Delta.REMOVED && classNode == null){
 				throw new IllegalArgumentException("Added or Modified sources must contain class nodes.");
 			}
-			try {
-				this.phases = BuilderUtils.getSortedBuildPhases(classNode);
-			} catch (IOException e) {
-				throw new IllegalArgumentException("Unable to recover build phases.");
+			if(delta != Delta.REMOVED){
+				try {
+					this.phases = BuilderUtils.getSortedBuildPhases(classNode);
+				} catch (IOException e) {
+					throw new IllegalArgumentException("Unable to recover build phases.");
+				}
 			}
 		}
 
@@ -217,6 +223,13 @@ public class IncrementalBuilder {
 			for(DeltaSource source : sourceDeltas){
 				// first consider modified or removed sources
 				if(source.getDelta() == DeltaSource.Delta.MODIFIED || source.getDelta() == DeltaSource.Delta.REMOVED){
+					
+					// if the source was removed and it has no phases then nothing to do
+					if(source.getDelta() == DeltaSource.Delta.REMOVED && source.getSortedPhases().isEmpty()){
+						// TODO: removing resources may mean we have to rebuild from phase one or there are no phases and we should just restore the classpath...
+						continue;
+					}
+					
 					// note modified and removed sources that are no longer valid
 					if(source.getDelta() == DeltaSource.Delta.MODIFIED && source.getResourceFile().getName().endsWith(".class")){
 						// reverts could cause infinite loops...so we should really only
