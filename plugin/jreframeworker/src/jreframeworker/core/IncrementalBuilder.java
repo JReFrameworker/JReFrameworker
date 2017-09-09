@@ -31,6 +31,7 @@ import jreframeworker.engine.identifiers.MergeIdentifier;
 import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.log.Log;
+import jreframeworker.preferences.JReFrameworkerPreferences;
 import jreframeworker.ui.PreferencesPage;
 
 public class IncrementalBuilder {
@@ -371,7 +372,7 @@ public class IncrementalBuilder {
 				// classpath has been restored, these are all the original jars
 				File originalJar = RuntimeUtils.getClasspathJar(target.getName(), jrefProject);
 				if (originalJar != null && originalJar.exists()) {
-					Engine engine = new Engine(originalJar, PreferencesPage.getMergeRenamingPrefix());
+					Engine engine = new Engine(originalJar, JReFrameworkerPreferences.getMergeRenamingPrefix());
 					allEngines.add(engine);
 					for(String entry : engine.getOriginalEntries()){
 						entry = entry.replace(".class", "");
@@ -394,7 +395,7 @@ public class IncrementalBuilder {
 					phaseJar = RuntimeUtils.getClasspathJar(target.getName(), jrefProject);
 				}
 				if (phaseJar != null && phaseJar.exists()) {
-					Engine engine = new Engine(phaseJar, PreferencesPage.getMergeRenamingPrefix());
+					Engine engine = new Engine(phaseJar, JReFrameworkerPreferences.getMergeRenamingPrefix());
 					allEngines.add(engine);
 					for(String entry : engine.getOriginalEntries()){
 						entry = entry.replace(".class", "");

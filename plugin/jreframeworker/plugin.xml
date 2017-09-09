@@ -2,7 +2,24 @@
 <?eclipse version="3.4"?>
 <plugin>
    
-   <!-- New project wizard -->
+   <!-- create an initializer extension to initialize preferences -->
+   <extension
+      point="org.eclipse.equinox.preferences.preferences">
+	   <initializer
+	         class="jreframeworker.preferences.JReFrameworkerPreferences">
+	   </initializer>
+	</extension>
+	
+	<!-- preferences page -->
+   <extension point="org.eclipse.ui.preferencePages">
+      <page 
+      	class="jreframeworker.ui.PreferencesPage" 
+      	id="jreframeworker.preferences" 
+      	name="JReFrameworker">
+      </page>
+   </extension>
+   
+   <!-- new project wizard -->
    <extension point="org.eclipse.ui.newWizards">
       <category name="JReFrameworker" id="jreframeworker.ui.category" />
       <wizard category="jreframeworker.ui.category" class="jreframeworker.ui.NewProjectWizard" icon="icons/JReFrameworker.gif" id="jreframeworker.ui.NewProjectWizard" name="JReFrameworker Project">
@@ -10,7 +27,7 @@
       </wizard>
    </extension>
    
-   <!-- Project nature icon -->
+   <!-- project nature icon -->
    <extension point="org.eclipse.ui.ide.projectNatureImages">
 	<image 
 		id="jreframeworker.ui.natureImage"
@@ -19,7 +36,7 @@
 	</image>
    </extension>
    
-   <!-- A project import wizard -->
+   <!-- project import wizard -->
    <!--
    <extension
          point="org.eclipse.ui.importWizards">
@@ -40,14 +57,14 @@
    </extension>
    -->
    
-   <!-- Project builder -->
+   <!-- project builder -->
    <extension id="JReFrameworkerBuilder" name="JReFrameworker Project Builder" point="org.eclipse.core.resources.builders">
       <builder hasNature="true">
          <run class="jreframeworker.builder.JReFrameworkerBuilder" />
       </builder>
    </extension>
    
-   <!-- Project build nature -->
+   <!-- project build nature -->
    <extension id="JReFrameworkerNature" name="JReFrameworker Project Nature" point="org.eclipse.core.resources.natures">
       <runtime>
          <run class="jreframeworker.builder.JReFrameworkerNature" />
@@ -55,13 +72,13 @@
       <builder id="jreframeworker.JReFrameworkerBuilder" />
    </extension>
    
-   <!-- Project build command -->
+   <!-- project build command -->
    <extension point="org.eclipse.ui.commands">
       <category name="JReFrameworker Project Nature commands" id="jreframeworker.JReFrameworkerNature.category" />
       <command name="Add/RemoveJReFrameworker Project Nature" defaultHandler="jreframeworker.builder.AddRemoveJReFrameworkerNatureHandler" categoryId="jreframeworker.JReFrameworkerNature.category" id="jreframeworker.addRemoveJReFrameworkerNature" />
    </extension>
    
-   <!-- Add/remove project build nature -->
+   <!-- add/remove project build nature -->
    <extension point="org.eclipse.ui.menus">
       <menuContribution locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
          <command commandId="jreframeworker.addRemoveJReFrameworkerNature" label="Disable JReFrameworker Builder" style="push">
@@ -93,12 +110,7 @@
       </menuContribution>
    </extension>
    
-   <!-- Preferences page -->
-   <extension point="org.eclipse.ui.preferencePages">
-      <page class="jreframeworker.ui.PreferencesPage" id="jreframeworker.preferences" name="JReFrameworker" />
-   </extension>
-   
-   <!-- Launch Profiles -->
+   <!-- launch Profiles -->
    <extension point="org.eclipse.debug.core.launchConfigurationTypes">
       <launchConfigurationType id="jreframeworker.launchConfigurationType" name="JReFrameworker Java Application" delegate="jreframeworker.launcher.JReFrameworkerLaunchDelegate" modes="run, debug" />
    </extension>
