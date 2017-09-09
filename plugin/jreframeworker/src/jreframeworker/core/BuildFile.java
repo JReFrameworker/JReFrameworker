@@ -26,6 +26,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import jreframeworker.log.Log;
+import jreframeworker.preferences.JReFrameworkerPreferences;
 
 public class BuildFile {
 
@@ -270,7 +271,7 @@ public class BuildFile {
 			if(relativeBuildFilePath.charAt(0) == File.separatorChar){
 				relativeBuildFilePath = relativeBuildFilePath.substring(1);
 			}
-			Log.info("Created Build XML File: " + relativeBuildFilePath);
+			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Created Build XML File: " + relativeBuildFilePath);
 			
 			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();

@@ -443,7 +443,7 @@ public class IncrementalBuilder {
 			if(relativeFilePath.charAt(0) == File.separatorChar){
 				relativeFilePath = relativeFilePath.substring(1);
 			}
-			Log.info("Modified: " + relativeFilePath);
+			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Modified: " + relativeFilePath);
 		}
 		
 		jrefProject.refresh();

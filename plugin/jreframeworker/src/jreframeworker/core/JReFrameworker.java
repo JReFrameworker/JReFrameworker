@@ -43,6 +43,7 @@ import jreframeworker.Activator;
 import jreframeworker.builder.JReFrameworkerBuilder;
 import jreframeworker.builder.JReFrameworkerNature;
 import jreframeworker.log.Log;
+import jreframeworker.preferences.JReFrameworkerPreferences;
 
 @SuppressWarnings("restriction")
 public class JReFrameworker {
@@ -172,7 +173,7 @@ public class JReFrameworker {
 		// set the class path
 		jProject.setRawClasspath(entries.toArray(new IClasspathEntry[entries.size()]), null);
 		
-		Log.info("Successfully created JReFrameworker project: " + jProject.getProject().getName());
+		if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Successfully created JReFrameworker project: " + jProject.getProject().getName());
 	}
 
 	private static IJavaProject createProject(String projectName, IPath projectPath, IProject project, IProgressMonitor monitor) throws CoreException {

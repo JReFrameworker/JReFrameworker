@@ -37,10 +37,34 @@ public class JReFrameworkerPreferences extends AbstractPreferenceInitializer {
 		return mergeRenamePrefixValue;
 	}
 	
+	/**
+	 * Enable/disable verbose logging
+	 */
+	public static final String VERBOSE_LOGGING = "VERBOSE_LOGGING";
+	public static final Boolean VERBOSE_LOGGING_DEFAULT = false;
+	private static boolean verboseLoggingValue = VERBOSE_LOGGING_DEFAULT;
+	
+	/**
+	 * Configures verbose logging
+	 */
+	public static void enableVerboseLogging(boolean enabled){
+		IPreferenceStore preferences = Activator.getDefault().getPreferenceStore();
+		preferences.setValue(VERBOSE_LOGGING, enabled);
+		loadPreferences();
+	}
+	
+	public static boolean isVerboseLoggingEnabled(){
+		if(!initialized){
+			loadPreferences();
+		}
+		return verboseLoggingValue;
+	}
+	
 	@Override
 	public void initializeDefaultPreferences() {
 		IPreferenceStore preferences = Activator.getDefault().getPreferenceStore();
 		preferences.setDefault(MERGE_RENAMING_PREFIX, MERGE_RENAMING_PREFIX_DEFAULT);
+		preferences.setDefault(VERBOSE_LOGGING, VERBOSE_LOGGING_DEFAULT);
 	}
 	
 	/**
@@ -49,6 +73,7 @@ public class JReFrameworkerPreferences extends AbstractPreferenceInitializer {
 	public static void restoreDefaults(){
 		IPreferenceStore preferences = Activator.getDefault().getPreferenceStore();
 		preferences.setValue(MERGE_RENAMING_PREFIX, MERGE_RENAMING_PREFIX_DEFAULT);
+		preferences.setValue(VERBOSE_LOGGING, VERBOSE_LOGGING_DEFAULT);
 		loadPreferences();
 	}
 	
@@ -59,6 +84,7 @@ public class JReFrameworkerPreferences extends AbstractPreferenceInitializer {
 		try {
 			IPreferenceStore preferences = Activator.getDefault().getPreferenceStore();
 			mergeRenamePrefixValue = preferences.getString(MERGE_RENAMING_PREFIX);
+			verboseLoggingValue = preferences.getBoolean(VERBOSE_LOGGING);
 		} catch (Exception e){
 			Log.warning("Error accessing JReFrameworker preferences, using defaults...", e);
 		}

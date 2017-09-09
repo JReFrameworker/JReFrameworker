@@ -12,6 +12,7 @@ import org.eclipse.jdt.launching.JavaLaunchDelegate;
 
 import jreframeworker.core.JReFrameworker;
 import jreframeworker.log.Log;
+import jreframeworker.preferences.JReFrameworkerPreferences;
 
 /**
  * A basic Java application launcher that adds in a boot classpath to the modified runtime
@@ -36,11 +37,13 @@ public class JReFrameworkerLaunchDelegate extends JavaLaunchDelegate {
 		super.launch(configuration, mode, launch, monitor);
 		String mainTypeName = verifyMainTypeName(configuration);
 		IJavaProject jProject = getJavaProject(configuration);
-		Log.info("Launching... [Project: " + jProject.getProject().getName() + ", Main Class: " + mainTypeName + "]"
+		if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) {
+			Log.info("Launching... [Project: " + jProject.getProject().getName() + ", Main Class: " + mainTypeName + "]"
 				+ "\nClasspath: " + Arrays.toString(this.getClasspath(configuration))
 				+ "\nBootpath: " + Arrays.toString(this.getBootpath(configuration))
 				+ "\nProgram Args: " + this.getProgramArguments(configuration) 
 				+ "\nVM Args: " + this.getVMArguments(configuration));
+		}
 	}
 
 	/**

@@ -1,5 +1,6 @@
 package jreframeworker.ui;
 
+import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.ui.IWorkbench;
@@ -11,6 +12,7 @@ import jreframeworker.preferences.JReFrameworkerPreferences;
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 	
 	public static final String MERGE_RENAME_PREFIX_DESCRIPTION = "Merge Renaming Prefix";
+	public static final String VERBOSE_LOGGING_DESCRIPTION = "Verbose Logging";
 	
 	public PreferencesPage() {
 		super(GRID);
@@ -33,6 +35,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			mergeRenamingPrefixStringField.setStringValue(JReFrameworkerPreferences.MERGE_RENAMING_PREFIX_DEFAULT);
 		}
 		addField(mergeRenamingPrefixStringField);
+		addField(new BooleanFieldEditor(JReFrameworkerPreferences.VERBOSE_LOGGING, "&" + VERBOSE_LOGGING_DESCRIPTION, getFieldEditorParent()));
 	}
 
 }

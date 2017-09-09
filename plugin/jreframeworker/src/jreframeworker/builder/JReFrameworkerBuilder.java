@@ -26,6 +26,7 @@ import jreframeworker.core.IncrementalBuilder.IncrementalBuilderException;
 import jreframeworker.core.JReFrameworkerProject;
 import jreframeworker.engine.utils.BytecodeUtils;
 import jreframeworker.log.Log;
+import jreframeworker.preferences.JReFrameworkerPreferences;
 
 public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	
@@ -69,7 +70,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		JReFrameworkerProject jrefProject = getJReFrameworkerProject();
 		if(jrefProject != null){
 			monitor.beginTask("Cleaning: " + jrefProject.getProject().getName(), 1);
-			Log.info("Cleaning: " + jrefProject.getProject().getName());
+			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Cleaning: " + jrefProject.getProject().getName());
 			
 			incrementalBuilder = new IncrementalBuilder(jrefProject);
 			
@@ -98,7 +99,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	protected void fullBuild(final IProgressMonitor monitor) throws CoreException {
 		JReFrameworkerProject jrefProject = getJReFrameworkerProject();
 		monitor.beginTask("Full Build: " + jrefProject.getProject().getName(), 1);
-		Log.info("Full Build: " + jrefProject.getProject().getName());
+		if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Full Build: " + jrefProject.getProject().getName());
 		
 		// discover class files to process and filter out
 		// the compilation units with build errors
@@ -180,7 +181,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 	 * @throws CoreException
 	 */
 	protected void incrementalBuild(IResourceDelta delta, IProgressMonitor monitor) throws CoreException {
-		Log.info("Incremental Build");
+		if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Incremental Build");
 		boolean incrementalBuildChangesMade = false;
 		JReFrameworkerProject jrefProject = incrementalBuilder.getJReFrameworkerProject();
 		BuildDeltaVisitor deltaVisitor = new BuildDeltaVisitor(jrefProject);
@@ -372,7 +373,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				changeType = "Removed: ";
 				break;
 			}
-			Log.info(changeType + resource.getName());
+			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info(changeType + resource.getName());
 		}
 	}
 	
