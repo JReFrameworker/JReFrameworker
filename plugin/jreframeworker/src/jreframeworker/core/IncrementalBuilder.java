@@ -491,7 +491,7 @@ public class IncrementalBuilder {
 								engine.process(classNode, phase);
 							}
 						} else {
-							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+							Log.warning("Class entry [" + target + "] specified by [" + classNode.name + "] could not be found in any of the target jars.");
 						}
 					}
 				} 
@@ -511,7 +511,7 @@ public class IncrementalBuilder {
 								engine.process(classNode, phase);
 							}
 						} else {
-							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+							Log.warning("Class entry [" + target + "] specified by [" + classNode.name + "] could not be found in any of the target jars.");
 						}
 					}
 				} 
@@ -531,7 +531,7 @@ public class IncrementalBuilder {
 								engine.process(classNode, phase);
 							}
 						} else {
-							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+							Log.warning("Class entry [" + target + "] specified by [" + classNode.name + "] could not be found in any of the target jars.");
 						}
 					}
 				}
@@ -553,7 +553,7 @@ public class IncrementalBuilder {
 								engine.process(classNode, phase);
 							}
 						} else {
-							Log.warning("Class entry [" + target + "] could not be found in any of the target jars.");
+							Log.warning("Class entry [" + target + "] specified by [" + classNode.name + "] could not be found in any of the target jars.");
 						}
 					}
 				} 

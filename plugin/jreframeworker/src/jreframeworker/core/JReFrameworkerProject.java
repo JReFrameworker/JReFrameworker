@@ -23,6 +23,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -211,6 +212,22 @@ public class JReFrameworkerProject {
 	public void addTarget(File targetLibrary) throws TransformerException, ParserConfigurationException, SAXException, IOException, URISyntaxException, CoreException {
 		String entry = addProjectLibrary(jProject, targetLibrary);
 		
+		// make path relative to project (may need to trim project and leading slashes)
+		if(!new File(entry).exists()){
+		 	String relativeLibraryPath = entry;
+		 	relativeLibraryPath = relativeLibraryPath.replace(File.separator, "/");
+		 	if(relativeLibraryPath.startsWith("/")){
+		 		relativeLibraryPath = relativeLibraryPath.substring(1);
+		 	}
+		 	if(relativeLibraryPath.startsWith(jProject.getProject().getName())){
+		 		relativeLibraryPath = relativeLibraryPath.substring(jProject.getProject().getName().length());
+		 	}
+		 	if(relativeLibraryPath.startsWith("/")){
+		 		relativeLibraryPath = relativeLibraryPath.substring(1);
+		 	}
+		 	entry = relativeLibraryPath;
+		}
+		
 		// update the build file
 		BuildFile buildFile = getBuildFile();
 		buildFile.addLibraryTarget(targetLibrary.getName(), entry);
@@ -296,14 +313,15 @@ public class JReFrameworkerProject {
 		// create path to library
 		IPath path;
 		// TODO: figure out why this is causing "Illegal require library path" error during testing
-//		if(isUpdatedLibraryContainedInProject){
-//			updatedLibraryPath = updatedLibraryPath.replace(File.separator, "/");
-//	    	// library is at some path relative to project root
-//			path = new Path(updatedLibraryPath);
-//	    } else {
+		// seems fine on the mac, maybe it was a wierd windows error?
+		if(isUpdatedLibraryContainedInProject){
+			updatedLibraryPath = updatedLibraryPath.replace(File.separator, "/");
+	    	// library is at some path relative to project root
+			path = new Path(updatedLibraryPath);
+	    } else {
 	    	// library is outside the project, using absolute path
 	    	path = jProject.getProject().getFile(updatedLibraryPath).getLocation();
-//	    }
+	    }
 		
 		// create a classpath entry for the library
 		IClasspathEntry updatedLibraryEntry = new org.eclipse.jdt.internal.core.ClasspathEntry(
@@ -383,8 +401,6 @@ public class JReFrameworkerProject {
 
 		// refresh project
 		jProject.getProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
-		
-		// TODO: refactor this code a little...
 		
 	    // create a classpath entry for the library
 		IClasspathEntry relativeLibraryEntry;

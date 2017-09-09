@@ -144,7 +144,10 @@ public class BuildFile {
 		for (int i = 0; i < targets.getLength(); i++) {
 			Element target = (Element) targets.item(i);
 			String name = target.getAttribute("name");
-			Boolean runtime = Boolean.parseBoolean(target.getAttribute("runtime"));
+			Boolean runtime = false;
+			if(target.hasAttribute("runtime")){
+				runtime = Boolean.parseBoolean(target.getAttribute("runtime"));
+			}
 			if(runtime){
 				results.add(new RuntimeTarget(name));
 			} else {
