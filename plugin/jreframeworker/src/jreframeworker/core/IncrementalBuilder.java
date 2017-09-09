@@ -226,18 +226,25 @@ public class IncrementalBuilder {
 					
 					// if the source was removed and it has no phases then nothing to do
 					if(source.getDelta() == DeltaSource.Delta.REMOVED && source.getSortedPhases().isEmpty()){
-						// TODO: removing resources may mean we have to rebuild from phase one or there are no phases and we should just restore the classpath...
+						// TODO: removing resources may mean we have to rebuild
+						// from phase one or there are no phases and we should
+						// just restore the classpath...
+						continue;
+					}
+					
+					// Updating the class path causes the compiler to change the
+					// class files even though the corresponding source files
+					// did not change. If the resource modified was a class file
+					// and not a source file then we should ignore this change to 
+					// prevent infinite build loops
+					boolean modifiedResourceIsClassFile = source.getResourceFile().getName().endsWith(".class");
+					if(source.getDelta() == DeltaSource.Delta.MODIFIED && modifiedResourceIsClassFile){
 						continue;
 					}
 					
 					// note modified and removed sources that are no longer valid
-					if(source.getDelta() == DeltaSource.Delta.MODIFIED && source.getResourceFile().getName().endsWith(".class")){
-						// reverts could cause infinite loops...so we should really only
-						// reprocess a class only change if the previous source had a
-						// compiler error..or the actual source was changed
-						continue;
-					}
 					staleSources.add(source);
+					
 					// for modified and removed sources revert back to
 					// the min(the source's original phase, lowest modified phase value)
 					boolean sourceFound = false;
