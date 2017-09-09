@@ -312,8 +312,8 @@ public class JReFrameworkerProject {
 		
 		// create path to library
 		IPath path;
-		// TODO: figure out why this is causing "Illegal require library path" error during testing
-		// seems fine on the mac, maybe it was a wierd windows error?
+		// TODO: figure out why relative paths were causing "Illegal require library path" error during testing on Windows
+		// seems fine on the mac, maybe it was a weird windows error?
 		if(isUpdatedLibraryContainedInProject){
 			updatedLibraryPath = updatedLibraryPath.replace(File.separator, "/");
 	    	// library is at some path relative to project root

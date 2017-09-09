@@ -166,7 +166,16 @@ public class IncrementalBuilder {
 
 		@Override
 		public List<Integer> getSortedPhases() {
-			return new LinkedList<Integer>(phases);
+			List<Integer> result = new LinkedList<Integer>(phases);
+			if(result.isEmpty()){
+				// TODO: if we can make better guarantees about the correctness of this result,
+				// it may be better to return empty phase results so that we can identify deleted
+				// sources that had no phases
+				
+				// for now assume phase one is always there (even if the source has no phases)
+				result.add(1); 
+			}
+			return result;
 		}
 		
 		@Override
@@ -226,11 +235,16 @@ public class IncrementalBuilder {
 				if(source.getDelta() == DeltaSource.Delta.MODIFIED || source.getDelta() == DeltaSource.Delta.REMOVED){
 					
 					// if the source was removed and it has no phases then nothing to do
-					if(source.getDelta() == DeltaSource.Delta.REMOVED && source.getSortedPhases().isEmpty()){
-						// TODO: removing resources may mean we have to rebuild
-						// from phase one or there are no phases and we should
-						// just restore the classpath...
-						continue;
+					if(source.getDelta() == DeltaSource.Delta.REMOVED){
+						// revert to the earliest phase in the removed source
+						if(!source.getSortedPhases().isEmpty()){
+							currentPhase = source.getSortedPhases().get(0);
+							
+							if(currentPhase == 1){
+								// TODO: figure out how to reset the classpath from here
+							}
+						}
+						break;
 					}
 					
 					// Updating the class path causes the compiler to change the
