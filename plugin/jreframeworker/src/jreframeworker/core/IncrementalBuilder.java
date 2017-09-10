@@ -32,17 +32,26 @@ import jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.log.Log;
 import jreframeworker.preferences.JReFrameworkerPreferences;
-import jreframeworker.ui.PreferencesPage;
 
 public class IncrementalBuilder {
 	
 	public static final int DEFAULT_BUILD_PHASE = 1;
 	
 	public static abstract class Source {
+		protected File resourceFile;
 		protected File sourceFile;
 		protected ClassNode classNode;
 		
-		public Source(File sourceFile, ClassNode classNode){
+		public Source(File resourceFile, File sourceFile, ClassNode classNode){
+			try {
+				if(resourceFile != null && resourceFile.exists()){
+					this.resourceFile = resourceFile.getCanonicalFile();
+				} else {
+					this.resourceFile = resourceFile;
+				}
+			} catch (Exception e){
+				throw new IllegalArgumentException(e);
+			}
 			try {
 				if(sourceFile != null && sourceFile.exists()){
 					this.sourceFile = sourceFile.getCanonicalFile();
@@ -53,6 +62,10 @@ public class IncrementalBuilder {
 				throw new IllegalArgumentException(e);
 			}
 			this.classNode = classNode;
+		}
+		
+		public File getResourceFile(){
+			return resourceFile;
 		}
 		
 		public File getSourceFile() {
@@ -66,18 +79,18 @@ public class IncrementalBuilder {
 		public abstract List<Integer> getSortedPhases();
 		
 		/**
-		 * A source object is equivalent if it shares the same source file
+		 * A source object is equivalent if it shares the same resource file
 		 */
 		@Override
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
-			result = prime * result + ((sourceFile == null) ? 0 : sourceFile.hashCode());
+			result = prime * result + ((resourceFile == null) ? 0 : resourceFile.hashCode());
 			return result;
 		}
 
 		/**
-		 * A source object is equivalent if it shares the same source file
+		 * A source object is equivalent if it shares the same resource file
 		 */
 		@Override
 		public boolean equals(Object obj) {
@@ -87,10 +100,10 @@ public class IncrementalBuilder {
 				return false;
 			try {
 				Source other = (Source) obj;
-				if (sourceFile == null) {
-					if (other.sourceFile != null)
+				if (resourceFile == null) {
+					if (other.resourceFile != null)
 						return false;
-				} else if (!sourceFile.equals(other.sourceFile))
+				} else if (!resourceFile.equals(other.resourceFile))
 					return false;
 				return true;
 			} catch (ClassCastException e){
@@ -104,8 +117,8 @@ public class IncrementalBuilder {
 		
 		private List<Integer> phases = new LinkedList<Integer>();
 		
-		public ProcessedSource(File sourceFile, ClassNode classNode, List<Integer> phases) {
-			super(sourceFile, classNode);
+		public ProcessedSource(File resourceFile, File sourceFile, ClassNode classNode, List<Integer> phases) {
+			super(resourceFile, sourceFile, classNode);
 			this.phases = phases;
 		}
 
@@ -128,15 +141,13 @@ public class IncrementalBuilder {
 		
 		private Delta delta;
 		private List<Integer> phases = new LinkedList<Integer>();
-		private File resourceFile;
 		
 		public DeltaSource(File resource, File sourceFile, Delta delta){
 			this(resource, sourceFile, null, delta);
 		}
 		
 		public DeltaSource(File resourceFile, File sourceFile, ClassNode classNode, Delta delta){
-			super(sourceFile, classNode);
-			this.resourceFile = resourceFile;
+			super(resourceFile, sourceFile, classNode);
 			this.delta = delta;
 			if(delta == Delta.REMOVED && classNode != null){
 				throw new IllegalArgumentException("Removed source should not contain class nodes.");
@@ -156,12 +167,8 @@ public class IncrementalBuilder {
 			return delta;
 		}
 		
-		public File getResourceFile(){
-			return resourceFile;
-		}
-		
 		public ProcessedSource getProcessedSource(){
-			return new ProcessedSource(getSourceFile(), getClassNode(), getSortedPhases());
+			return new ProcessedSource(getResourceFile(), getSourceFile(), getClassNode(), getSortedPhases());
 		}
 
 		@Override
@@ -188,7 +195,7 @@ public class IncrementalBuilder {
 			} else if(delta == Delta.REMOVED){
 				change = "Removed: ";
 			}
-			return "[DeltaSource (" + change + sourceFile.getName() + ")]";
+			return "[DeltaSource (" + change + resourceFile.getName() + ")]";
 		}
 		
 	}
@@ -217,20 +224,56 @@ public class IncrementalBuilder {
 	public JReFrameworkerProject getJReFrameworkerProject(){
 		return jrefProject;
 	}
+	
+	public static enum PostBuildAction {
+		UPDATE_CLASSPATH, CLEAN_REBUILD, NONE
+	}
 
-	public boolean build(Set<DeltaSource> sourceDeltas, IProgressMonitor monitor) throws IncrementalBuilderException {
+	public PostBuildAction build(Set<DeltaSource> sourceDeltas, IProgressMonitor monitor) throws IncrementalBuilderException {
 		if(sourceDeltas.isEmpty()){
 			// nothing to do
-			return false;
+			return PostBuildAction.NONE;
 		}
 		try {
-			// first figure out if we need to revert to a previous build phase
+			// first separate the java and class source delta resources
+			Set<DeltaSource> javaSourceDeltas = new HashSet<DeltaSource>();
+			Set<DeltaSource> classSourceDeltas = new HashSet<DeltaSource>();
+			for(DeltaSource sourceDelta : sourceDeltas){
+				if(sourceDelta.getResourceFile().getName().endsWith(".java")){
+					javaSourceDeltas.add(sourceDelta);
+				} else if(sourceDelta.getResourceFile().getName().endsWith(".class")){
+					classSourceDeltas.add(sourceDelta);
+				}
+			}
+			
+			// then map java class deltas to java file source deltas
+			// class file edits may be made without edits to the source when the classpath has been updated
+			Map<DeltaSource,DeltaSource> classToJavaDeltaSources = new HashMap<DeltaSource,DeltaSource>();
+			for(DeltaSource classSourceDelta : classSourceDeltas){
+				boolean mapped = false;
+				for(DeltaSource javaSourceDelta : javaSourceDeltas){
+					if(javaSourceDelta.getResourceFile().equals(classSourceDelta.getSourceFile())){
+						classToJavaDeltaSources.put(classSourceDelta, javaSourceDelta);
+						mapped = true;
+						break;
+					}
+				}
+				if(!mapped){
+					classToJavaDeltaSources.put(classSourceDelta, null);
+				}
+			}
+			
+			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()){
+				Log.info("Incremental Changes: " + classToJavaDeltaSources.toString());
+			}
+			
+			// next figure out if we need to revert to a previous build phase
 			// reverts can occur when a class file is modified or removed or added
 			// added case: an earlier phase is added
 			// modified case: a phase is changed or the class is changed and the phase needs to be reprocessed
 			// removed case: a phase should not have been run
 			Set<Source> staleSources = new HashSet<Source>();
-			for(DeltaSource source : sourceDeltas){
+			for(DeltaSource source : classSourceDeltas){
 				// first consider modified or removed sources
 				if(source.getDelta() == DeltaSource.Delta.MODIFIED || source.getDelta() == DeltaSource.Delta.REMOVED){
 					
@@ -239,24 +282,13 @@ public class IncrementalBuilder {
 						// revert to the earliest phase in the removed source
 						if(!source.getSortedPhases().isEmpty()){
 							currentPhase = source.getSortedPhases().get(0);
-							
 							if(currentPhase == 1){
-								// TODO: figure out how to reset the classpath from here
+								return PostBuildAction.CLEAN_REBUILD;
 							}
 						}
 						break;
 					}
-					
-					// Updating the class path causes the compiler to change the
-					// class files even though the corresponding source files
-					// did not change. If the resource modified was a class file
-					// and not a source file then we should ignore this change to 
-					// prevent infinite build loops
-					boolean modifiedResourceIsClassFile = source.getResourceFile().getName().endsWith(".class");
-					if(source.getDelta() == DeltaSource.Delta.MODIFIED && modifiedResourceIsClassFile){
-						continue;
-					}
-					
+
 					// note modified and removed sources that are no longer valid
 					staleSources.add(source);
 					
@@ -306,15 +338,16 @@ public class IncrementalBuilder {
 			}
 			
 			// add any new or modified sources to the list of sources to be processed
-			for(DeltaSource source : sourceDeltas){
-				if(source.getDelta() == DeltaSource.Delta.ADDED || source.getDelta() == DeltaSource.Delta.MODIFIED){
-					if(source.getDelta() == DeltaSource.Delta.MODIFIED && source.getResourceFile().getName().endsWith(".class")){
-						// reverts could cause infinite loops...so we should really only
-						// reprocess a class only change if the previous source had a
-						// compiler error..or the actual source was changed
-						continue;
+			// updating the class path causes the compiler to change the class
+			// files even though the corresponding source files did not change.
+			// If the resource modified was a class file and not a source file
+			// then we should ignore this change to prevent infinite build loops
+			for(DeltaSource source : classSourceDeltas){
+				boolean classFileOnlyModification = classToJavaDeltaSources.get(source) == null;
+				if(!classFileOnlyModification){
+					if(source.getDelta() == DeltaSource.Delta.ADDED || source.getDelta() == DeltaSource.Delta.MODIFIED){
+						sourcesToProcess.add(source);
 					}
-					sourcesToProcess.add(source);
 				}
 			}
 			
@@ -327,7 +360,8 @@ public class IncrementalBuilder {
 			LinkedList<Integer> sortedPhases = new LinkedList<Integer>(phases);
 			Collections.sort(sortedPhases);
 			if(sortedPhases.isEmpty()){
-				return false;
+				// no phases found
+				return PostBuildAction.NONE;
 			} else {
 				for(int i=sortedPhases.getFirst(); i<=sortedPhases.getLast(); i++){
 					if(!sortedPhases.contains(i)){
@@ -364,8 +398,8 @@ public class IncrementalBuilder {
 					}
 				}
 				
-				// changes were made
-				return true;
+				// changes were made, need to update the classpath
+				return PostBuildAction.UPDATE_CLASSPATH;
 			}
 		} catch (Throwable t){
 			throw new IncrementalBuilderException("Error building sources", t);
