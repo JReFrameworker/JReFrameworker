@@ -5,12 +5,15 @@
     <target name="create_dropper_jar">
         <jar destfile="${dir.jarfile}/dropper.jar" filesetmanifest="mergewithoutmain">
             <manifest>
-                <attribute name="Main-Class" value="Main"/>
+                <attribute name="Main-Class" value="jreframeworker.dropper.Dropper"/>
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${dir.buildfile}/bin"/>
             <fileset dir="../jreframeworker.engine.core/bin"/>
             <fileset dir="../org.objectweb.asm.core/bin"/>
         </jar>
+        <copy todir="../jreframeworker.dropper/src/">
+			<fileset dir="./src" />
+		</copy>
     </target>
 </project>

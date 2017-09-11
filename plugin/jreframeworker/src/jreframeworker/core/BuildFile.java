@@ -274,8 +274,7 @@ public class BuildFile {
 			if(relativeBuildFilePath.charAt(0) == File.separatorChar){
 				relativeBuildFilePath = relativeBuildFilePath.substring(1);
 			}
-			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Created Build XML File: " + relativeBuildFilePath);
-			
+
 			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
 
@@ -290,6 +289,10 @@ public class BuildFile {
 
 			// write the content into xml file
 			writeBuildFile(buildXMLFile, doc);
+			
+			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) {
+				Log.info("Created Build XML File: " + relativeBuildFilePath);
+			}
 			
 			return new BuildFile(buildXMLFile);
 		} catch (ParserConfigurationException pce) {

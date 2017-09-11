@@ -21,6 +21,7 @@ Bundle-ActivationPolicy: lazy
 Export-Package: jreframeworker.builder,
  jreframeworker.common,
  jreframeworker.core,
+ jreframeworker.preferences,
  org.eclipse.wb.swt
 Bundle-ClassPath: .,
  swing2swt.jar

@@ -1,16 +1,24 @@
 package jreframeworker.dropper.ui;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
-import org.eclipse.core.resources.IProject;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
+
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -22,13 +30,22 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IExportWizard;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
+import org.objectweb.asm.tree.ClassNode;
+import org.xml.sax.SAXException;
 
+import jreframeworker.core.BuildFile;
+import jreframeworker.core.BuildFile.LibraryTarget;
+import jreframeworker.core.BuildFile.RuntimeTarget;
+import jreframeworker.core.BuildFile.Target;
+import jreframeworker.core.BuilderUtils;
 import jreframeworker.core.JReFrameworker;
+import jreframeworker.core.JReFrameworkerProject;
 import jreframeworker.dropper.Activator;
+import jreframeworker.dropper.Dropper;
 import jreframeworker.dropper.log.Log;
+import jreframeworker.engine.utils.BytecodeUtils;
 import jreframeworker.engine.utils.JarModifier;
-import jreframeworker.dropper.ui.ExportPayloadDropperPage;
-import jreframeworker.dropper.ui.SelectJReFrameworkerProjectPage;
+import jreframeworker.preferences.JReFrameworkerPreferences;
 
 public class ExportPayloadDropperWizard extends Wizard implements IExportWizard {
 
@@ -64,7 +81,6 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 			@Override
 			public void run(IProgressMonitor monitor) {
 				try {
-					
 					// make sure we have a fresh copy of the base dropper
 					if(dropperJar.exists()){
 						dropperJar.delete();
@@ -80,37 +96,47 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 						throw new RuntimeException("Could not locate: " + PAYLOAD_DROPPER);
 					}
 					Files.copy(dropperJarInputStream, dropperJar.toPath());
-
-					
 					JarModifier dropper = new JarModifier(dropperJar);
 					
-					@SuppressWarnings("unused")
-					IProject project = page1.getJReFrameworkerProject().getProject();
+					JReFrameworkerProject jrefProject = new JReFrameworkerProject(page1.getJReFrameworkerProject().getProject());
 					
-					// add config file
-					// TODO: replace with JREF BUILD XML contents
-//					File configFile = project.getFile(JReFrameworker.BUILD_CONFIG).getLocation().toFile();
-//					dropper.add("config", Files.readAllBytes(configFile.toPath()), true);
-//					
-//					// add payloads
-//					Scanner scanner = new Scanner(configFile);
-//					while(scanner.hasNextLine()){
-//						String[] entry = scanner.nextLine().split(",");
-//						if(entry[0].equals("class")){
-//							File classFile = new File(project.getFile(JReFrameworker.BINARY_DIRECTORY).getLocation().toFile().getAbsolutePath()
-//									+ File.separatorChar + entry[1] + ".class");
-//							dropper.add("payloads/" + entry[1], Files.readAllBytes(classFile.toPath()), true);
-//						}
-//					}
-//					scanner.close();
+					// add payloads
+					Set<String> payloadClassNames = new HashSet<String>();
+					ICompilationUnit[] compilationUnits = BuilderUtils.getSourceCompilationUnits(jrefProject.getJavaProject());
+					for(ICompilationUnit compilationUnit : compilationUnits){
+						File sourceFile = compilationUnit.getCorrespondingResource().getLocation().toFile().getCanonicalFile();
+						File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
+						if(classFile.exists()){
+							if(!BuilderUtils.hasSevereProblems(compilationUnit)){
+								ClassNode classNode = BytecodeUtils.getClassNode(classFile);
+								if(BuilderUtils.hasTopLevelAnnotation(classNode)){
+									payloadClassNames.add(classFile.getName());
+									byte[] classFileBytes = Files.readAllBytes(classFile.toPath());
+									dropper.add(Dropper.PAYLOAD_DIRECTORY + "/" + classFile.getName(), classFileBytes, true);
+								}
+							}
+						}
+					}
+					
+					// create dropper configuration file
+					BuildFile buildFile = jrefProject.getBuildFile();
+					Map<String,String> configurations = new HashMap<String,String>();
+					configurations.put(Dropper.MERGE_RENAME_PREFIX, JReFrameworkerPreferences.getMergeRenamingPrefix());
+					Dropper.Configuration dropperConfiguration = generateDropperConfiguration(buildFile, configurations, payloadClassNames);
+					dropper.add(Dropper.CONFIG_FILE, dropperConfiguration.getXML().getBytes(), true);
 					
 					// set manifest
-					byte[] manifest = "Manifest-Version: 1.0\nClass-Path: .\nMain-Class: Main\n\n\n".getBytes();
+					byte[] manifest = "Manifest-Version: 1.0\nClass-Path: .\nMain-Class: jreframeworker.dropper.Dropper\n\n\n".getBytes();
 					dropper.add("META-INF/MANIFEST.MF", manifest, true);
 					
-					dropper.save(dropperFile);					
+					// export the dropper jar
+					dropper.save(dropperFile);
+					
+					if(JReFrameworkerPreferences.isVerboseLoggingEnabled()){
+						Log.info("Exported payload dropper as " + dropperFile.getName());
+					}
 				} catch (Throwable t) {
-					final String message = "Could not create JAR binary project. " + t.getMessage();
+					final String message = "Could not create dropper JAR. " + t.getMessage();
 					Log.error(message, t);
 					Display.getDefault().asyncExec(new Runnable() {
 						public void run() {
@@ -137,6 +163,27 @@ public class ExportPayloadDropperWizard extends Wizard implements IExportWizard 
 			e.printStackTrace();
 		}
 		return true;
+	}
+	
+	private static Dropper.Configuration generateDropperConfiguration(BuildFile buildFile, Map<String,String> configurations, Set<String> payloadClassNames) throws TransformerException, ParserConfigurationException, SAXException, IOException {
+		Dropper.Configuration result = new Dropper.Configuration();
+		
+		// add build targets
+		for(Target target : buildFile.getTargets()){
+			if(target instanceof RuntimeTarget){
+				result.runtimes.add(target.getName());
+			} else if(target instanceof LibraryTarget){
+				result.libraries.add(target.getName());
+			}
+		}
+		
+		// add configurations
+		result.configurations.putAll(configurations);
+		
+		// add the payload class names
+		result.payloadClassNames.addAll(payloadClassNames);
+		
+		return result;
 	}
 
 }
