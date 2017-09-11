@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +32,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import jreframeworker.engine.Engine;
@@ -72,7 +74,7 @@ public class Dropper {
 
 	private static final String PRINT_TARGETS_LONG_ARGUMENT = "--print-targets";
 	private static final String PRINT_TARGETS_SHORT_ARGUMENT = "-pt";
-	private static final String PRINT_TARGETS_DESCRIPTION = "    Prints the targets of the dropper and exits.";
+	private static final String PRINT_TARGETS_DESCRIPTION = "     Prints the targets of the dropper and exits.";
 	private static boolean printTargets = false;
 	
 	private static final String PRINT_PAYLOADS_LONG_ARGUMENT = "--print-payloads";
@@ -161,18 +163,22 @@ public class Dropper {
 		
 		// load configurations
 		Configuration configuration = null;
-		InputStream configStream = Dropper.class.getResourceAsStream(CONFIG_FILE);
+		InputStream configStream = Dropper.class.getResourceAsStream("/" + CONFIG_FILE);
 		try {
 			if(configStream == null){
-				throw new IllegalArgumentException("Configuration file is missing or corrupted.\n");
+				throw new IllegalArgumentException("Configuration file is missing.\n");
 			} else {
-				StringBuilder xml = new StringBuilder();
-				Scanner scanner = new Scanner(configStream);
-				while(scanner.hasNextLine()){
-					xml.append(scanner.nextLine() + "\n");
+				try {
+					StringBuilder xml = new StringBuilder();
+					Scanner scanner = new Scanner(configStream);
+					while(scanner.hasNextLine()){
+						xml.append(scanner.nextLine() + "\n");
+					}
+					scanner.close();
+					configuration = new Configuration(xml.toString());
+				} catch (Exception e){
+					throw new IllegalArgumentException("Configuration file is corrupted.\n");
 				}
-				scanner.close();
-				configuration = new Configuration(xml.toString());
 			}
 		} catch (Exception e){
 			System.err.println(e.getMessage());
@@ -196,7 +202,7 @@ public class Dropper {
 		for(int i=0; i<classFiles.size(); i++){
 			String classFile = classFiles.get(i);
 			try {
-				InputStream classFileStream = Dropper.class.getResourceAsStream(PAYLOAD_DIRECTORY + "/" + classFile);
+				InputStream classFileStream = Dropper.class.getResourceAsStream("/" + PAYLOAD_DIRECTORY + "/" + classFile);
 				byte[] payloadBytes = getBytes(classFileStream);
 				payloads[i] = payloadBytes;
 			} catch (Exception e) {
@@ -341,7 +347,8 @@ public class Dropper {
 		public Configuration(String xml) throws ParserConfigurationException, SAXException, IOException {
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-			Document doc = dBuilder.parse(xml);
+			InputSource inputStream = new InputSource(new StringReader(xml));
+			Document doc = dBuilder.parse(inputStream);
 			doc.getDocumentElement().normalize();
 			NodeList targets = doc.getElementsByTagName(TARGET);
 			for (int i = 0; i < targets.getLength(); i++) {
@@ -357,7 +364,7 @@ public class Dropper {
 					libraries.add(name);
 				}
 			}
-			NodeList classes = doc.getElementsByTagName(PAYLOAD_CLASSES);
+			NodeList classes = doc.getElementsByTagName(PAYLOAD_CLASS);
 			for (int i = 0; i < classes.getLength(); i++) {
 				Element clazz = (Element) classes.item(i);
 				String name = clazz.getAttribute(NAME);
