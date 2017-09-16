@@ -4,8 +4,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -69,6 +73,11 @@ public class Dropper {
 	private static final String VERSION_LONG_ARGUMENT = "--version";
 	private static final String VERSION_SHORT_ARGUMENT = "-v";
 	private static final String VERSION_DESCRIPTION = "1.3.0";
+	
+	private static final String ENFORCE_SINGLE_INSTANCE_LONG_ARGUMENT = "--single-instance";
+	private static final String ENFORCE_SINGLE_INSTANCE_SHORT_ARGUMENT = "-si";
+	private static final String ENFORCE_SINGLE_INSTANCE_DESCRIPTION = "            This flag enforces (using a file lock) that only a single instance of the dropper may execute at one time.";
+	private static boolean singleInstance = false;
 	
 	private static final String SAFETY_OFF_LONG_ARGUMENT = "--safety-off";
 	private static final String SAFETY_OFF_SHORT_ARGUMENT = "-so";
@@ -176,6 +185,10 @@ public class Dropper {
 				}
 			}
 			
+			else if(args[i].equals(ENFORCE_SINGLE_INSTANCE_LONG_ARGUMENT) || args[i].equals(ENFORCE_SINGLE_INSTANCE_SHORT_ARGUMENT)){
+				singleInstance = true;
+			}
+			
 			else if(args[i].equals(REPLACE_TARGET_LONG_ARGUMENT) || args[i].equals(REPLACE_TARGET_SHORT_ARGUMENT)){
 				replaceTarget = true;
 			}
@@ -242,6 +255,13 @@ public class Dropper {
 			else {
 				System.out.println("Invalid argument: " + args[i]);
 				System.exit(1);
+			}
+		}
+		
+		if(singleInstance){
+			if(isAnotherApplicationInstanceActive()){
+				System.err.println("Another instance is active. Exiting...");
+				System.exit(-1);
 			}
 		}
 		
@@ -629,6 +649,71 @@ public class Dropper {
 			result.append(Integer.toString((hash[i] & 0xFF) + 0x100, 16).substring(1));
 		}
 		return result.toString();
+	}
+	
+	public static boolean isAnotherApplicationInstanceActive(){
+		ApplicationInstanceLock instanceLock = new ApplicationInstanceLock(WATERMARK);
+		return instanceLock.isAppActive();
+	}
+	
+	// adapted from http://www.rgagnon.com/javadetails/java-0288.html
+	private static class ApplicationInstanceLock {
+
+		private String appName;
+		private File file;
+		private FileChannel channel;
+		private FileLock lock;
+
+		public ApplicationInstanceLock(String appName) {
+			this.appName = appName;
+		}
+
+		public boolean isAppActive() {
+			try {
+				file = new File(System.getProperty("user.home"), appName + ".tmp");
+				channel = new RandomAccessFile(file, "rw").getChannel();
+
+				try {
+					lock = channel.tryLock();
+				} catch (OverlappingFileLockException e) {
+					// already locked
+					closeLock();
+					return true;
+				}
+
+				if (lock == null) {
+					closeLock();
+					return true;
+				}
+
+				Runtime.getRuntime().addShutdownHook(new Thread() {
+					// destroy the lock when the JVM is closing
+					public void run() {
+						closeLock();
+						deleteFile();
+					}
+				});
+				return false;
+			} catch (Exception e) {
+				closeLock();
+				return true;
+			}
+		}
+
+		private void closeLock() {
+			try {
+				lock.release();
+				channel.close();
+			} catch (Exception e) {
+			}
+		}
+
+		private void deleteFile() {
+			try {
+				file.delete();
+			} catch (Exception e) {
+			}
+		}
 	}
 	
 }
