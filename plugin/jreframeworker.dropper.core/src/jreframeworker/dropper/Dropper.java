@@ -76,7 +76,7 @@ public class Dropper {
 	
 	private static final String ENFORCE_SINGLE_INSTANCE_LONG_ARGUMENT = "--single-instance";
 	private static final String ENFORCE_SINGLE_INSTANCE_SHORT_ARGUMENT = "-si";
-	private static final String ENFORCE_SINGLE_INSTANCE_DESCRIPTION = "            This flag enforces (using a file lock) that only a single instance of the dropper may execute at one time.";
+	private static final String ENFORCE_SINGLE_INSTANCE_DESCRIPTION = "       This flag enforces (using a file lock) that only a single instance of the dropper may execute at one time.";
 	private static boolean singleInstance = false;
 	
 	private static final String SAFETY_OFF_LONG_ARGUMENT = "--safety-off";
@@ -148,6 +148,7 @@ public class Dropper {
 													+ REPLACE_TARGET_LONG_ARGUMENT + ", " + REPLACE_TARGET_SHORT_ARGUMENT + REPLACE_TARGET_DESCRIPTION + "\n"
 													+ DISABLE_WATERMARK_LONG_ARGUMENT + ", " + DISABLE_WATERMARK_SHORT_ARGUMENT + DISABLE_WATERMARK_DESCRIPTION + "\n"
 													+ IGNORE_WATERMARK_LONG_ARGUMENT + ", " + IGNORE_WATERMARK_SHORT_ARGUMENT + IGNORE_WATERMARK_DESCRIPTION + "\n"
+													+ ENFORCE_SINGLE_INSTANCE_LONG_ARGUMENT + ", " + ENFORCE_SINGLE_INSTANCE_SHORT_ARGUMENT + ENFORCE_SINGLE_INSTANCE_DESCRIPTION + "\n"
 													+ WATCHER_LONG_ARGUMENT + ", " + WATCHER_SHORT_ARGUMENT + WATCHER_DESCRIPTION + "\n"
 													+ WATCHER_SLEEP_TIME_LONG_ARGUMENT + ", " + WATCHER_SLEEP_TIME_SHORT_ARGUMENT + WATCHER_SLEEP_TIME_DESCRIPTION + "\n"
 													+ PRINT_WATERMARKED_LONG_ARGUMENT + ", " + PRINT_WATERMARKED_SHORT_ARGUMENT + PRINT_WATERMARKED_DESCRIPTION + "\n"
