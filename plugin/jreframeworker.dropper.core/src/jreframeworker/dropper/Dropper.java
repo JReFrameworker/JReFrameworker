@@ -340,6 +340,9 @@ public class Dropper {
 			if(!ignoreWatermarks){
 				try {
 					if(new JarModifier(target).getJarEntrySet().contains(WATERMARK)){
+						if(debug){
+							System.out.println("Ignoring watermarked target: " + target.getAbsolutePath());
+						}
 						continue;
 					}
 				} catch (Exception e){
