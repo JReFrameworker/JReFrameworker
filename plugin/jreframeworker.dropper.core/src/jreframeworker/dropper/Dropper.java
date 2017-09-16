@@ -91,11 +91,11 @@ public class Dropper {
 	private static final String SEARCH_DIRECTORIES_LONG_ARGUMENT = "--search-directories";
 	private static final String SEARCH_DIRECTORIES_SHORT_ARGUMENT = "-s";
 	private static final String SEARCH_DIRECTORIES_DESCRIPTION = " Specifies a comma separated list of directory paths to search for runtimes, if not specified a default set of search directories will be used.";
-	
-	private static final long WATCHER_SLEEP_TIME = (long) (1000 * 60); // 1 minute
+
 	private static final String WATCHER_SLEEP_TIME_LONG_ARGUMENT = "--watcher-sleep";
 	private static final String WATCHER_SLEEP_TIME_SHORT_ARGUMENT = "-ws";
 	private static final String WATCHER_SLEEP_TIME_DESCRIPTION = "     The amount of time in milliseconds to sleep between watcher checks.";
+	private static long watcherSleepTime = (long) (1000 * 60); // 1 minute
 	
 	private static boolean watcher = false;
 	private static final String WATCHER_LONG_ARGUMENT = "--watcher";
@@ -175,6 +175,21 @@ public class Dropper {
 			
 			else if(args[i].equals(SAFETY_OFF_LONG_ARGUMENT) || args[i].equals(SAFETY_OFF_SHORT_ARGUMENT)){
 				safetyOff = true;
+			}
+			
+			else if(args[i].equals(WATCHER_LONG_ARGUMENT) || args[i].equals(WATCHER_SHORT_ARGUMENT)){
+				watcher = true;
+			}
+			
+			else if(args[i].equals(WATCHER_SLEEP_TIME_LONG_ARGUMENT) || args[i].equals(WATCHER_SLEEP_TIME_SHORT_ARGUMENT)){
+				try {
+					watcherSleepTime = Long.parseLong(args[++i]);
+				} catch (Exception e){
+					System.err.println("Invalid argument.  Option [" 
+							+ WATCHER_SLEEP_TIME_LONG_ARGUMENT + ", " + WATCHER_SLEEP_TIME_SHORT_ARGUMENT
+							+ "+ ] must be a long value.");
+					System.exit(1);
+				}
 			}
 
 			else if(args[i].equals(VERSION_LONG_ARGUMENT) || args[i].equals(VERSION_SHORT_ARGUMENT)){
@@ -260,9 +275,9 @@ public class Dropper {
 								}
 								do{
 									if(debug){
-										System.out.println("Sleeping: " + WATCHER_SLEEP_TIME + "ms");
+										System.out.println("Sleeping: " + watcherSleepTime + "ms");
 									}
-									Thread.sleep(WATCHER_SLEEP_TIME);
+									Thread.sleep(watcherSleepTime);
 								} while(hash.equals(hash2 = sha256(runtime)));
 								if(debug){
 									System.out.println("Runtime (" + runtime.getAbsolutePath() + ") hash changed: " + hash2);
