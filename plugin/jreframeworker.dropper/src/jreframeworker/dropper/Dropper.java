@@ -106,7 +106,7 @@ public class Dropper {
 	
 	private static final String SEARCH_DIRECTORIES_LONG_ARGUMENT = "--search-directories";
 	private static final String SEARCH_DIRECTORIES_SHORT_ARGUMENT = "-s";
-	private static final String SEARCH_DIRECTORIES_DESCRIPTION = "     Specifies a comma separated list of directory paths to search for targetes, if not specified a default set of search directories will be used.";
+	private static final String SEARCH_DIRECTORIES_DESCRIPTION = "     Specifies a comma separated list of directory paths to search for targets, if not specified a default set of search directories will be used.";
 
 	private static final String PRINT_WATERMARKED_LONG_ARGUMENT = "--print-watermarked";
 	private static final String PRINT_WATERMARKED_SHORT_ARGUMENT = "-pw";
