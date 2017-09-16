@@ -159,6 +159,10 @@ public class Engine {
 //		updateBytecode(classNode.name, inputClass);
 //	}
 	
+	public void addFile(String entry, byte[] contents, boolean overwrite) throws IOException {
+		jarModifier.add(entry, contents, overwrite);
+	}
+	
 	public void addUnprocessed(byte[] inputClass, boolean overwrite) throws IOException {
 		ClassNode classNode = BytecodeUtils.getClassNode(inputClass);
 		String qualifiedClassName = classNode.name + ".class";

