@@ -112,7 +112,7 @@ public class BuilderUtils {
 		String classFilePath = classFile.getCanonicalPath();
 		
 		String relativeClassFileDirectoryPath = classFilePath.substring(binaryDirectoryPath.length());
-		if(relativeClassFileDirectoryPath.charAt(0) == File.separatorChar){
+		if(!relativeClassFileDirectoryPath.isEmpty() && relativeClassFileDirectoryPath.charAt(0) == File.separatorChar){
 			relativeClassFileDirectoryPath = relativeClassFileDirectoryPath.substring(1);
 		}
 		
@@ -134,7 +134,7 @@ public class BuilderUtils {
 	public static final File getCorrespondingClassFile(JReFrameworkerProject jrefProject, File sourceFile) throws JavaModelException, IOException {
 		String sourceDirectory = jrefProject.getSourceDirectory().getCanonicalPath();
 		String relativeSourceFileDirectoryPath = sourceFile.getParentFile().getCanonicalPath().substring(sourceDirectory.length());
-		if(relativeSourceFileDirectoryPath.charAt(0) == File.separatorChar){
+		if(!relativeSourceFileDirectoryPath.isEmpty() && relativeSourceFileDirectoryPath.charAt(0) == File.separatorChar){
 			relativeSourceFileDirectoryPath = relativeSourceFileDirectoryPath.substring(1);
 		}
 		String classFileName = sourceFile.getName().replace(".java", ".class");
