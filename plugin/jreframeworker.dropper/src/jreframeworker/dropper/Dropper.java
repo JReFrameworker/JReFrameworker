@@ -131,7 +131,7 @@ public class Dropper {
 	private static boolean watcher = false;
 	private static final String WATCHER_LONG_ARGUMENT = "--watcher";
 	private static final String WATCHER_SHORT_ARGUMENT = "-w";
-	private static final String WATCHER_DESCRIPTION = "                Enables a watcher process that waits to modify any discovered runtimes until the file hash of the runtime has changed (by default the process sleeps for 1 minute, unless the " + WATCHER_SLEEP_TIME_LONG_ARGUMENT + " argument is specified.";
+	private static final String WATCHER_DESCRIPTION = "                Enables a watcher process that waits to modify any discovered runtimes until the file hash of the runtime has changed (by default the process sleeps for 1 minute, unless the " + WATCHER_SLEEP_TIME_LONG_ARGUMENT + " argument is specified).";
 	
 	private static final String DEBUG_LONG_ARGUMENT = "--debug";
 	private static final String DEBUG_SHORT_ARGUMENT = "-d";
