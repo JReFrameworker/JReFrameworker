@@ -672,6 +672,7 @@ public class Dropper {
 			this.appName = appName;
 		}
 
+		@SuppressWarnings("resource")
 		public boolean isAppActive() {
 			try {
 				file = new File(System.getProperty("user.home"), appName + ".tmp");
