@@ -264,7 +264,7 @@ public class IncrementalBuilder {
 			}
 			
 			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()){
-				Log.info("Incremental Changes: " + classToJavaDeltaSources.toString());
+				Log.info("Incremental changes: " + classToJavaDeltaSources.toString());
 			}
 			
 			// next figure out if we need to revert to a previous build phase
@@ -273,7 +273,7 @@ public class IncrementalBuilder {
 			// modified case: a phase is changed or the class is changed and the phase needs to be reprocessed
 			// removed case: a phase should not have been run
 			Set<Source> staleSources = new HashSet<Source>();
-			for(DeltaSource source : classSourceDeltas){
+			for(DeltaSource source : javaSourceDeltas){
 				// first consider modified or removed sources
 				if(source.getDelta() == DeltaSource.Delta.MODIFIED || source.getDelta() == DeltaSource.Delta.REMOVED){
 					
@@ -314,7 +314,9 @@ public class IncrementalBuilder {
 						currentPhase = source.getSortedPhases().get(0);
 					}
 				}
+				
 				// consider phase reverts due to added sources
+				// example a new source was added with an earlier phase
 				if(source.getDelta() == DeltaSource.Delta.ADDED){
 					int earliestPhase = source.getSortedPhases().get(0);
 					currentPhase = Math.min(currentPhase, earliestPhase);
@@ -344,7 +346,15 @@ public class IncrementalBuilder {
 			// then we should ignore this change to prevent infinite build loops
 			for(DeltaSource source : classSourceDeltas){
 				boolean classFileOnlyModification = classToJavaDeltaSources.get(source) == null;
-				if(!classFileOnlyModification){
+				if(classFileOnlyModification){
+					// a class file only modification is important if its a class file with a phase we haven't seen yet
+					// otherwise its just a result of classpath updating
+					for(int phase : source.getSortedPhases()){
+						if(phase > currentPhase){
+							sourcesToProcess.add(source);
+						}
+					}
+				} else {
 					if(source.getDelta() == DeltaSource.Delta.ADDED || source.getDelta() == DeltaSource.Delta.MODIFIED){
 						sourcesToProcess.add(source);
 					}

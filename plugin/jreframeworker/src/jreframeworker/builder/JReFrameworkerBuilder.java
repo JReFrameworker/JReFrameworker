@@ -100,51 +100,47 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 		JReFrameworkerProject jrefProject = getJReFrameworkerProject();
 		monitor.beginTask("Full Build: " + jrefProject.getProject().getName(), 1);
 		if(JReFrameworkerPreferences.isVerboseLoggingEnabled()) Log.info("Full Build: " + jrefProject.getProject().getName());
-		
-		// discover class files to process and filter out
-		// the compilation units with build errors
-		Set<DeltaSource> sourcesToProcess = new HashSet<DeltaSource>();
-		ICompilationUnit[] compilationUnits = BuilderUtils.getSourceCompilationUnits(jrefProject.getJavaProject());
-		for(ICompilationUnit compilationUnit : compilationUnits){
-			try {
-				File sourceFile = compilationUnit.getCorrespondingResource().getLocation().toFile().getCanonicalFile();
-				File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
-				if(classFile.exists()){
-					if(!BuilderUtils.hasSevereProblems(compilationUnit)){
-						try {
-							ClassNode classNode = BytecodeUtils.getClassNode(classFile);
-							if(BuilderUtils.hasTopLevelAnnotation(classNode)){
-								// in a full build all sources are added deltas
-								DeltaSource javaSource = new DeltaSource(sourceFile, sourceFile, classNode, Delta.ADDED);
-								sourcesToProcess.add(javaSource);
-								DeltaSource classSource = new DeltaSource(classFile, sourceFile, classNode, Delta.ADDED);
-								sourcesToProcess.add(classSource);
-							}
-						} catch (Exception e){
-							if(e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE")){
-								Log.warning("Ignoring class [" + classFile.getName() + "] because it was detected as malware by host machine and could not be accessed.");
-							} else {
-								throw e;
+
+		try {
+			// discover class files to process and filter out
+			// the compilation units with build errors
+			Set<DeltaSource> sourcesToProcess = new HashSet<DeltaSource>();
+			ICompilationUnit[] compilationUnits = BuilderUtils.getSourceCompilationUnits(jrefProject.getJavaProject());
+			for(ICompilationUnit compilationUnit : compilationUnits){
+				try {
+					File sourceFile = compilationUnit.getCorrespondingResource().getLocation().toFile().getCanonicalFile();
+					File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
+					if(classFile.exists()){
+						if(!BuilderUtils.hasSevereProblems(compilationUnit)){
+							try {
+								ClassNode classNode = BytecodeUtils.getClassNode(classFile);
+								if(BuilderUtils.hasTopLevelAnnotation(classNode)){
+									// in a full build all sources are added deltas
+									DeltaSource javaSource = new DeltaSource(sourceFile, sourceFile, classNode, Delta.ADDED);
+									sourcesToProcess.add(javaSource);
+									DeltaSource classSource = new DeltaSource(classFile, sourceFile, classNode, Delta.ADDED);
+									sourcesToProcess.add(classSource);
+								}
+							} catch (Exception e){
+								if(e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE")){
+									Log.warning("Ignoring class [" + classFile.getName() + "] because it was detected as malware by host machine and could not be accessed.");
+								} else {
+									throw e;
+								}
 							}
 						}
 					}
+				} catch (IOException e) {
+					throw new RuntimeException("Error resolving compilation units", e);
 				}
-			} catch (IOException e) {
-				Log.error("Error resolving compilation units", e);
-				return;
 			}
-		}
-		
-		try {
+			
 			// build the project
 			if(!sourcesToProcess.isEmpty()){
 				incrementalBuilder.build(sourcesToProcess, monitor);
 				updateBuildClasspath(jrefProject);
 			}
-			if(JReFrameworkerPreferences.isVerboseLoggingEnabled()){
-				Log.info("Build complete.");
-			}
-		} catch (IncrementalBuilderException e) {
+		} catch (Exception e) {
 			Log.error("Error Building JReFrameworker Project", e);
 		}
 	}
@@ -189,7 +185,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			}
 		}
 		if(JReFrameworkerPreferences.isVerboseLoggingEnabled()){
-			Log.info("Build complete");
+			Log.info("Incremental build complete");
 		}
 	}
 
