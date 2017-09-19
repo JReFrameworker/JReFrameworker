@@ -111,13 +111,21 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 				File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
 				if(classFile.exists()){
 					if(!BuilderUtils.hasSevereProblems(compilationUnit)){
-						ClassNode classNode = BytecodeUtils.getClassNode(classFile);
-						if(BuilderUtils.hasTopLevelAnnotation(classNode)){
-							// in a full build all sources are added deltas
-							DeltaSource javaSource = new DeltaSource(sourceFile, sourceFile, classNode, Delta.ADDED);
-							sourcesToProcess.add(javaSource);
-							DeltaSource classSource = new DeltaSource(classFile, sourceFile, classNode, Delta.ADDED);
-							sourcesToProcess.add(classSource);
+						try {
+							ClassNode classNode = BytecodeUtils.getClassNode(classFile);
+							if(BuilderUtils.hasTopLevelAnnotation(classNode)){
+								// in a full build all sources are added deltas
+								DeltaSource javaSource = new DeltaSource(sourceFile, sourceFile, classNode, Delta.ADDED);
+								sourcesToProcess.add(javaSource);
+								DeltaSource classSource = new DeltaSource(classFile, sourceFile, classNode, Delta.ADDED);
+								sourcesToProcess.add(classSource);
+							}
+						} catch (Exception e){
+							if(e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE")){
+								Log.warning("Ignoring class [" + classFile.getName() + "] because it was detected as malware by host machine and could not be accessed.");
+							} else {
+								throw e;
+							}
 						}
 					}
 				}
@@ -250,10 +258,18 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 					File classFile = BuilderUtils.getCorrespondingClassFile(jrefProject, sourceFile);
 					if(classFile.exists()){
 						if(!BuilderUtils.hasSevereProblems(compilationUnit)){
-							ClassNode classNode = BytecodeUtils.getClassNode(classFile);
-							if(BuilderUtils.hasTopLevelAnnotation(classNode)){
-								resolvedFiles.add(sourceFile);
-								resolvedFiles.add(classFile);
+							try {
+								ClassNode classNode = BytecodeUtils.getClassNode(classFile);
+								if(BuilderUtils.hasTopLevelAnnotation(classNode)){
+									resolvedFiles.add(sourceFile);
+									resolvedFiles.add(classFile);
+								}
+							} catch (Exception e){
+								if(e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE")){
+									Log.warning("Ignoring class [" + classFile.getName() + "] because it was detected as malware by host machine and could not be accessed.");
+								} else {
+									throw e;
+								}
 							}
 						}
 					}
