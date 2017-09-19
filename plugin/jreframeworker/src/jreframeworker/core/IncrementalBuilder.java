@@ -350,7 +350,7 @@ public class IncrementalBuilder {
 					// a class file only modification is important if its a class file with a phase we haven't seen yet
 					// otherwise its just a result of classpath updating
 					for(int phase : source.getSortedPhases()){
-						if(phase > currentPhase){
+						if(currentPhase <= phase){
 							sourcesToProcess.add(source);
 						}
 					}
