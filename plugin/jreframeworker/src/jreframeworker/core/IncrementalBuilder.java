@@ -282,7 +282,7 @@ public class IncrementalBuilder {
 						// revert to the earliest phase in the removed source
 						if(!source.getSortedPhases().isEmpty()){
 							currentPhase = source.getSortedPhases().get(0);
-							if(currentPhase == 1){
+							if(currentPhase == DEFAULT_BUILD_PHASE){
 								return PostBuildAction.CLEAN_REBUILD;
 							}
 						}
@@ -333,8 +333,12 @@ public class IncrementalBuilder {
 			for(ProcessedSource source : processedSources){
 				for(int phase : source.getSortedPhases()){
 					if(currentPhase <= phase){
-						sourcesToProcess.add(source);
-						break;
+						if(phase == DEFAULT_BUILD_PHASE){
+							return PostBuildAction.CLEAN_REBUILD;
+						} else {
+							sourcesToProcess.add(source);
+							break;
+						}
 					}
 				}
 			}
