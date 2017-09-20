@@ -409,7 +409,7 @@ public class JReFrameworkerProject {
 	    	// library is at some path relative to project root
 	    	relativeLibraryEntry = new org.eclipse.jdt.internal.core.ClasspathEntry(
 	    	        IPackageFragmentRoot.K_BINARY,
-	    	        IClasspathEntry.CPE_LIBRARY, jProject.getProject().getFile(relativeDirectoryPath).getLocation(),
+	    	        IClasspathEntry.CPE_LIBRARY, jProject.getProject().getFile(relativeDirectoryPath + "/" + library.getName()).getLocation(),
 	    	        ClasspathEntry.INCLUDE_ALL, // inclusion patterns
 	    	        ClasspathEntry.EXCLUDE_NONE, // exclusion patterns
 	    	        null, null, null, // specific output folder
@@ -420,7 +420,7 @@ public class JReFrameworkerProject {
 	    	// library placed at project root
 	    	relativeLibraryEntry = new org.eclipse.jdt.internal.core.ClasspathEntry(
 	    	        IPackageFragmentRoot.K_BINARY,
-	    	        IClasspathEntry.CPE_LIBRARY, jProject.getProject().getFile(libraryToAdd.getName()).getLocation(),
+	    	        IClasspathEntry.CPE_LIBRARY, jProject.getProject().getFile(library.getName()).getLocation(),
 	    	        ClasspathEntry.INCLUDE_ALL, // inclusion patterns
 	    	        ClasspathEntry.EXCLUDE_NONE, // exclusion patterns
 	    	        null, null, null, // specific output folder
