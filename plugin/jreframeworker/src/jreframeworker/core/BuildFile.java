@@ -202,24 +202,29 @@ public class BuildFile {
 		Document doc = dBuilder.parse(jrefXMLFile);
 		doc.getDocumentElement().normalize();
 		
-		if(!getTargets().contains(targetToAdd.getName())){
-			// add target
-			Element rootElement = doc.getDocumentElement();
-			Element target = doc.createElement("target");
-			rootElement.appendChild(target);
-			
-			target.setAttribute("name", targetToAdd.getName());
-			
-			if(targetToAdd instanceof RuntimeTarget){
-				target.setAttribute("runtime", "true");
-			} else if(targetToAdd instanceof LibraryTarget){
-				target.setAttribute("runtime", "false");
-				target.setAttribute("path", ((LibraryTarget)targetToAdd).getLibraryPath());
+		// check if the target already exists
+		for(Target target : getTargets()) {
+			if(target.getName().equalsIgnoreCase(targetToAdd.getName())) {
+				return;
 			}
-
-			// write the content into xml file
-			writeBuildFile(jrefXMLFile, doc);
 		}
+		
+		// add target
+		Element rootElement = doc.getDocumentElement();
+		Element target = doc.createElement("target");
+		rootElement.appendChild(target);
+		
+		target.setAttribute("name", targetToAdd.getName());
+		
+		if(targetToAdd instanceof RuntimeTarget){
+			target.setAttribute("runtime", "true");
+		} else if(targetToAdd instanceof LibraryTarget){
+			target.setAttribute("runtime", "false");
+			target.setAttribute("path", ((LibraryTarget)targetToAdd).getLibraryPath());
+		}
+
+		// write the content into xml file
+		writeBuildFile(jrefXMLFile, doc);
 	}
 	
 	/**
