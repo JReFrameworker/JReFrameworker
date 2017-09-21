@@ -19,6 +19,15 @@
       </page>
    </extension>
    
+   <!-- defines an JReFrameworker view category -->
+	<extension
+         point="org.eclipse.ui.views">
+      <category
+            name="JReFrameworker"
+            id="jreframeworker.views.categories">
+      </category>
+   </extension>
+   
    <!-- new project wizard -->
    <extension point="org.eclipse.ui.newWizards">
       <category name="JReFrameworker" id="jreframeworker.ui.category" />

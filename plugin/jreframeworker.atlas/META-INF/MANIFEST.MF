@@ -22,3 +22,5 @@ Bundle-ActivationPolicy: lazy
 Bundle-Activator: jreframeworker.atlas.Activator
 Export-Package: jreframeworker.atlas.analysis,
  jreframeworker.atlas.projects
+Bundle-ClassPath: .,
+ swing2swt.jar
