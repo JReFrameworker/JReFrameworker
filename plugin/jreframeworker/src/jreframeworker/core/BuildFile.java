@@ -144,18 +144,19 @@ public class BuildFile {
 		for (int i = 0; i < targets.getLength(); i++) {
 			Element target = (Element) targets.item(i);
 			String name = target.getAttribute("name");
-			Boolean runtime = false;
-			if(target.hasAttribute("runtime")){
-				runtime = Boolean.parseBoolean(target.getAttribute("runtime"));
+			if(!name.isEmpty()){
+				Boolean runtime = false;
+				if(target.hasAttribute("runtime")){
+					runtime = Boolean.parseBoolean(target.getAttribute("runtime"));
+				}
+				if(runtime){
+					results.add(new RuntimeTarget(name));
+				} else {
+					String path = target.getAttribute("path");
+					path = path.replace(File.separatorChar, '/');
+					results.add(new LibraryTarget(name, path));
+				}
 			}
-			if(runtime){
-				results.add(new RuntimeTarget(name));
-			} else {
-				String path = target.getAttribute("path");
-				path = path.replace(File.separatorChar, '/');
-				results.add(new LibraryTarget(name, path));
-			}
-			
 		}
 		return results;
 	}
