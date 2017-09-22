@@ -461,9 +461,14 @@ public class JReFrameworkerProject {
 					updateProjectLibrary(library.getName(), library);
 				} else {
 					// relative path
-					library = project.getFile(((LibraryTarget) entry).getLibraryPath()).getLocation().toFile();
-					if(library.exists()){
-						updateProjectLibrary(library.getName(), library);
+					String relativeLibraryPath = ((LibraryTarget) entry).getLibraryPath();
+					if(!relativeLibraryPath.isEmpty()) {
+						library = project.getFile(relativeLibraryPath).getLocation().toFile();
+						if(library.exists()){
+							updateProjectLibrary(library.getName(), library);
+						}
+					} else {
+						Log.warning("Library " + entry.getName()  + " is missing a path attribute in build file.");
 					}
 				}
 			}

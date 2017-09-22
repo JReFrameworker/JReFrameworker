@@ -223,7 +223,7 @@ public class BuilderUtils {
 		if(defineModification){
 			DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
 			DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
-			phases.add(defineTypeAnnotation.getPhase());
+			phases.add(defineTypeAnnotation.getPhase()); // TODO: investigate NPE here, defineTypeAnnotation is null somehow...
 			// define field, define method must have the same phase as the define type annotation
 			// so we can't discover new phases by looking at the body
 		}
