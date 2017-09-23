@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="jreframeworker.feature.group"
+      id="jreframeworker.feature"
       label="JReFrameworker"
       version="1.3.0.qualifier"
       provider-name="Ben Holland">
 
-   <description url="https://ben-holland.com/JReFrameworker/">
+   <description url="https://jreframeworker.com/">
       JReFrameworker is an Eclipse plugin for creating and building projects that allow the user to write annotated Java source that is automatically merged or inserted into the runtime. The framework supports developing and debugging attack modules directly in the Eclipse IDE. Working at the intended abstraction level of source code allows the attacker to &quot;write once, exploit anywhere&quot;.
    </description>
 
@@ -42,6 +42,10 @@ SOFTWARE.
       <discovery label="jreframeworker.com" url="http://jreframeworker.com/updates/"/>
    </url>
 
+   <includes
+         id="org.objectweb.asm.feature"
+         version="0.0.0"/>
+
    <requires>
       <import plugin="org.eclipse.ui"/>
       <import plugin="org.eclipse.ui.ide"/>
@@ -66,14 +70,21 @@ SOFTWARE.
          unpack="false"/>
 
    <plugin
-         id="org.objectweb.asm"
+         id="jreframeworker.engine"
          download-size="0"
          install-size="0"
          version="0.0.0"
          unpack="false"/>
 
    <plugin
-         id="jreframeworker.engine"
+         id="jreframeworker.annotations"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="jreframeworker.dropper"
          download-size="0"
          install-size="0"
          version="0.0.0"
