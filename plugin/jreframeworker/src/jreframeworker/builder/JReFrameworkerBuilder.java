@@ -122,7 +122,7 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									sourcesToProcess.add(classSource);
 								}
 							} catch (Exception e){
-								if(e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE")){
+								if(e.getMessage() != null && (e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE"))){
 									Log.warning("Ignoring class [" + classFile.getName() + "] because it was detected as malware by host machine and could not be accessed.");
 								} else {
 									throw e;
@@ -261,15 +261,11 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 									resolvedFiles.add(classFile);
 								}
 							} catch (Exception e){
-								if(e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE")){
-									Log.warning("Ignoring class [" + classFile.getName() + "] because it was detected as malware by host machine and could not be accessed.");
-								} else {
-									throw e;
-								}
+								checkAntivirusInterference(classFile, e);
 							}
 						}
 					}
-				} catch (IOException | CoreException e) {
+				} catch (Exception e) {
 					throw new IllegalArgumentException("Error resolving compilation units", e);
 				}
 			}
@@ -373,6 +369,14 @@ public class JReFrameworkerBuilder extends IncrementalProjectBuilder {
 			}
 		} catch (CoreException e) {}
 		return null;
+	}
+	
+	private static void checkAntivirusInterference(File classFile, Exception e) throws Exception {
+		if(e.getMessage() != null && (e.getMessage().toUpperCase().contains("VIRUS") || e.getMessage().toUpperCase().contains("MALWARE"))){
+			Log.warning("Ignoring class [" + classFile.getName() + "] because it was detected as malware by host machine and could not be accessed.");
+		} else {
+			throw e;
+		}
 	}
 	
 //	private void addClassFiles(Engine engine, File f) throws IOException {

@@ -38,6 +38,7 @@ import jreframeworker.engine.identifiers.PurgeIdentifier;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
 import jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
+import jreframeworker.log.Log;
 
 public class BuilderUtils {
 
@@ -223,7 +224,12 @@ public class BuilderUtils {
 		if(defineModification){
 			DefineIdentifier defineIdentifier = new DefineIdentifier(classNode);
 			DefineTypeAnnotation defineTypeAnnotation = defineIdentifier.getDefineTypeAnnotation();
-			phases.add(defineTypeAnnotation.getPhase()); // TODO: investigate NPE here, defineTypeAnnotation is null somehow...
+			if(defineTypeAnnotation != null) {
+				// TODO: investigate NPE here, defineTypeAnnotation is null somehow...
+				phases.add(defineTypeAnnotation.getPhase()); 
+			} else {
+				Log.error("DefineTypeAnnotation is null", new RuntimeException("DefineTypeAnnotation is null"));
+			}
 			// define field, define method must have the same phase as the define type annotation
 			// so we can't discover new phases by looking at the body
 		}
