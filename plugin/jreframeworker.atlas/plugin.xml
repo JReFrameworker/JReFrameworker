@@ -3,7 +3,6 @@
 <plugin>
    
    <!-- extension for JReFrameworker Code Wizard -->
-   <!-- Beta Feature Not Ready For Release
 	<extension
          point="org.eclipse.ui.views">
       <view
@@ -14,6 +13,5 @@
             name="JReFrameworker Code Wizard">
       </view>
    </extension>
-   -->
   
 </plugin>
