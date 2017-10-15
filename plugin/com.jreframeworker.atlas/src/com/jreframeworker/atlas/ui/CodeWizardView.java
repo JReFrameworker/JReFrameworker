@@ -1,6 +1,10 @@
 package com.jreframeworker.atlas.ui;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -124,13 +128,22 @@ public class CodeWizardView extends ViewPart {
 		Composite codeGenerationScrolledContentComposite = new Composite(codeGenerationScrolledComposite, SWT.NONE);
 		codeGenerationScrolledContentComposite.setLayout(new GridLayout(1, false));
 		
-		for(String category : CodeGenerators.getRegisteredCodeGeneratorCategories()){
+		List<String> sortedCategories = new ArrayList<String>(CodeGenerators.getRegisteredCodeGeneratorCategories());
+		Collections.sort(sortedCategories);
+		for(String category : sortedCategories){
 			Group codeGenerationCategoryGroup = new Group(codeGenerationScrolledContentComposite, SWT.NONE);
 			codeGenerationCategoryGroup.setText(category);
 			codeGenerationCategoryGroup.setLayout(new GridLayout(2, false));
 			codeGenerationCategoryGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 			
-			for(CodeGenerator codeGenerator : CodeGenerators.getCodeGeneratorsForCategory(category)){
+			List<CodeGenerator> sortedCodeGenerators = new ArrayList<CodeGenerator>(CodeGenerators.getCodeGeneratorsForCategory(category));
+			Collections.sort(sortedCodeGenerators, new Comparator<CodeGenerator>(){
+				@Override
+				public int compare(CodeGenerator cg1, CodeGenerator cg2) {
+					return cg1.getName().compareTo(cg2.getName());
+				}
+			});
+			for(CodeGenerator codeGenerator : sortedCodeGenerators){
 				Button codeGenerationButton = new Button(codeGenerationCategoryGroup, SWT.NONE);
 				codeGenerationButton.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
 				codeGenerationButton.setText(codeGenerator.getName());

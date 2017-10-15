@@ -21,6 +21,17 @@
       <codegen class="com.jreframeworker.atlas.codegen.generators.type.ReplaceType"></codegen>
       <codegen class="com.jreframeworker.atlas.codegen.generators.type.MergeType"></codegen>
       <codegen class="com.jreframeworker.atlas.codegen.generators.type.PurgeType"></codegen>
+      
+      <codegen class="com.jreframeworker.atlas.codegen.generators.field.DefineField"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.field.ReplaceField"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.field.PurgeField"></codegen>
+      
+      <codegen class="com.jreframeworker.atlas.codegen.generators.method.DefineMethod"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.method.ReplaceMethod"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.method.MergeMethod"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.method.PurgeMethod"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.method.HookBeforeMethod"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.method.HookAfterMethod"></codegen>
    </extension>
   
 </plugin>
