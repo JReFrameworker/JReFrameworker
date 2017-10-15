@@ -44,8 +44,8 @@ public class CodeWizardView extends ViewPart {
 	// the current Atlas selection
 	private Graph selection = Common.empty().eval();
 	private JReFrameworkerProject jrefProject = null;
-	private Set<CodeGenerator> codeGenerators = CodeGenerators.getRegisteredCodeGenerators();
-	private Map<CodeGenerator,Button> codeGeneratorButtons = new HashMap<CodeGenerator,Button>();
+	private Set<CodeGenerator> codeGenerators;
+	private Map<CodeGenerator,Button> codeGeneratorButtons;
 	
 	public CodeWizardView() {}
 	
@@ -53,10 +53,15 @@ public class CodeWizardView extends ViewPart {
 	public void setFocus() {}
 	
 	@Override
-	public void createPartControl(Composite composite) {
-		composite.setLayout(new GridLayout(1, false));
+	public void createPartControl(Composite parent) {
+		// initialize code generators
+		CodeGenerators.loadCodeGeneratorContributions();
+		codeGenerators = CodeGenerators.getRegisteredCodeGenerators();
+		codeGeneratorButtons = new HashMap<CodeGenerator,Button>();
 		
-		Group activeProjectGroup = new Group(composite, SWT.NONE);
+		parent.setLayout(new GridLayout(1, false));
+		
+		Group activeProjectGroup = new Group(parent, SWT.NONE);
 		activeProjectGroup.setText("Project");
 		activeProjectGroup.setLayout(new GridLayout(1, false));
 		activeProjectGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
@@ -106,7 +111,7 @@ public class CodeWizardView extends ViewPart {
 			}
 		});
 		
-		Group codeGenerationGroup = new Group(composite, SWT.NONE);
+		Group codeGenerationGroup = new Group(parent, SWT.NONE);
 		codeGenerationGroup.setText("Code Generation");
 		codeGenerationGroup.setLayout(new GridLayout(1, false));
 		codeGenerationGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
@@ -161,7 +166,11 @@ public class CodeWizardView extends ViewPart {
 				for(CodeGenerator codeGenerator : codeGenerators){
 					Button codeGenerationButton = codeGeneratorButtons.get(codeGenerator);
 					if(codeGenerationButton != null){
-						codeGenerationButton.setEnabled(codeGenerator.isApplicableTo(Common.toQ(selection)));
+						if(jrefProject != null){
+							codeGenerationButton.setEnabled(false);
+						} else {
+							codeGenerationButton.setEnabled(codeGenerator.isApplicableTo(Common.toQ(selection)));
+						}
 					}
 				}
 			}				

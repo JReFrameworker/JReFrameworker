@@ -14,5 +14,13 @@
             name="JReFrameworker Code Wizard">
       </view>
    </extension>
+   
+    <!-- adds code generator definitions -->
+   <extension point="com.jreframeworker.atlas.codegen">
+      <codegen class="com.jreframeworker.atlas.codegen.generators.type.DefineType"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.type.ReplaceType"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.type.MergeType"></codegen>
+      <codegen class="com.jreframeworker.atlas.codegen.generators.type.PurgeType"></codegen>
+   </extension>
   
 </plugin>
