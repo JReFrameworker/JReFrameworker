@@ -1,6 +1,10 @@
 package com.jreframeworker.atlas.codegen.generators.method;
 
+import java.io.File;
+import java.util.Set;
+
 import com.ensoftcorp.atlas.core.query.Q;
+import com.jreframeworker.atlas.projects.JReFrameworkerAtlasProject;
 import com.jreframeworker.core.JReFrameworkerProject;
 
 public class HookBeforeMethod extends MethodGenerator {
@@ -16,13 +20,9 @@ public class HookBeforeMethod extends MethodGenerator {
 	}
 
 	@Override
-	public void generateCode(JReFrameworkerProject jrefProject, Q input) {
-		// TODO: implement
-	}
-	
-	@Override
-	protected String[] getSupportedNodeTags() {
-		return EVERYTHING;
+	public Set<File> generateCode(JReFrameworkerProject jrefProject, Q input) {
+		JReFrameworkerAtlasProject atlasProject = new JReFrameworkerAtlasProject(jrefProject);
+		return atlasProject.addPostExecutionMethodHooks(input);
 	}
 
 }

@@ -1,6 +1,11 @@
 package com.jreframeworker.atlas.codegen.generators.field;
 
+import java.io.File;
+import java.util.Set;
+
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.xcsg.XCSG;
+import com.jreframeworker.atlas.projects.JReFrameworkerAtlasProject;
 import com.jreframeworker.core.JReFrameworkerProject;
 
 public class DefineField extends FieldGenerator {
@@ -16,13 +21,17 @@ public class DefineField extends FieldGenerator {
 	}
 
 	@Override
-	public void generateCode(JReFrameworkerProject jrefProject, Q input) {
-		// TODO: implement
+	public Set<File> generateCode(JReFrameworkerProject jrefProject, Q input) {
+		JReFrameworkerAtlasProject atlasProject = new JReFrameworkerAtlasProject(jrefProject);
+		
+		// TODO: finish implementation
+		
+		return atlasProject.defineFields(input);
 	}
 	
 	@Override
 	protected String[] getSupportedNodeTags() {
-		return EVERYTHING;
+		return new String[]{ XCSG.Java.Class };
 	}
 
 }

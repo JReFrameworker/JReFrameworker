@@ -1,5 +1,6 @@
 package com.jreframeworker.atlas.ui;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -36,6 +37,7 @@ import com.ensoftcorp.atlas.ui.selection.event.IAtlasSelectionEvent;
 import com.jreframeworker.atlas.codegen.CodeGenerator;
 import com.jreframeworker.atlas.codegen.CodeGenerators;
 import com.jreframeworker.builder.JReFrameworkerNature;
+import com.jreframeworker.common.WorkspaceUtils;
 import com.jreframeworker.core.JReFrameworkerProject;
 
 public class CodeWizardView extends ViewPart {
@@ -153,7 +155,10 @@ public class CodeWizardView extends ViewPart {
 				codeGenerationButton.addSelectionListener(new SelectionAdapter() {
 					@Override
 					public void widgetSelected(SelectionEvent e) {
-						codeGenerator.generateCode(jrefProject, Common.toQ(selection));
+						Set<File> sourceFiles = codeGenerator.generateCode(jrefProject, Common.toQ(selection));
+						for(File sourceFile : sourceFiles){
+							WorkspaceUtils.openFileInEclipseEditor(sourceFile);
+						}
 					}
 				});
 				

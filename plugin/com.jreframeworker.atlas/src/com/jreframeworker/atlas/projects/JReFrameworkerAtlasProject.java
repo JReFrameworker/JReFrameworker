@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -132,7 +133,8 @@ public class JReFrameworkerAtlasProject {
 	 * @throws IOException  
 	 * @throws CoreException 
 	 */
-	public void defineType(String sourcePackageName, String sourceClassName, String javadoc) {
+	public Set<File> defineType(String sourcePackageName, String sourceClassName, String javadoc) {
+		Set<File> sourceFiles = new HashSet<File>();
 		sourcePackageName = sourcePackageName.trim();
 		checkPackageName(sourcePackageName);
 		
@@ -146,10 +148,12 @@ public class JReFrameworkerAtlasProject {
 			JavaFile javaFile = JavaFile.builder(sourcePackageName, type)
 					.build();
 	
-			writeSourceFile(sourcePackageName, sourceClassName, javaFile);
+			sourceFiles.add(writeSourceFile(sourcePackageName, sourceClassName, javaFile));
 		} catch (Throwable t){
 			Log.error("Error creating define type logic", t);
 		}
+		
+		return sourceFiles;
 	}
 	
 	/**
@@ -161,52 +165,56 @@ public class JReFrameworkerAtlasProject {
 	 * @throws IOException  
 	 * @throws CoreException 
 	 */
-	public void defineType(String sourcePackageName, String sourceClassName) {
+	public Set<File> defineType(String sourcePackageName, String sourceClassName) {
 		String javadoc = "TODO: Implement class body"
 				  + "\n\nThe entire contents of this class's bytecode will"
 				  + "\nbe injected into the target's \"" + sourcePackageName + "\" package.\n";
-		defineType(sourcePackageName, sourceClassName, javadoc);
+		return defineType(sourcePackageName, sourceClassName, javadoc);
 	}
 	
 	/**
 	 * Creates logic to replace a class in the given class target
 	 * @param targetClass
 	 */
-	public void replaceType(String sourcePackageName, String sourceClassName){
+	public Set<File> replaceType(String sourcePackageName, String sourceClassName){
 		String javadoc = "TODO: Implement class body"
 				  + "\n\nThe entire contents of this class's bytecode will"
 				  + "\nbe used to replace " + sourcePackageName + "." + sourceClassName + " in the target.\n";
-		defineType(sourcePackageName, sourceClassName, javadoc);
+		return defineType(sourcePackageName, sourceClassName, javadoc);
 	}
 	
 	/**
 	 * Creates logic to replace a class in the given class targets
 	 * @param targetClass
 	 */
-	public void replaceTypes(Q targetClasses){
-		replaceTypes(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
+	public Set<File> replaceTypes(Q targetClasses){
+		return replaceTypes(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to replace a class in the given class targets
 	 * @param targetClass
 	 */
-	public void replaceTypes(AtlasSet<Node> targetClasses){
+	public Set<File> replaceTypes(AtlasSet<Node> targetClasses){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node targetClass : targetClasses){
-			replaceType(targetClass);
+			sourceFiles.addAll(replaceType(targetClass));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to replace a class in the given class target
 	 * @param targetClass
 	 */
-	public void replaceType(Node targetClass){
+	public Set<File> replaceType(Node targetClass){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(targetClass.taggedWith(XCSG.Java.Class)){
 			String sourceClassName = ClassAnalysis.getName(targetClass);
 			String sourcePackageName = ClassAnalysis.getPackage(targetClass);
-			replaceType(sourcePackageName, sourceClassName);
+			sourceFiles.addAll(replaceType(sourcePackageName, sourceClassName));
 		}
+		return sourceFiles;
 	}
 	
 	/**
@@ -218,7 +226,8 @@ public class JReFrameworkerAtlasProject {
 	 * @param sourceClassName
 	 * @param finality
 	 */
-	public void setTypeFinality(String sourcePackageName, String sourceClassName, String targetClassPackageName, String targetClassName, boolean finality){
+	public Set<File> setTypeFinality(String sourcePackageName, String sourceClassName, String targetClassPackageName, String targetClassName, boolean finality){
+		Set<File> sourceFiles = new HashSet<File>();
 		sourcePackageName = sourcePackageName.trim();
 		checkPackageName(sourcePackageName);
 		checkPackageName(targetClassPackageName);
@@ -237,10 +246,12 @@ public class JReFrameworkerAtlasProject {
 			JavaFile javaFile = JavaFile.builder(sourcePackageName, type)
 					.build();
 	
-			writeSourceFile(sourcePackageName, sourceClassName, javaFile);
+			sourceFiles.add(writeSourceFile(sourcePackageName, sourceClassName, javaFile));
 		} catch (Throwable t){
 			Log.error("Error creating define type finality logic", t);
 		}
+		
+		return sourceFiles;
 	}
 	
 	/**
@@ -252,7 +263,8 @@ public class JReFrameworkerAtlasProject {
 	 * @param sourceClassName
 	 * @param finality
 	 */
-	public void setTypeVisibility(String sourcePackageName, String sourceClassName, String targetClassPackageName, String targetClassName, String visibility){
+	public Set<File> setTypeVisibility(String sourcePackageName, String sourceClassName, String targetClassPackageName, String targetClassName, String visibility){
+		Set<File> sourceFiles = new HashSet<File>();
 		sourcePackageName = sourcePackageName.trim();
 		checkPackageName(sourcePackageName);
 		checkPackageName(targetClassPackageName);
@@ -271,10 +283,11 @@ public class JReFrameworkerAtlasProject {
 			JavaFile javaFile = JavaFile.builder(sourcePackageName, type)
 					.build();
 	
-			writeSourceFile(sourcePackageName, sourceClassName, javaFile);
+			sourceFiles.add(writeSourceFile(sourcePackageName, sourceClassName, javaFile));
 		} catch (Throwable t){
 			Log.error("Error creating define type visibility logic", t);
 		}
+		return sourceFiles;
 	}
 	
 	/**
@@ -289,8 +302,9 @@ public class JReFrameworkerAtlasProject {
 	 * @param targetClassName
 	 * @param finality
 	 */
-	public void setMethodFinality(String sourceClassPackageName, String sourceClassName, String targetClassPackageName, String targetClassName, Node targetMethod, boolean finality) {
+	public Set<File> setMethodFinality(String sourceClassPackageName, String sourceClassName, String targetClassPackageName, String targetClassName, Node targetMethod, boolean finality) {
 		// TODO: implement
+		return new HashSet<File>();
 	}
 	
 	/**
@@ -305,8 +319,9 @@ public class JReFrameworkerAtlasProject {
 	 * @param targetClassName
 	 * @param visibility
 	 */
-	public void setMethodVisibility(String sourceClassPackageName, String sourceClassName, String targetClassPackageName, String targetClassName, Node targetMethod, String visibility) {
+	public Set<File> setMethodVisibility(String sourceClassPackageName, String sourceClassName, String targetClassPackageName, String targetClassName, Node targetMethod, String visibility) {
 		// TODO: implement
+		return new HashSet<File>();
 	}
 
 	/**
@@ -314,7 +329,8 @@ public class JReFrameworkerAtlasProject {
 	 * Note: Does not consider prebuild options
 	 * @param targetClass
 	 */
-	public void mergeType(String sourcePackageName, String sourceClassName, String targetClassPackageName, String targetClassName){
+	public Set<File> mergeType(String sourcePackageName, String sourceClassName, String targetClassPackageName, String targetClassName){
+		Set<File> sourceFiles = new HashSet<File>();
 		sourcePackageName = sourcePackageName.trim();
 		checkPackageName(sourcePackageName);
 		
@@ -337,162 +353,184 @@ public class JReFrameworkerAtlasProject {
 			JavaFile javaFile = JavaFile.builder(sourcePackageName, type)
 					.build();
 	
-			writeSourceFile(sourcePackageName, sourceClassName, javaFile);
+			sourceFiles.add(writeSourceFile(sourcePackageName, sourceClassName, javaFile));
 		} catch (Throwable t){
 			Log.error("Error creating merge type logic", t);
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to merge code into the given class target
 	 * @param targetClass
 	 */
-	public void mergeType(Node targetClass){
+	public Set<File> mergeType(Node targetClass){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(targetClass.taggedWith(XCSG.Java.Class)){
 			String targetClassPackageName = ClassAnalysis.getPackage(targetClass);
 			String targetClassName = ClassAnalysis.getName(targetClass);
 			if(ClassAnalysis.isFinal(targetClass)){
-				setTypeFinality(targetClassPackageName, (targetClassName + "FinalityPrebuild"), targetClassPackageName, targetClassName, false);
+				sourceFiles.addAll(setTypeFinality(targetClassPackageName, (targetClassName + "FinalityPrebuild"), targetClassPackageName, targetClassName, false));
 			}
 			if(ClassAnalysis.isFinal(targetClass)){
-				setTypeVisibility(targetClassPackageName, (targetClassName + "VisibilityPrebuild"), targetClassPackageName, targetClassName, "public");
+				sourceFiles.addAll(setTypeVisibility(targetClassPackageName, (targetClassName + "VisibilityPrebuild"), targetClassPackageName, targetClassName, "public"));
 			}
-			mergeType(targetClassPackageName, "Merge" + targetClassName , targetClassPackageName, targetClassName);
+			sourceFiles.addAll(mergeType(targetClassPackageName, "Merge" + targetClassName , targetClassPackageName, targetClassName));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to replace a class in the given class targets
 	 * @param targetClass
 	 */
-	public void mergeTypes(Q targetClasses){
-		mergeTypes(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
+	public Set<File> mergeTypes(Q targetClasses){
+		return mergeTypes(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to replace a class in the given class targets
 	 * @param targetClass
 	 */
-	public void mergeTypes(AtlasSet<Node> targetClasses){
+	public Set<File> mergeTypes(AtlasSet<Node> targetClasses){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node targetClass : targetClasses){
-			mergeType(targetClass);
+			sourceFiles.addAll(mergeType(targetClass));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to define a new field in the given target classes
 	 * @param fields
 	 */
-	public void defineFields(Q targetClasses){
-		defineFields(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
+	public Set<File> defineFields(Q targetClasses){
+		return defineFields(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to define a new field in the given target classes
 	 * @param field
 	 */
-	public void defineFields(AtlasSet<Node> targetClasses){
+	public Set<File> defineFields(AtlasSet<Node> targetClasses){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node field : targetClasses){
-			defineField(field);
+			sourceFiles.addAll(defineField(field));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to define a new field in the given target class
 	 * @param field
 	 */
-	public void defineField(Node targetClass){
+	public Set<File> defineField(Node targetClass){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(targetClass.taggedWith(XCSG.Java.Class)){
 			// TODO: implement
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to replace code in the given fields
 	 * @param fields
 	 */
-	public void replaceFields(Q fields){
-		replaceFields(fields.nodes(XCSG.Field).eval().nodes());
+	public Set<File> replaceFields(Q fields){
+		return replaceFields(fields.nodes(XCSG.Field).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to replace code in the given fields
 	 * @param fields
 	 */
-	public void replaceFields(AtlasSet<Node> fields){
+	public Set<File> replaceFields(AtlasSet<Node> fields){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node field : fields){
-			replaceField(field);
+			sourceFiles.addAll(replaceField(field));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to replace code in the given field
 	 * @param field
 	 */
-	public void replaceField(Node field){
+	public Set<File> replaceField(Node field){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(field.taggedWith(XCSG.Field)){
 			// TODO: implement
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to define a new method in the given target classes
 	 * @param methods
 	 */
-	public void defineMethods(Q targetClasses){
-		defineMethods(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
+	public Set<File> defineMethods(Q targetClasses){
+		return defineMethods(targetClasses.nodes(XCSG.Java.Class).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to define a new method in the given target classes
 	 * @param method
 	 */
-	public void defineMethods(AtlasSet<Node> targetClasses){
+	public Set<File> defineMethods(AtlasSet<Node> targetClasses){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node method : targetClasses){
-			defineMethod(method);
+			sourceFiles.addAll(defineMethod(method));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to define a new method in the given target class
 	 * @param method
 	 */
-	public void defineMethod(Node targetClass){
+	public Set<File> defineMethod(Node targetClass){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(targetClass.taggedWith(XCSG.Java.Class)){
 			// TODO: implement
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to replace code in the given methods
 	 * @param methods
 	 */
-	public void replaceMethods(Q methods){
-		replaceMethods(methods.nodes(XCSG.Method).eval().nodes());
+	public Set<File> replaceMethods(Q methods){
+		return replaceMethods(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to replace code in the given methods
 	 * @param methods
 	 */
-	public void replaceMethods(AtlasSet<Node> methods){
+	public Set<File> replaceMethods(AtlasSet<Node> methods){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node method : methods){
-			replaceMethod(method);
+			sourceFiles.addAll(replaceMethod(method));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to replace code in the given method
 	 * @param method
 	 */
-	public void replaceMethod(Node method){
+	public Set<File> replaceMethod(Node method){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(method.taggedWith(XCSG.Method)){
 			// TODO: implement
 		}
+		return sourceFiles;
 	}
 	
 	
-	public void mergeMethod(String sourcePackageName, String sourceClassName, Node targetMethod){
+	public Set<File> mergeMethod(String sourcePackageName, String sourceClassName, Node targetMethod){
+		Set<File> sourceFiles = new HashSet<File>();
 		Node targetClass = MethodAnalysis.getOwnerClass(targetMethod);
 		sourcePackageName = sourcePackageName.trim();
 		checkPackageName(sourcePackageName);
@@ -500,19 +538,19 @@ public class JReFrameworkerAtlasProject {
 			String targetClassPackageName = ClassAnalysis.getPackage(targetClass);
 			String targetClassName = ClassAnalysis.getName(targetClass);
 			if(ClassAnalysis.isFinal(targetClass)){
-				setTypeFinality(targetClassPackageName, (targetClassName + "TypeFinalityPrebuild"), targetClassPackageName, targetClassName, false);
+				sourceFiles.addAll(setTypeFinality(targetClassPackageName, (targetClassName + "TypeFinalityPrebuild"), targetClassPackageName, targetClassName, false));
 			}
 			if(!ClassAnalysis.isPublic(targetClass)){
-				setTypeVisibility(targetClassPackageName, (targetClassName + "TypeVisibilityPrebuild"), targetClassPackageName, targetClassName, "public");
+				sourceFiles.addAll(setTypeVisibility(targetClassPackageName, (targetClassName + "TypeVisibilityPrebuild"), targetClassPackageName, targetClassName, "public"));
 			}
 			
 			String methodName = MethodAnalysis.getName(targetMethod);
 			String capitalizedMethodName = methodName.substring(0, 1).toUpperCase() + methodName.substring(1);
 			if(MethodAnalysis.isFinal(targetMethod)){
-				setMethodFinality(targetClassPackageName, (targetClassName + capitalizedMethodName + "MethodFinalityPrebuild"), targetClassPackageName, targetClassName, targetMethod, false);
+				sourceFiles.addAll(setMethodFinality(targetClassPackageName, (targetClassName + capitalizedMethodName + "MethodFinalityPrebuild"), targetClassPackageName, targetClassName, targetMethod, false));
 			}
 			if(!ClassAnalysis.isPublic(targetMethod)){
-				setMethodVisibility(targetClassPackageName, (targetClassName + capitalizedMethodName + "MethodVisibilityPrebuild"), targetClassPackageName, targetClassName, targetMethod, "public");
+				sourceFiles.addAll(setMethodVisibility(targetClassPackageName, (targetClassName + capitalizedMethodName + "MethodVisibilityPrebuild"), targetClassPackageName, targetClassName, targetMethod, "public"));
 			}
 			
 			try {
@@ -593,99 +631,111 @@ public class JReFrameworkerAtlasProject {
 
 				JavaFile javaFile = JavaFile.builder(sourcePackageName, type).build();
 
-				writeSourceFile(sourcePackageName, sourceClassName, javaFile);
-
+				sourceFiles.add(writeSourceFile(sourcePackageName, sourceClassName, javaFile));
 			} catch (Throwable t) {
 				Log.error("Error creating merge method logic", t);
 			}
 		}
+		return sourceFiles;
 	}
 
 	/**
 	 * Creates logic to preserve and replace accessible code in the given methods
 	 * @param methods
 	 */
-	public void mergeMethods(Q methods){
-		mergeMethods(methods.nodes(XCSG.Method).eval().nodes());
+	public Set<File> mergeMethods(Q methods){
+		return mergeMethods(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to preserve and replace accessible code in the given methods
 	 * @param method
 	 */
-	public void mergeMethods(AtlasSet<Node> methods){
+	public Set<File> mergeMethods(AtlasSet<Node> methods){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node method : methods){
-			mergeMethod(method);
+			sourceFiles.addAll(mergeMethod(method));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to preserve and replace accessible code in the given method
 	 * @param method
 	 */
-	public void mergeMethod(Node method){
+	public Set<File> mergeMethod(Node method){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(method.taggedWith(XCSG.Method)){
 			Node targetClass = MethodAnalysis.getOwnerClass(method);
 			String packageName = ClassAnalysis.getPackage(targetClass);
 			String className = ClassAnalysis.getName(targetClass);
-			mergeMethod(packageName, ("MergeMethod" + className), method);
+			sourceFiles.addAll(mergeMethod(packageName, ("MergeMethod" + className), method));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to inject code before the given methods are executed
 	 * @param method
 	 */
-	public void addPreExecutionMethodHooks(Q methods){
-		addPreExecutionMethodHooks(methods.nodes(XCSG.Method).eval().nodes());
+	public Set<File> addPreExecutionMethodHooks(Q methods){
+		return addPreExecutionMethodHooks(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to inject code before the given methods are executed
 	 * @param method
 	 */
-	public void addPreExecutionMethodHooks(AtlasSet<Node> methods){
+	public Set<File> addPreExecutionMethodHooks(AtlasSet<Node> methods){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node method : methods){
-			addPreExecutionMethodHook(method);
+			sourceFiles.addAll(addPreExecutionMethodHook(method));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to inject code before the given method is executed
 	 * @param method
 	 */
-	public void addPreExecutionMethodHook(Node method){
+	public Set<File> addPreExecutionMethodHook(Node method){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(method.taggedWith(XCSG.Method)){
 			// TODO: implement
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to inject code after the given methods are executed
 	 * @param method
 	 */
-	public void addPostExecutionMethodHooks(Q methods){
-		addPostExecutionMethodHooks(methods.nodes(XCSG.Method).eval().nodes());
+	public Set<File> addPostExecutionMethodHooks(Q methods){
+		return addPostExecutionMethodHooks(methods.nodes(XCSG.Method).eval().nodes());
 	}
 	
 	/**
 	 * Creates logic to inject code after the given methods are executed
 	 * @param method
 	 */
-	public void addPostExecutionMethodHooks(AtlasSet<Node> methods){
+	public Set<File> addPostExecutionMethodHooks(AtlasSet<Node> methods){
+		Set<File> sourceFiles = new HashSet<File>();
 		for(Node method : methods){
-			addPostExecutionMethodHook(method);
+			sourceFiles.addAll(addPostExecutionMethodHook(method));
 		}
+		return sourceFiles;
 	}
 	
 	/**
 	 * Creates logic to inject code after the given method is executed
 	 * @param method
 	 */
-	public void addPostExecutionMethodHook(Node method){
+	public Set<File> addPostExecutionMethodHook(Node method){
+		Set<File> sourceFiles = new HashSet<File>();
 		if(method.taggedWith(XCSG.Method)){
 			// TODO: implement
 		}
+		return sourceFiles;
 	}
 	
 	/**
@@ -709,7 +759,7 @@ public class JReFrameworkerAtlasProject {
 	 * @throws IOException
 	 * @throws CoreException
 	 */
-	private void writeSourceFile(String sourcePackageName, String sourceClassName, JavaFile javaFile) throws IOException, CoreException {
+	private File writeSourceFile(String sourcePackageName, String sourceClassName, JavaFile javaFile) throws IOException, CoreException {
 		// figure out where to put the source file
 		String relativePackageDirectory = sourcePackageName.replace(".", "/");
 		File sourceFile = new File(project.getProject().getFolder("/src/" + relativePackageDirectory).getLocation().toFile().getAbsolutePath() 
@@ -725,5 +775,7 @@ public class JReFrameworkerAtlasProject {
 		
 		// refresh the project
 		refresh();
+		
+		return sourceFile;
 	}
 }

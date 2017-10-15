@@ -1,6 +1,8 @@
 package com.jreframeworker.atlas.codegen;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Set;
 
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.CommonQueries;
@@ -46,9 +48,10 @@ public abstract class CodeGenerator {
 	
 	/**
 	 * Generates code for the given input
+	 * Returns the set of generate source code files
 	 * @param input
 	 */
-	public abstract void generateCode(JReFrameworkerProject jrefProject, Q input);
+	public abstract Set<File> generateCode(JReFrameworkerProject jrefProject, Q input);
 	
 	/**
 	 * Returns true if the input contains supported edges or nodes
