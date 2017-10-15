@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   
+   <!-- Export wizard -->
+   <extension
+         point="org.eclipse.ui.exportWizards">
+      <category
+            id="com.jreframeworker.ui.category"
+            name="JReFrameworker">
+      </category>
+      <wizard
+            category="com.jreframeworker.ui.category"
+            class="com.jreframeworker.dropper.ui.ExportPayloadDropperWizard"
+            icon="icons/JReFrameworker.gif"
+            id="com.jreframeworker.dropper.ui.ExportPayloadDropperWizard"
+            name="JReFrameworker Payload Dropper">
+         <description>
+            Exports a JReFrameworker runtime payload dropper for the selected project.
+         </description>
+      </wizard>
+   </extension>
+   
+</plugin>

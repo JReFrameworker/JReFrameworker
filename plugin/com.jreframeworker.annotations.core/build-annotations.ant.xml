@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_annotations_jar" name="Create com.jreframeworker.annotations">
+    <property name="dir.buildfile" value="."/>
+    <property name="dir.jarfile" value="../com.jreframeworker/annotations"/>
+    <target name="create_annotations_jar">
+        <jar destfile="${dir.jarfile}/jreframeworker-annotations.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+            	<!-- just make an empty manifest -->
+            </manifest>
+            <fileset dir="${dir.buildfile}/bin"/>
+        </jar>
+    </target>
+	<target name="copy_annotations">
+		<copy todir="../com.jreframeworker.annotations/src/">
+			<fileset dir="./src">
+			</fileset>
+		</copy>
+	</target>
+</project>

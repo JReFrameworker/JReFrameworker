@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension-point id="com.jreframeworker.atlas.codegen" name="Code Generator" schema="schema/com.jreframeworker.atlas.codegen.exsd"/>
+   
+   <!-- extension for JReFrameworker Code Wizard -->
+	<extension
+         point="org.eclipse.ui.views">
+      <view
+            category="com.jreframeworker.views.categories"
+            class="com.jreframeworker.atlas.ui.CodeWizardView"
+            icon="icons/JReFrameworker.gif"
+            id="com.jreframeworker.views.codewizard"
+            name="JReFrameworker Code Wizard">
+      </view>
+   </extension>
+  
+</plugin>

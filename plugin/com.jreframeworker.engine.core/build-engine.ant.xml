@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="copy_engine" name="Copy JReFrameworker Engine Core to plugin">
+	<target name="copy_engine">
+		<copy todir="../com.jreframeworker.engine/src/">
+			<fileset dir="./src">
+				<exclude name="**/Log.java"/>
+			</fileset>
+		</copy>
+	</target>
+</project>

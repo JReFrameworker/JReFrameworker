@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   
+   <!-- create an initializer extension to initialize preferences -->
+   <extension
+      point="org.eclipse.equinox.preferences.preferences">
+	   <initializer
+	         class="com.jreframeworker.preferences.JReFrameworkerPreferences">
+	   </initializer>
+	</extension>
+	
+	<!-- preferences page -->
+   <extension point="org.eclipse.ui.preferencePages">
+      <page 
+      	class="com.jreframeworker.ui.PreferencesPage" 
+      	id="com.jreframeworker.preferences" 
+      	name="JReFrameworker">
+      </page>
+   </extension>
+   
+   <!-- defines an JReFrameworker view category -->
+	<extension
+         point="org.eclipse.ui.views">
+      <category
+            name="JReFrameworker"
+            id="com.jreframeworker.views.categories">
+      </category>
+   </extension>
+   
+   <!-- new project wizard -->
+   <extension point="org.eclipse.ui.newWizards">
+      <category name="JReFrameworker" id="com.jreframeworker.ui.category" />
+      <wizard category="com.jreframeworker.ui.category" class="com.jreframeworker.ui.NewProjectWizard" icon="icons/JReFrameworker.gif" id="com.jreframeworker.ui.NewProjectWizard" name="JReFrameworker Project">
+         <description>Creates a new JReFrameworker project in the workspace.</description>
+      </wizard>
+   </extension>
+   
+   <!-- project nature icon -->
+   <extension point="org.eclipse.ui.ide.projectNatureImages">
+	<image 
+		id="com.jreframeworker.ui.natureImage"
+		natureId="com.jreframeworker.JReFrameworkerNature"
+		icon="icons/nature.gif">
+	</image>
+   </extension>
+   
+   <!-- project import wizard -->
+   <!--
+   <extension
+         point="org.eclipse.ui.importWizards">
+      <category
+            id="com.jreframeworker.ui.category"
+            name="JReFrameworker">
+      </category>
+      <wizard
+            category="com.jreframeworker.ui.category"
+            class="com.jreframeworker.ui.ImportWizard"
+            icon="icons/JReFrameworker.gif"
+            id="com.jreframeworker.ui.ImportWizard"
+            name="JReFrameworker Project">
+         <description>
+            Imports an existing JReFrameworker project into the workspace.
+         </description>
+      </wizard>
+   </extension>
+   -->
+   
+   <!-- project builder -->
+   <extension id="JReFrameworkerBuilder" name="JReFrameworker Project Builder" point="org.eclipse.core.resources.builders">
+      <builder hasNature="true">
+         <run class="com.jreframeworker.builder.JReFrameworkerBuilder" />
+      </builder>
+   </extension>
+   
+   <!-- project build nature -->
+   <extension id="JReFrameworkerNature" name="JReFrameworker Project Nature" point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run class="com.jreframeworker.builder.JReFrameworkerNature" />
+      </runtime>
+      <builder id="com.jreframeworker.JReFrameworkerBuilder" />
+   </extension>
+   
+   <!-- project build command -->
+   <extension point="org.eclipse.ui.commands">
+      <category name="JReFrameworker Project Nature commands" id="com.jreframeworker.JReFrameworkerNature.category" />
+      <command name="Add/RemoveJReFrameworker Project Nature" defaultHandler="com.jreframeworker.builder.AddRemoveJReFrameworkerNatureHandler" categoryId="com.jreframeworker.JReFrameworkerNature.category" id="com.jreframeworker.addRemoveJReFrameworkerNature" />
+   </extension>
+   
+   <!-- add/remove project build nature -->
+   <extension point="org.eclipse.ui.menus">
+      <menuContribution locationURI="popup:org.eclipse.ui.projectConfigure?after=additions">
+         <command commandId="com.jreframeworker.addRemoveJReFrameworkerNature" label="Disable JReFrameworker Builder" style="push">
+            <visibleWhen checkEnabled="false">
+               <with variable="selection">
+                  <count value="1" />
+                  <iterate>
+                     <adapt type="org.eclipse.core.resources.IProject">
+                        <test value="com.jreframeworker.JReFrameworkerNature" property="org.eclipse.core.resources.projectNature" />
+                     </adapt>
+                  </iterate>
+               </with>
+            </visibleWhen>
+         </command>
+         <command commandId="com.jreframeworker.addRemoveJReFrameworkerNature" label="Enable JReFrameworker Builder" style="push">
+            <visibleWhen checkEnabled="false">
+               <with variable="selection">
+                  <count value="1" />
+                  <iterate>
+                     <adapt type="org.eclipse.core.resources.IProject">
+                        <not>
+                           <test value="com.jreframeworker.JReFrameworkerNature" property="org.eclipse.core.resources.projectNature" />
+                        </not>
+                     </adapt>
+                  </iterate>
+               </with>
+            </visibleWhen>
+         </command>
+      </menuContribution>
+   </extension>
+   
+   <!-- launch Profiles -->
+   <extension point="org.eclipse.debug.core.launchConfigurationTypes">
+      <launchConfigurationType id="com.jreframeworker.launchConfigurationType" name="JReFrameworker Java Application" delegate="com.jreframeworker.launcher.JReFrameworkerLaunchDelegate" modes="run, debug" />
+   </extension>
+   <extension point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+      <launchConfigurationTypeImage icon="icons/JReFrameworker.gif" configTypeID="com.jreframeworker.launchConfigurationType" id="com.jreframeworker.launchConfigurationTypeImage" />
+   </extension>
+   <extension point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+      <launchConfigurationTabGroup type="com.jreframeworker.launchConfigurationType" class="com.jreframeworker.launcher.JReFrameworkerTabGroup" id="com.jreframeworker.launchConfigurationTabGroup" />
+   </extension>
+   <extension point="org.eclipse.debug.ui.launchShortcuts">
+      <shortcut label="JReFrameworker Java Application" icon="icons/JReFrameworker-toolbar.gif" modes="run, debug" class="com.jreframeworker.launcher.JReFrameworkerLaunchShortcut" description="Launch Java application with the JReFrameworker modified runtime" id="com.jreframeworker.launcher.launchShortcut">
+         <description description="Runs the Java application with the JReFrameworker modified runtime" mode="run" />
+         <description description="Debugs a local Java application with the JReFrameworker modified runtime" mode="debug" />
+         <contextualLaunch>
+            <enablement>
+               <with variable="selection">
+                  <count value="1" />
+                  <iterate>
+                     <or>
+                        <test property="org.eclipse.jdt.launching.hasMain" />
+                        <and>
+                           <test property="org.eclipse.jdt.launching.isContainer" />
+                           <test property="org.eclipse.jdt.launching.hasProjectNature" args="org.eclipse.jdt.core.javanature" />
+                           <test property="org.eclipse.jdt.launching.hasProjectNature" args="com.jreframeworker.JReFrameworkerNature" />
+                        </and>
+                     </or>
+                  </iterate>
+               </with>
+            </enablement>
+         </contextualLaunch>
+         <configurationType id="com.jreframeworker.launchConfigurationType" />
+      </shortcut>
+   </extension>
+   
+   <!-- defines command handlers -->
+   <extension point="org.eclipse.ui.handlers">
+		<handler commandId="com.jreframeworker.addTargetCommand"
+				 class="com.jreframeworker.handlers.AddTargetHandler">
+		</handler>
+		<handler commandId="com.jreframeworker.resetClasspathCommand"
+				 class="com.jreframeworker.handlers.ResetClasspathHandler">
+		</handler>
+	</extension>
+	
+	<!-- add some menu items for the command handlers -->
+	<extension point="org.eclipse.ui.menus">
+		<menuContribution locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=additions">
+			<menu id="com.jreframeworker.explorer.menu" 
+				  label="JReFrameworker" />
+		</menuContribution>
+		<menuContribution locationURI="popup:jreframeworker.explorer.menu?after=additions">
+			<command commandId="com.jreframeworker.addTargetCommand" 
+					 icon="icons/JReFrameworker-toolbar.gif" 
+					 label="Add Library as Target" 
+					 style="push" />
+		    <command commandId="com.jreframeworker.resetClasspathCommand" 
+					 icon="icons/JReFrameworker-toolbar.gif" 
+					 label="Reset Project Classpath" 
+					 style="push" />
+		</menuContribution>
+	</extension>
+   
+</plugin>
