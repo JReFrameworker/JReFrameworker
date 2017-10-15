@@ -11,6 +11,9 @@ public class Activator extends AbstractUIPlugin {
 	// The plug-in ID
 	public static final String PLUGIN_ID = "com.jreframeworker.atlas"; //$NON-NLS-1$
 
+	// plugin extensions
+	public static final String PLUGIN_CODE_GENERATOR_EXTENSION_ID = "com.jreframeworker.atlas.codegen"; //$NON-NLS-1$
+
 	// The shared instance
 	private static Activator plugin;
 	
