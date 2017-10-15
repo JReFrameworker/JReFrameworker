@@ -132,6 +132,7 @@ public class CodeWizardView extends ViewPart {
 			
 			for(CodeGenerator codeGenerator : CodeGenerators.getCodeGeneratorsForCategory(category)){
 				Button codeGenerationButton = new Button(codeGenerationCategoryGroup, SWT.NONE);
+				codeGenerationButton.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
 				codeGenerationButton.setText(codeGenerator.getName());
 				codeGenerationButton.setEnabled(false);
 				codeGeneratorButtons.put(codeGenerator, codeGenerationButton);
