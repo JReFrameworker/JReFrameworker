@@ -167,9 +167,9 @@ public class CodeWizardView extends ViewPart {
 					Button codeGenerationButton = codeGeneratorButtons.get(codeGenerator);
 					if(codeGenerationButton != null){
 						if(jrefProject != null){
-							codeGenerationButton.setEnabled(false);
-						} else {
 							codeGenerationButton.setEnabled(codeGenerator.isApplicableTo(Common.toQ(selection)));
+						} else {
+							codeGenerationButton.setEnabled(false);
 						}
 					}
 				}
