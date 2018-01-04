@@ -45,40 +45,11 @@ SOFTWARE.
          id="support.com.squareup.javapoet.feature"
          version="0.0.0"/>
 
-   <includes
-         id="com.jreframeworker.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.c.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.java.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.jimple.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.scalaide.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.teleport.c.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.teleport.feature"
-         version="0.0.0"/>
-
-   <includes
-         id="com.ensoftcorp.atlas.teleport.java.feature"
-         version="0.0.0"/>
+   <plugin
+         id="com.jreframeworker.atlas"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
 
 </feature>
