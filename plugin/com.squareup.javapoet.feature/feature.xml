@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="com.squareup.javapoet.feature"
+      id="support.com.squareup.javapoet.feature"
       label="JavaPoet"
       version="1.8.0.qualifier"
       provider-name="Square">
@@ -223,7 +223,7 @@
    </requires>
 
    <plugin
-         id="com.squareup.javapoet"
+         id="support.com.squareup.javapoet"
          download-size="0"
          install-size="0"
          version="0.0.0"

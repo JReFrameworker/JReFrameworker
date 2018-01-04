@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: JReFrameworker
 Bundle-SymbolicName: com.jreframeworker;singleton:=true
-Bundle-Version: 1.3.1.qualifier
+Bundle-Version: 1.3.2.qualifier
 Bundle-Activator: com.jreframeworker.Activator
 Require-Bundle: org.eclipse.ui;visibility:=reexport,
  org.eclipse.ui.ide;visibility:=reexport,
@@ -14,7 +14,7 @@ Require-Bundle: org.eclipse.ui;visibility:=reexport,
  org.eclipse.debug.core;visibility:=reexport,
  org.eclipse.debug.ui;visibility:=reexport,
  org.eclipse.core.filesystem;visibility:=reexport,
- com.jreframeworker.engine;bundle-version="1.3.1";visibility:=reexport,
+ com.jreframeworker.engine;bundle-version="1.3.2";visibility:=reexport,
  org.apache.commons.io;bundle-version="2.2.0";visibility:=reexport
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy

@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: ASM
-Bundle-SymbolicName: org.objectweb.asm;singleton:=true
+Bundle-SymbolicName: support.org.objectweb.asm;singleton:=true
 Bundle-Version: 5.2.0
 Bundle-Activator: org.objectweb.asm.Activator
 Bundle-Vendor: OW2 Consortium

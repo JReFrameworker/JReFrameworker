@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: JavaPoet
-Bundle-SymbolicName: com.squareup.javapoet;singleton:=true
+Bundle-SymbolicName: support.com.squareup.javapoet;singleton:=true
 Bundle-Version: 1.8.0.qualifier
 Bundle-Vendor: Square
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8

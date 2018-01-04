@@ -72,7 +72,7 @@ public class Dropper {
 	
 	private static final String VERSION_LONG_ARGUMENT = "--version";
 	private static final String VERSION_SHORT_ARGUMENT = "-v";
-	private static final String VERSION_DESCRIPTION = "1.3.1";
+	private static final String VERSION_DESCRIPTION = "1.3.2";
 	
 	private static final String ENFORCE_SINGLE_INSTANCE_LONG_ARGUMENT = "--single-instance";
 	private static final String ENFORCE_SINGLE_INSTANCE_SHORT_ARGUMENT = "-si";

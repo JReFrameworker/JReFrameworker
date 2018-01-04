@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="org.objectweb.asm.feature"
+      id="support.org.objectweb.asm.feature"
       label="ASM"
       version="5.2.0.qualifier"
       provider-name="OSW Consortium">
@@ -60,7 +60,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
    </requires>
 
    <plugin
-         id="org.objectweb.asm"
+         id="support.org.objectweb.asm"
          download-size="0"
          install-size="0"
          version="0.0.0"
