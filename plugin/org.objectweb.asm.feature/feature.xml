@@ -2,7 +2,7 @@
 <feature
       id="support.org.objectweb.asm.feature"
       label="ASM"
-      version="5.2.0.qualifier"
+      version="5.2.0"
       provider-name="OSW Consortium">
 
    <description url="http://asm.ow2.org/">

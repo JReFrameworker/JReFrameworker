@@ -2,7 +2,7 @@
 <feature
       id="support.com.squareup.javapoet.feature"
       label="JavaPoet"
-      version="1.8.0.qualifier"
+      version="1.8.0"
       provider-name="Square">
 
    <description url="https://github.com/square/javapoet">
