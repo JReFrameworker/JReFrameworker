@@ -24,7 +24,7 @@ This is a just running list of useful references found during the development of
 
 ## Bytecode Manipulations
 - [ASM Whitepaper](http://asm.ow2.org/current/asm-eng.pdf)
-- [ASM Transformations Whitepaper](http://asm.ow2.org/current/asm-transformations.pdf)
+- [ASM Transformations Whitepaper](http://asm.ow2.org/current/asm-transformations.pdf), [MIRROR](https://src.fedoraproject.org/lookaside/extras/asm2/asm-transformations.pdf/991a1ccdb3e79fe393aed7477f4f7ca5/asm-transformations.pdf)
 - [Merging Classes with ASM](http://www.jroller.com/eu/entry/merging_class_methods_with_asm)
 - [Updated Version of ASM Bytecode Outline Plugin](http://andrei.gmxhome.de/bytecode/index.html)
 - [Konloch Bytecode Viewer](https://github.com/Konloch/bytecode-viewer)
