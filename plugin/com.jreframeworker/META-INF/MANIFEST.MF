@@ -25,3 +25,4 @@ Export-Package: com.jreframeworker.builder,
  org.eclipse.wb.swt
 Bundle-ClassPath: .,
  swing2swt.jar
+Automatic-Module-Name: com.jreframeworker

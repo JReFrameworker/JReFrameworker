@@ -17,7 +17,7 @@ public class BytecodeUtils {
 	 * @throws IOException
 	 */
 	public static byte[] writeClass(ClassNode classNode) throws IOException {
-		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		ClassWriter classWriter = new ClassLoadingClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		classNode.accept(classWriter);
         return classWriter.toByteArray();
 	}

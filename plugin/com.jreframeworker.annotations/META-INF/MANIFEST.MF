@@ -13,3 +13,4 @@ Bundle-Activator: com.jreframeworker.annotations.Activator
 Export-Package: com.jreframeworker.annotations.fields,
  com.jreframeworker.annotations.methods,
  com.jreframeworker.annotations.types
+Automatic-Module-Name: com.jreframeworker.annotations

@@ -10,7 +10,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarException;
 
-import org.objectweb.asm.ClassLoaders;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -22,27 +21,29 @@ import org.objectweb.asm.tree.MethodNode;
 
 import com.jreframeworker.engine.identifiers.BaseMethodsIdentifier;
 import com.jreframeworker.engine.identifiers.DefineFinalityIdentifier;
-import com.jreframeworker.engine.identifiers.DefineIdentifier;
-import com.jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
-import com.jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
-import com.jreframeworker.engine.identifiers.MergeIdentifier;
-import com.jreframeworker.engine.identifiers.PurgeIdentifier;
 import com.jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineFieldFinalityAnnotation;
 import com.jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineMethodFinalityAnnotation;
 import com.jreframeworker.engine.identifiers.DefineFinalityIdentifier.DefineTypeFinalityAnnotation;
+import com.jreframeworker.engine.identifiers.DefineIdentifier;
 import com.jreframeworker.engine.identifiers.DefineIdentifier.DefineMethodAnnotation;
+import com.jreframeworker.engine.identifiers.DefineVisibilityIdentifier;
 import com.jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineFieldVisibilityAnnotation;
 import com.jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineMethodVisibilityAnnotation;
 import com.jreframeworker.engine.identifiers.DefineVisibilityIdentifier.DefineTypeVisibilityAnnotation;
 import com.jreframeworker.engine.identifiers.DefineVisibilityIdentifier.Visibility;
+import com.jreframeworker.engine.identifiers.JREFAnnotationIdentifier;
+import com.jreframeworker.engine.identifiers.MergeIdentifier;
 import com.jreframeworker.engine.identifiers.MergeIdentifier.MergeMethodAnnotation;
 import com.jreframeworker.engine.identifiers.MergeIdentifier.MergeTypeAnnotation;
+import com.jreframeworker.engine.identifiers.PurgeIdentifier;
 import com.jreframeworker.engine.identifiers.PurgeIdentifier.PurgeFieldAnnotation;
 import com.jreframeworker.engine.identifiers.PurgeIdentifier.PurgeMethodAnnotation;
 import com.jreframeworker.engine.identifiers.PurgeIdentifier.PurgeTypeAnnotation;
 import com.jreframeworker.engine.log.Log;
 import com.jreframeworker.engine.utils.AnnotationUtils;
 import com.jreframeworker.engine.utils.BytecodeUtils;
+import com.jreframeworker.engine.utils.ClassLoaders;
+import com.jreframeworker.engine.utils.ClassLoadingClassWriter;
 import com.jreframeworker.engine.utils.JarModifier;
 
 public class Engine {
@@ -310,7 +311,7 @@ public class Engine {
 				for (Object o : classNode.methods) {
 					MethodNode methodNode = (MethodNode) o;
 					if(methodNode.name.equals(purgeMethodAnnotation.getMethodName())){
-						ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+						ClassWriter classWriter = new ClassLoadingClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 						PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, methodNode);
 						ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
 						purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
@@ -336,7 +337,7 @@ public class Engine {
 				for (Object o : classNode.fields) {
 					FieldNode fieldNode = (FieldNode) o;
 					if(fieldNode.name.equals(purgeFieldAnnotation.getFieldName())){
-						ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+						ClassWriter classWriter = new ClassLoadingClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 						PurgeAdapter purgeAdapter = new PurgeAdapter(classWriter, fieldNode);
 						ClassReader purgedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(classNode));
 						purgedBaseClassReader.accept(purgeAdapter, ClassReader.EXPAND_FRAMES);
@@ -799,7 +800,7 @@ public class Engine {
 		
 		// purge defined methods that were already there
 		// adapt a ClassWriter with the PurgeAdapter
-		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		ClassWriter classWriter = new ClassLoadingClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		Set<MethodNode> methodsToPurge = new HashSet<MethodNode>();
 		for(DefineMethodAnnotation methodToDefine : methodsToDefine){
 			methodsToPurge.add(methodToDefine.getMethodNode());
@@ -813,7 +814,7 @@ public class Engine {
 		// merge the classes
 		// adapt a ClassWriter with the MergeAdapter
 		// modifiedBaseClass, classToMerge -> MergeAdapter -> ClassWriter
-		classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		classWriter = new ClassLoadingClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		MergeAdapter mergeAdapter = new MergeAdapter(classWriter, classToMergeClassNode, mergeRenamePrefix, renamedMethods);
 		ClassReader modifiedBaseClassReader = new ClassReader(BytecodeUtils.writeClass(baseClassNode));
 		modifiedBaseClassReader.accept(mergeAdapter, ClassReader.EXPAND_FRAMES);

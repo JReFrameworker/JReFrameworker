@@ -20,3 +20,4 @@ Bundle-ActivationPolicy: lazy
 Export-Package: com.jreframeworker.engine,
  com.jreframeworker.engine.identifiers,
  com.jreframeworker.engine.utils
+Automatic-Module-Name: com.jreframeworker.engine
