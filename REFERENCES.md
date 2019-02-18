@@ -9,6 +9,7 @@ This is a just running list of useful references found during the development of
 - [Black Hat USA 2013 - Java Every-Days: Exploiting Software Running on 3 Billion Devices](https://www.youtube.com/watch?v=HO0CkhndCQQ)
 
 ## Runtime Patching
+- [Rubah is a Dynamic Software Updating (DSU) system for Java that works on stock JVMs](https://github.com/plum-umd/rubah), [Quick Start](http://web.ist.utl.pt/~luis.pina/oopsla14/aec/getting-started.html), [Steps](http://web.ist.utl.pt/~luis.pina/oopsla14/aec/step-by-step.html), [Slides](https://www.infoq.com/presentations/rubah), [Paper](http://www.cs.umd.edu/~mwh/papers/rubah-oopsla14.pdf)
 - [Java Geeks Using the BootClasspath - Tweaking the Java Runtime API](http://www.tedneward.com/files/Papers/BootClasspath/BootClasspath.pdf)
 - [Covert Java: Techniques for Decompiling, Patching, and Reverse Engineering](http://www.amazon.com/gp/product/0672326388/ref=as_li_tl?ie=UTF8&camp=1789&creative=390957&creativeASIN=0672326388&linkCode=as2&tag=zombiest-20&linkId=6WARWI6KSNMYLBWS)
 - [-Xbootclasspath Oracle Docs](https://docs.oracle.com/cd/E15289_01/doc.40/e15062/optionx.htm#i1018570)
