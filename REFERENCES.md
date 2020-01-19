@@ -21,6 +21,7 @@ This is a just running list of useful references found during the development of
 - [HotswapAgent](http://www.hotswapagent.org/quick-start) + [Hotswap Projects](https://github.com/HotswapProjects)
 - [Oracle FPUpdater Tool](http://www.oracle.com/technetwork/java/javase/fpupdater-tool-readme-305936.html)
 - [ClassLoader to Reload Class Definitions](https://stackoverflow.com/questions/3971534/how-to-force-java-to-reload-class-upon-instantiation)
+- [DYNAMIC SOFTWARE UPDATING (Dissertation)](http://www.cs.umd.edu/~mwh/papers/thesis.pdf)
 - [Dynamic Software Updating for Java](http://www.luispina.me/projects/rubah.html)
 
 ## Bytecode Manipulations
